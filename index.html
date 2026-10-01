@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>DOPK Insight: täglicher Auftragsbestand</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%231F2629'/%3E%3Crect x='7' y='18' width='4' height='7' fill='%23CF2E3E'/%3E%3Crect x='14' y='10' width='4' height='15' fill='%2311879A'/%3E%3Crect x='21' y='14' width='4' height='11' fill='%23E9A800'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/tokens.css">
+<link rel="stylesheet" href="assets/components.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="topbar">
+    <div class="mark">
+      <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" fill="#1F2629"/><rect x="7" y="18" width="4" height="7" fill="#CF2E3E"/><rect x="14" y="10" width="4" height="15" fill="#11879A"/><rect x="21" y="14" width="4" height="11" fill="#E9A800"/></svg>
+      <span>DOPK Insight <small data-i18n="tagline">Täglicher Auftragsbestand</small></span>
+    </div>
+    <span class="spacer"></span>
+    <span class="snapshot-date" id="snapshot">Keine Datei geladen</span>
+    <label class="sr-only" for="filter" data-i18n="customer">Kunde</label>
+    <select class="select no-print" id="filter"><option value="__all">Alle Kunden</option></select>
+    <div class="lang-switch no-print" role="group" aria-label="Sprache / Language">
+      <button type="button" data-lang="de" aria-pressed="true" lang="de" title="Deutsch">DE</button>
+      <button type="button" data-lang="en" aria-pressed="false" lang="en" title="English">EN</button>
+    </div>
+    <button class="btn no-print" type="button" data-upload data-i18n="upload">Tagesdatei hochladen</button>
+    <input type="file" id="file" accept=".xlsx,.xls,.csv" hidden>
+    <input type="file" id="archive" accept=".xlsx,.xls,.csv" multiple hidden>
+  </header>
+
+  <section class="dropzone" id="empty">
+    <h1 data-i18n="dropTitle">Ziehen Sie den heutigen DOPK-Export hierher, um den Auftragsbestand zu lesen.</h1>
+    <p data-i18n="dropBody">Verwenden Sie die .xlsx-Datei der offenen Aufträge aus dem ERP.</p>
+    <button class="btn" type="button" data-upload data-i18n="choose">Datei auswählen</button>
+    <button class="btn btn--quiet" type="button" data-archive data-i18n="importArchive">Archiv importieren</button>
+    <div class="notice" id="error" role="alert" hidden></div>
+  </section>
+
+  <div class="banner no-print" id="notice" role="status" hidden><span></span><button type="button" class="btn btn--quiet" data-i18n="dismiss">Schließen</button></div>
+
+  <main id="app" hidden>
+    <section class="verdict" id="verdict" aria-live="polite"></section>
+
+    <section class="vitals" id="vitals" data-i18n-label="keyFigures" aria-label="Kennzahlen"></section>
+
+    <div class="grid">
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <h2 data-i18n="horizonTitle">Auftragshorizont</h2>
+            <p class="panel-note" id="horizon-note"></p>
+          </div>
+        </div>
+        <div class="horizon" id="horizon"></div>
+        <div class="legend">
+          <span><i style="background:var(--alarm-high)"></i><span data-i18n="legLate">Überfällig</span></span>
+          <span><i style="background:var(--alarm-low)"></i><span data-i18n="legFlow">Geplant</span></span>
+          <span><i style="background:repeating-linear-gradient(45deg,var(--alarm-med) 0 2px,var(--alarm-med-tint) 2px 5px)"></i><span data-i18n="legUndated">Ohne Liefertermin</span></span>
+        </div>
+      </section>
+      <section class="panel">
+        <div class="panel-head"><div><h2 data-i18n="shareTitle">Von wem der Bestand abhängt</h2><p class="panel-note" data-i18n="shareNote">Anteil am offenen Wert je Kunde.</p></div></div>
+        <div class="share-bar" id="share-bar"></div>
+        <ul class="share-list" id="share-list"></ul>
+        <div class="stat-line" id="share-stats"></div>
+      </section>
+    </div>
+
+    <div class="grid">
+      <section class="panel">
+        <div class="panel-head">
+          <div><h2 data-i18n="lateTitle">Überfällige Positionen nachfassen</h2><p class="panel-note" id="late-count"></p></div>
+          <button class="btn btn--quiet no-print" type="button" id="export-late" data-i18n="exportLate">Überfälligkeitsliste exportieren</button>
+        </div>
+        <div class="table-scroll">
+          <table class="data">
+            <thead><tr><th data-i18n="thOrder">Auftrag</th><th data-i18n="thCust">Kunde</th><th data-i18n="thArt">Artikel</th><th class="num" data-i18n="thDue">Fällig</th><th class="num" data-i18n="thLate">Verzug</th><th class="num" data-i18n="thVal">Offener Wert</th></tr></thead>
+            <tbody id="late-body"></tbody>
+          </table>
+        </div>
+      </section>
+      <section class="panel">
+        <div class="panel-head"><div><h2 data-i18n="watchTitle">Beobachtungsliste</h2><p class="panel-note" data-i18n="watchNote">Veränderungen, Abschlusschancen und zu korrigierende Daten.</p></div></div>
+        <ul class="watch" id="watch"></ul>
+      </section>
+    </div>
+  </main>
+
+  <footer class="foot">
+    <span id="foot-file"></span>
+    <span class="no-print"><button class="btn btn--quiet" type="button" data-archive data-i18n="importArchive">Archiv importieren</button> <button class="btn btn--quiet" type="button" id="print" data-i18n="print">Drucken oder als PDF speichern</button> <button class="btn btn--quiet" type="button" id="clear" data-i18n="clear">Gespeicherten Verlauf löschen</button></span>
+  </footer>
+</div>
+<script src="assets/vendor/xlsx.full.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

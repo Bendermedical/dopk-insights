@@ -1,0 +1,65 @@
+/* ==========================================================================
+   DOPK Vitals design system: tokens
+   Concept: the order book read like a patient monitor. Colour is never
+   decoration; it follows the alarm-priority convention of medical devices
+   (IEC 60601-1-8): red = act now, yellow = watch, cyan = information.
+   ========================================================================== */
+@import url("https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:ital,wght@0,300..800;1,400&display=swap");
+
+:root {
+  /* Base: surgical steel */
+  --steel-050: #F6F7F6;
+  --steel-100: #ECEFEE;
+  --steel-200: #DDE2E0;
+  --steel-300: #C4CBC9;
+  --steel-500: #7C8689;
+  --steel-700: #4D575B;
+  --graphite:  #1F2629;
+
+  /* Alarm priorities */
+  --alarm-high:      #CF2E3E;  /* act now: overdue, errors */
+  --alarm-high-tint: #F8E1E3;
+  --alarm-med:       #E9A800;  /* watch: undated, concentration */
+  --alarm-med-tint:  #FBF0CC;
+  --alarm-low:       #11879A;  /* information: scheduled flow */
+  --alarm-low-tint:  #D6EEF1;
+  --clear:           #2E7D55;  /* resolved: shipped, on time */
+  --clear-tint:      #DCEEE3;
+
+  /* Semantic roles */
+  --bg:        var(--steel-100);
+  --surface:   var(--steel-050);
+  --ink:       var(--graphite);
+  --ink-muted: var(--steel-700);
+  --ink-faint: var(--steel-500);
+  --rule:      var(--steel-300);
+  --rule-soft: var(--steel-200);
+  --focus:     var(--alarm-low);
+
+  /* Type: one family, legibility-first (Braille Institute design) */
+  --font: "Atkinson Hyperlegible Next", "Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, sans-serif;
+  /* Scale: perfect fourth (1.333) from 16px */
+  --fs-xs: 0.75rem;   /* 12 */
+  --fs-sm: 0.875rem;  /* 14 */
+  --fs-md: 1rem;      /* 16 */
+  --fs-lg: 1.333rem;  /* 21 */
+  --fs-xl: 1.777rem;  /* 28 */
+  --fs-2xl: 2.369rem; /* 38 */
+  --fs-3xl: 3.157rem; /* 50 */
+  --fw-light: 300; --fw-regular: 400; --fw-bold: 700; --fw-heavy: 800;
+  --lh-tight: 1.08; --lh-snug: 1.25; --lh-body: 1.5;
+
+  /* Space: 4px base */
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 48px; --s8: 64px;
+
+  /* Shape: radius encodes hierarchy. Panels square, controls soft, pills round */
+  --r-panel: 0;
+  --r-control: 6px;
+  --r-pill: 999px;
+
+  /* Layout */
+  --page-max: 1360px;
+  --gutter: clamp(16px, 3vw, 40px);
+
+  --ease: cubic-bezier(.2,.7,.2,1);
+}

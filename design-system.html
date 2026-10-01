@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>DOPK Vitals: design system</title>
+<link rel="stylesheet" href="assets/tokens.css">
+<link rel="stylesheet" href="assets/components.css">
+<style>
+  .ds section { padding: var(--s6) 0; border-bottom: 1px solid var(--rule); }
+  .ds h2 { margin: 0 0 var(--s2); font-size: var(--fs-xl); font-weight: var(--fw-heavy); letter-spacing: -0.02em; }
+  .ds .lead { color: var(--ink-muted); max-width: 64ch; margin: 0 0 var(--s5); }
+  .swatches { display:grid; grid-template-columns: repeat(auto-fill, minmax(150px,1fr)); gap: var(--s4); }
+  .sw { background: var(--surface); }
+  .sw div { height: 72px; }
+  .sw p { margin: 0; padding: var(--s2) var(--s3); font-size: var(--fs-sm); }
+  .sw p b { display:block; }
+  .scale div { display:flex; align-items: baseline; gap: var(--s5); padding: var(--s2) 0; border-bottom: 1px solid var(--rule-soft); }
+  .scale code { width: 120px; flex: none; font-size: var(--fs-xs); color: var(--ink-muted); font-family: var(--font); }
+  .rules-table td, .rules-table th { padding: var(--s2) var(--s4) var(--s2) 0; }
+  .demo { background: var(--surface); padding: var(--s5); margin-top: var(--s4); }
+  .row { display:flex; gap: var(--s3); flex-wrap: wrap; align-items: center; }
+  .principles { max-width: 70ch; margin: 0; padding-left: 1.2em; }
+  .principles li { margin-bottom: var(--s3); }
+</style>
+</head>
+<body>
+<div class="wrap ds">
+  <header class="topbar">
+    <div class="mark">
+      <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" fill="#1F2629"/><rect x="7" y="18" width="4" height="7" fill="#CF2E3E"/><rect x="14" y="10" width="4" height="15" fill="#11879A"/><rect x="21" y="14" width="4" height="11" fill="#E9A800"/></svg>
+      <span>DOPK Vitals <small>Design system</small></span>
+    </div>
+    <span class="spacer"></span>
+    <a class="btn btn--quiet" href="index.html">Open dashboard</a>
+    <a class="btn" href="tokens.json" download>Download tokens.json</a>
+  </header>
+
+  <section class="verdict">
+    <h1>The order book, read like a patient monitor.</h1>
+    <p>Colour carries one meaning only: how urgently a number needs attention. It follows the alarm convention used on medical devices, which the people who make and sell airway products already read without thinking.</p>
+  </section>
+
+  <section>
+    <h2>Principles</h2>
+    <ol class="principles">
+      <li>Lead with a sentence. The first thing the CEO reads is a plain-language verdict built from the numbers, not a chart.</li>
+      <li>Colour is priority, never decoration. Red means act now, yellow means watch, cyan means information, green means resolved. If nothing needs attention, the page is mostly grey.</li>
+      <li>Panels are divided by rules, not floated as cards. Square panels, soft controls, round chips: radius tells you what you can touch.</li>
+      <li>One typeface, chosen for legibility. Atkinson Hyperlegible Next was designed by the Braille Institute; its figures don't get confused, which matters for a page of numbers.</li>
+      <li>Every figure has an action nearby: a list to chase, a file to export, a date to set.</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Colour</h2>
+    <p class="lead">Surgical-steel neutrals with four priority colours. Each priority has a tint for chip backgrounds.</p>
+    <div class="swatches">
+      <div class="sw"><div style="background:#1F2629"></div><p><b>Graphite</b>#1F2629 · ink</p></div>
+      <div class="sw"><div style="background:#4D575B"></div><p><b>Steel 700</b>#4D575B · muted text</p></div>
+      <div class="sw"><div style="background:#C4CBC9"></div><p><b>Steel 300</b>#C4CBC9 · rules</p></div>
+      <div class="sw"><div style="background:#ECEFEE;border:1px solid #C4CBC9"></div><p><b>Steel 100</b>#ECEFEE · page</p></div>
+      <div class="sw"><div style="background:#CF2E3E"></div><p><b>Alarm high</b>#CF2E3E · act now</p></div>
+      <div class="sw"><div style="background:#E9A800"></div><p><b>Alarm medium</b>#E9A800 · watch</p></div>
+      <div class="sw"><div style="background:#11879A"></div><p><b>Alarm low</b>#11879A · information</p></div>
+      <div class="sw"><div style="background:#2E7D55"></div><p><b>Clear</b>#2E7D55 · resolved</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Type</h2>
+    <p class="lead">Perfect-fourth scale from 16px. Heavy weight for figures and the verdict, regular for reading. Tabular figures everywhere so columns align.</p>
+    <div class="scale">
+      <div><code>3xl · 50 / 800</code><span style="font-size:var(--fs-3xl);font-weight:800;letter-spacing:-.025em;line-height:1.08">€1.51M is open</span></div>
+      <div><code>2xl · 38 / 800</code><span style="font-size:var(--fs-2xl);font-weight:800;letter-spacing:-.02em">€129k</span></div>
+      <div><code>xl · 28 / 800</code><span style="font-size:var(--fs-xl);font-weight:800">7,736</span></div>
+      <div><code>lg · 21 / 700</code><span style="font-size:var(--fs-lg);font-weight:700">Order-book horizon</span></div>
+      <div><code>md · 16 / 400</code><span>Upload tomorrow's file to see completed lines and rescheduled dates.</span></div>
+      <div><code>sm · 14 / 400</code><span style="font-size:var(--fs-sm)">60 late lines in 15 orders.</span></div>
+      <div><code>xs · 12 / 700</code><span style="font-size:var(--fs-xs);font-weight:700">▲ €18k</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Alarm thresholds</h2>
+    <p class="lead">Thresholds live in one place (RULES in assets/app.js and rules in tokens.json). Change them there and the whole dashboard follows.</p>
+    <table class="data rules-table">
+      <thead><tr><th>Measure</th><th>Watch</th><th>Act now</th></tr></thead>
+      <tbody>
+        <tr><td>Overdue share of open value</td><td>above 2%</td><td>above 5%</td></tr>
+        <tr><td>Open value without delivery date</td><td>above 5%</td><td>above 15%</td></tr>
+        <tr><td>Today's shipments on time</td><td>below 97%</td><td>below 90%</td></tr>
+        <tr><td>Customer concentration (HHI)</td><td>above 1,500</td><td>above 2,500</td></tr>
+        <tr><td>Unit price vs article median</td><td colspan="2">below 60% or above 160%, where 3 or more customers buy the article</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Components</h2>
+    <p class="lead">Live examples using the production stylesheet.</p>
+
+    <h3>Vital readout</h3>
+    <div class="vitals" style="grid-template-columns:repeat(4,minmax(0,1fr))">
+      <div class="vital" data-level="high"><div class="vital-head"><span class="vital-label">Overdue</span><span class="chip chip--high">Act now</span></div><span class="vital-value">€129k</span><div class="vital-sub">8.5% of open <span class="delta delta--up-bad">▲ €4.2k</span></div></div>
+      <div class="vital" data-level="med"><div class="vital-head"><span class="vital-label">No delivery date</span><span class="chip chip--med">Watch</span></div><span class="vital-value">12%</span><div class="vital-sub">€181k in 90 lines</div></div>
+      <div class="vital" data-level="low"><div class="vital-head"><span class="vital-label">New orders today</span><span class="chip chip--low">Info</span></div><span class="vital-value">€7.0k</span><div class="vital-sub">13 orders</div></div>
+      <div class="vital" data-level="clear"><div class="vital-head"><span class="vital-label">Shipped today</span><span class="chip chip--clear">Clear</span></div><span class="vital-value">€27k</span><div class="vital-sub">100% on time <span class="delta delta--down-good">▼ €2k</span></div></div>
+    </div>
+
+    <h3>Chips and controls</h3>
+    <div class="demo row">
+      <span class="chip chip--high">Act now</span><span class="chip chip--med">Watch</span><span class="chip chip--low">Info</span><span class="chip chip--clear">Clear</span>
+      <button class="btn" type="button">Upload today's file</button>
+      <button class="btn btn--quiet" type="button">Export overdue list</button>
+      <select class="select" aria-label="Customer"><option>All customers</option></select>
+    </div>
+
+    <h3>Watchlist item</h3>
+    <div class="demo"><ul class="watch"><li><div class="w-head"><span class="w-title">4 price outliers</span><span class="chip chip--med">Watch</span></div><div class="w-body">Largest gap: 109071 for Thies MediCenter at €1.88 per unit, against a typical €4.01.</div></li></ul></div>
+
+    <h3>Share bar</h3>
+    <div class="demo"><div class="share-bar"><div style="width:87%;background:#1F2629"></div><div style="width:10.5%;background:#11879A"></div><div style="width:1%;background:#7FB9C2"></div><div style="width:1.5%;background:#C4CBC9"></div></div></div>
+  </section>
+
+  <footer class="foot"><span>Files: assets/tokens.css, assets/components.css, tokens.json</span></footer>
+</div>
+</body>
+</html>
