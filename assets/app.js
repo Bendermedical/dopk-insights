@@ -10,7 +10,21 @@
     onTimePct:  { high: 90, med: 97 },     // % of today's shipped lines on time (below = alarm)
     priceLow: 0.6, priceHigh: 1.6,         // unit price vs article median
     closeOutQuote: 75,                     // order ≥ this % delivered = close-out candidate
-    historyDays: 90                        // snapshots kept in this browser
+    historyDays: 90,                       // snapshots kept in this browser
+    outlook: {
+      windows: [7, 30, 90],                // forecast windows in days forward from report date
+      // Overdue catch-up weights by days late (tier 1: 1-14d, tier 2: 15-60d, tier 3: >60d)
+      overdueCatchUp: {
+        tier1MaxDays: 14, tier1Weight: 0.8,
+        tier2MaxDays: 60, tier2Weight: 0.5,
+        tier3Weight: 0.2
+      },
+      calibrationDays: 28,                 // rolling history window in days for realisation rate
+      minHistoryDays: 14,                  // minimum history span in days required to calibrate
+      rateMin: 0.5,                        // clamp minimum realisation rate
+      rateMax: 1.2,                        // clamp maximum realisation rate
+      monthlyTarget: null                  // optional monthly revenue target in EUR (null if not set)
+    }
   };
   const COLORS = { late: "var(--alarm-high)", flow: "var(--alarm-low)", undated: "var(--alarm-med)" };
   const SHARE_COLORS = ["#1F2629", "#11879A", "#7FB9C2", "#C4CBC9"];
@@ -88,7 +102,33 @@
       importArchive: "Archiv importieren", dismiss: "Schließen",
       importDone: (n, a, b) => `${pl(n, "Tagesdatei", "Tagesdateien")} importiert (${a} bis ${b}). Der Verlauf ist jetzt in diesem Browser verfügbar.`,
       importSkipped: list => ` Übersprungen: ${list}.`, importBusy: (i, n) => `Datei ${i} von ${n} wird gelesen …`,
-      dupDate: "gleiches Datum wie eine andere Datei, neuere Datei verwendet"
+      dupDate: "gleiches Datum wie eine andere Datei, neuere Datei verwendet",
+      outlookTitle: "Umsatzausblick",
+      outlookSubtitle: (v30, late, hasLate) => hasLate
+        ? `In den nächsten 30 Tagen werden voraussichtlich ${v30} versandt, davon ${late} aus überfälligen Positionen.`
+        : `In den nächsten 30 Tagen werden voraussichtlich ${v30} versandt, alle Positionen liegen im Plan.`,
+      outlookSubtitleNone: "In den nächsten 30 Tagen sind keine Lieferungen geplant.",
+      outlook7d: "Nächste 7 Tage",
+      outlook30d: "Nächste 30 Tage",
+      outlook90d: "Nächste 90 Tage",
+      outlookSched: "geplant",
+      outlookCatchUp: "Verzug",
+      outlookPlanVal: "Plan",
+      outlookExpVal: "Erwartet",
+      outlookCompare: (p, e, r) => `Plan: ${p} · Erwartet: ${e} (${r})`,
+      outlookMonthTitle: m => `Monatslandung ${m}`,
+      outlookShippedMtd: "versandt",
+      outlookStillExpected: "noch erwartet",
+      outlookShippedToday: "Heute versandt",
+      outlookTarget: "Ziel",
+      outlookTargetInfo: (t, p) => `Ziel: ${t} (${p} erreicht)`,
+      outlookBarAria: (m, l, s, e) => `Monatsergebnis ${m}: ${l}, davon ${s} versandt und ${e} noch erwartet.`,
+      outlookUndatedNote: (v, n) => `Nicht enthalten: ${v} ohne Liefertermin (${pl(n, "Position", "Positionen")})`,
+      outlookCalibratedNote: (r, d) => `Realisierungsquote: ${r} (Basis: letzte ${d} Tage)`,
+      outlookFilterNote: "Erwartungswert nur ohne Kundenfilter verfügbar",
+      outlookHistoryShortNote: d => `Erwartungswert nach ${d} Tagen Verlauf verfügbar`,
+      outlookPartialNote: d => `Monatsversand unvollständig (erfasst ab ${d})`,
+      outlookMismatchNote: n => `${pl(n, "Position", "Positionen")} mit Rechenabweichung enthalten (Wert verwendet)`
     },
     en: {
       htmlTitle: "DOPK Insight: daily order book",
@@ -159,7 +199,33 @@
       importArchive: "Import archive", dismiss: "Close",
       importDone: (n, a, b) => `${pl(n, "daily file", "daily files")} imported (${a} to ${b}). The history is now available in this browser.`,
       importSkipped: list => ` Skipped: ${list}.`, importBusy: (i, n) => `Reading file ${i} of ${n} …`,
-      dupDate: "same date as another file, newer file used"
+      dupDate: "same date as another file, newer file used",
+      outlookTitle: "Revenue outlook",
+      outlookSubtitle: (v30, late, hasLate) => hasLate
+        ? `${v30} is expected to ship in the next 30 days, of which ${late} is overdue catch-up.`
+        : `${v30} is expected to ship in the next 30 days, all lines are on schedule.`,
+      outlookSubtitleNone: "No shipments scheduled in the next 30 days.",
+      outlook7d: "Next 7 days",
+      outlook30d: "Next 30 days",
+      outlook90d: "Next 90 days",
+      outlookSched: "scheduled",
+      outlookCatchUp: "overdue catch-up",
+      outlookPlanVal: "Plan",
+      outlookExpVal: "Expected",
+      outlookCompare: (p, e, r) => `Plan: ${p} · Expected: ${e} (${r})`,
+      outlookMonthTitle: m => `Month landing ${m}`,
+      outlookShippedMtd: "shipped",
+      outlookStillExpected: "still expected",
+      outlookShippedToday: "Shipped today",
+      outlookTarget: "Target",
+      outlookTargetInfo: (t, p) => `Target: ${t} (${p} achieved)`,
+      outlookBarAria: (m, l, s, e) => `Month landing ${m}: ${l}, of which ${s} shipped and ${e} still expected.`,
+      outlookUndatedNote: (v, n) => `Not included: ${v} without delivery date (${pl(n, "line", "lines")})`,
+      outlookCalibratedNote: (r, d) => `Realisation rate: ${r} (based on last ${d} days)`,
+      outlookFilterNote: "Expected value available without customer filter only",
+      outlookHistoryShortNote: d => `Expected value available after ${d} days of history`,
+      outlookPartialNote: d => `Month-to-date shipments partial (tracked from ${d})`,
+      outlookMismatchNote: n => `${pl(n, "line", "lines")} with calculation discrepancy included (value used)`
     }
   };
 
@@ -318,6 +384,220 @@
       priceFlags, zeroPrice, mismatch, closeOut, closeOutVal
     };
   }
+
+  function computeOutlook(lines, rd, filter, history) {
+    let L = lines;
+    const custTotals = {};
+    lines.filter(l => !l.shipped).forEach(l => custTotals[l.cust] = (custTotals[l.cust] || 0) + l.val);
+    const topCust = Object.entries(custTotals).sort((a, b) => b[1] - a[1])[0]?.[0];
+    if (filter === "__xtop") L = lines.filter(l => l.cust !== topCust);
+    else if (filter && filter !== "__all") L = lines.filter(l => l.cust === filter);
+
+    const open = L.filter(l => !l.shipped);
+    const shippedToday = L.filter(l => l.shipped);
+    const shippedTodayVal = sum(shippedToday, l => l.val);
+
+    // Inclusive windows measured from rd: [rd + 1, rd + W]
+    const d1 = new Date(rd.getFullYear(), rd.getMonth(), rd.getDate() + 1);
+    const d7 = new Date(rd.getFullYear(), rd.getMonth(), rd.getDate() + RULES.outlook.windows[0]);
+    const d30 = new Date(rd.getFullYear(), rd.getMonth(), rd.getDate() + RULES.outlook.windows[1]);
+    const d90 = new Date(rd.getFullYear(), rd.getMonth(), rd.getDate() + RULES.outlook.windows[2]);
+
+    const sched7 = sum(open.filter(l => l.due && l.due >= d1 && l.due <= d7), l => l.val);
+    const sched30 = sum(open.filter(l => l.due && l.due >= d1 && l.due <= d30), l => l.val);
+    const sched90 = sum(open.filter(l => l.due && l.due >= d1 && l.due <= d90), l => l.val);
+
+    // Overdue lines: open lines with due < rd
+    const late = open.filter(l => l.due && l.due < rd);
+    const totalLate = sum(late, l => l.val);
+    const cfg = RULES.outlook.overdueCatchUp;
+
+    let catchUp7 = 0;
+    late.forEach(l => {
+      const daysLate = Math.round((rd - l.due) / DAY);
+      let w = cfg.tier3Weight;
+      if (daysLate <= cfg.tier1MaxDays) w = cfg.tier1Weight;
+      else if (daysLate <= cfg.tier2MaxDays) w = cfg.tier2Weight;
+      catchUp7 += l.val * w;
+    });
+
+    // Windows are cumulative. Whatever is not caught up in 7 days rolls into 30 days.
+    const catchUp30 = totalLate;
+    const catchUp90 = totalLate;
+
+    const plan7 = sched7 + catchUp7;
+    const plan30 = sched30 + catchUp30;
+    const plan90 = sched90 + catchUp90;
+
+    // Undated lines
+    const undated = open.filter(l => !l.due);
+    const undatedVal = sum(undated, l => l.val);
+    const undatedCount = undated.length;
+
+    // Data quality
+    const mismatch = L.filter(l => Math.abs(l.calc - l.val) > 0.05);
+    const mismatchCount = mismatch.length;
+
+    // Realisation rate calibration (unfiltered only, minHistoryDays)
+    let calibrated = false;
+    let calibRate = 1.0;
+    let rawRate = null;
+    let calibReason = "none";
+
+    const snaps = history?.snaps || {};
+    const snapDates = Object.keys(snaps).sort();
+    const rdIso = iso(rd);
+
+    if (filter !== "__all") {
+      calibReason = "filter";
+    } else if (snapDates.length < 2) {
+      calibReason = "too_short";
+    } else {
+      const minD = new Date(snapDates[0] + "T00:00:00");
+      const maxD = new Date(snapDates[snapDates.length - 1] + "T00:00:00");
+      const spanDays = Math.round((maxD - minD) / DAY);
+      if (spanDays < RULES.outlook.minHistoryDays) {
+        calibReason = "too_short";
+      } else {
+        const calibStartIso = iso(new Date(+rd - RULES.outlook.calibrationDays * DAY));
+        let totalDelivered = 0;
+        let totalDue = 0;
+
+        for (let i = 1; i < snapDates.length; i++) {
+          const prevDate = snapDates[i - 1];
+          const currDate = snapDates[i];
+          if (currDate > rdIso) continue;
+          if (currDate < calibStartIso) continue;
+
+          const prevSnap = snaps[prevDate];
+          const currSnap = snaps[currDate];
+          const prevKeys = prevSnap?.keys || {};
+          const currKeys = currSnap?.keys || {};
+
+          for (const [k, [dueIso, prevVal]] of Object.entries(prevKeys)) {
+            if (dueIso && dueIso <= currDate) {
+              totalDue += prevVal;
+            }
+            if (!(k in currKeys)) {
+              totalDelivered += prevVal;
+            } else {
+              const currVal = currKeys[k][1];
+              if (currVal < prevVal) {
+                totalDelivered += (prevVal - currVal);
+              }
+            }
+          }
+        }
+
+        if (totalDue > 0) {
+          rawRate = totalDelivered / totalDue;
+          calibRate = Math.max(RULES.outlook.rateMin, Math.min(RULES.outlook.rateMax, rawRate));
+          calibrated = true;
+          calibReason = "ok";
+        } else {
+          calibReason = "too_short";
+        }
+      }
+    }
+
+    const expected7 = calibrated ? plan7 * calibRate : null;
+    const expected30 = calibrated ? plan30 * calibRate : null;
+    const expected90 = calibrated ? plan90 * calibRate : null;
+
+    // Month landing (current calendar month of rd)
+    const rdYear = rd.getFullYear(), rdMonth = rd.getMonth();
+    const monthEnd = new Date(rdYear, rdMonth + 1, 0);
+
+    let monthDeliveredPrior = 0;
+    for (let i = 1; i < snapDates.length; i++) {
+      const prevDate = snapDates[i - 1];
+      const currDate = snapDates[i];
+      if (currDate > rdIso) continue;
+      const cD = new Date(currDate + "T00:00:00");
+      if (cD.getFullYear() !== rdYear || cD.getMonth() !== rdMonth) continue;
+
+      const prevSnap = snaps[prevDate];
+      const currSnap = snaps[currDate];
+      const prevKeys = prevSnap?.keys || {};
+      const currKeys = currSnap?.keys || {};
+
+      for (const [k, [, prevVal]] of Object.entries(prevKeys)) {
+        if (!(k in currKeys)) {
+          monthDeliveredPrior += prevVal;
+        } else {
+          const currVal = currKeys[k][1];
+          if (currVal < prevVal) monthDeliveredPrior += (prevVal - currVal);
+        }
+      }
+    }
+
+    const shippedMonthToDate = monthDeliveredPrior + shippedTodayVal;
+
+    let firstWorkingDay = new Date(rdYear, rdMonth, 1);
+    if (firstWorkingDay.getDay() === 0) firstWorkingDay.setDate(2);
+    else if (firstWorkingDay.getDay() === 6) firstWorkingDay.setDate(3);
+
+    const monthSnaps = snapDates.filter(d => {
+      const dt = new Date(d + "T00:00:00");
+      return dt.getFullYear() === rdYear && dt.getMonth() === rdMonth && d <= rdIso;
+    });
+
+    let partialMonth = false;
+    let partialFromDate = null;
+    if (!monthSnaps.length || new Date(monthSnaps[0] + "T00:00:00") > firstWorkingDay) {
+      partialMonth = true;
+      partialFromDate = monthSnaps.length ? new Date(monthSnaps[0] + "T00:00:00") : rd;
+    }
+
+    const schedMonth = sum(open.filter(l => l.due && l.due >= d1 && l.due <= monthEnd), l => l.val);
+    const daysRem = Math.max(0, Math.round((monthEnd - rd) / DAY));
+    let catchUpMonth = 0;
+    if (daysRem <= 7) {
+      catchUpMonth = catchUp7 * (daysRem / 7);
+    } else if (daysRem < 30) {
+      catchUpMonth = catchUp7 + (totalLate - catchUp7) * ((daysRem - 7) / (30 - 7));
+    } else {
+      catchUpMonth = totalLate;
+    }
+
+    const stillExpectedPlan = schedMonth + catchUpMonth;
+    const stillExpected = calibrated ? stillExpectedPlan * calibRate : stillExpectedPlan;
+    const landing = shippedMonthToDate + stillExpected;
+
+    const target = RULES.outlook.monthlyTarget;
+    let targetLevel = "clear";
+    let targetPct = null;
+    if (target != null && target > 0) {
+      targetPct = landing / target * 100;
+      if (targetPct < 75) targetLevel = "high";
+      else if (targetPct < 90) targetLevel = "med";
+      else targetLevel = "clear";
+    }
+
+    return {
+      d7: { sched: sched7, catchUp: catchUp7, plan: plan7, expected: expected7 },
+      d30: { sched: sched30, catchUp: catchUp30, plan: plan30, expected: expected30 },
+      d90: { sched: sched90, catchUp: catchUp90, plan: plan90, expected: expected90 },
+      shippedTodayVal,
+      undatedVal, undatedCount,
+      mismatchCount,
+      calibrated, calibRate, rawRate, calibReason,
+      monthLanding: {
+        shippedMonthToDate,
+        todayShippedVal: shippedTodayVal,
+        stillExpected,
+        stillExpectedPlan,
+        landing,
+        partialMonth,
+        partialFromDate,
+        target,
+        targetPct,
+        targetLevel,
+        monthName: monthName(rdMonth, rdYear, false),
+        monthYear: rdYear
+      }
+    };
+  }
   const level = (v, r, invert) => invert ? (v < r.high ? "high" : v < r.med ? "med" : "clear") : (v > r.high ? "high" : v > r.med ? "med" : v > 0 ? "low" : "clear");
 
   // ------------------------------------------------------------- history
@@ -422,12 +702,104 @@
       btn.addEventListener("click", () => openDetailModal(btn.dataset.kind));
     });
 
+    const outlook = computeOutlook(lines, rd, FILTER, hist);
+    renderOutlook(outlook, rd);
+
     renderHorizon(m);
     renderShare(m);
     renderLate(m, rd);
     renderWatch(m, cmp, prev);
     $("#foot-file").textContent = `${DATA.fileName || "DOPK export"} · ${tf("linesRead", lines.length)}`;
     $("#app").hidden = false; $("#empty").hidden = true;
+  }
+
+  function renderOutlook(outlook, rd) {
+    const el = $("#outlook");
+    if (!el) return;
+
+    const val30 = outlook.calibrated ? outlook.d30.expected : outlook.d30.plan;
+    const catchUp30 = outlook.d30.catchUp;
+    let subtitle = "";
+    if (val30 <= 0 && catchUp30 <= 0) {
+      subtitle = T("outlookSubtitleNone");
+    } else {
+      subtitle = tf("outlookSubtitle", eur(val30), eur(catchUp30), catchUp30 > 0);
+    }
+
+    function readoutCard(title, data) {
+      const mainVal = outlook.calibrated ? data.expected : data.plan;
+      const compareHTML = outlook.calibrated
+        ? `<div class="outlook-compare">${tf("outlookCompare", eur(data.plan), eur(data.expected), pct(outlook.calibRate * 100, 0))}</div>`
+        : "";
+      return `<div class="outlook-card">` +
+        `<div class="outlook-card-head"><span class="outlook-card-label">${title}</span></div>` +
+        `<span class="outlook-card-value">${eur(mainVal)}</span>` +
+        `<div class="outlook-card-sub">${eur(data.sched)} ${T("outlookSched")} · ${eur(data.catchUp)} ${T("outlookCatchUp")}</div>` +
+        compareHTML +
+        `</div>`;
+    }
+
+    const ml = outlook.monthLanding;
+    const maxVal = Math.max(1, ml.landing, ml.target || 0);
+    const shippedPct = Math.min(100, Math.max(0, (ml.shippedMonthToDate / maxVal) * 100));
+    const expectedPct = Math.min(100 - shippedPct, Math.max(0, (ml.stillExpected / maxVal) * 100));
+    const targetLineHTML = ml.target != null && ml.target > 0
+      ? `<div class="outlook-target-line" style="left:${Math.min(100, (ml.target / maxVal) * 100)}%" title="${T("outlookTarget")}: ${eur(ml.target)}"></div>`
+      : "";
+    const targetChipHTML = ml.target != null && ml.target > 0 ? chipHTML(ml.targetLevel) : "";
+    const targetSubHTML = ml.target != null && ml.target > 0
+      ? `<div class="outlook-compare">${tf("outlookTargetInfo", eur(ml.target), pct(ml.targetPct, 0))}</div>`
+      : "";
+
+    const barAria = tf("outlookBarAria", ml.monthName, eur(ml.landing), eur(ml.shippedMonthToDate), eur(ml.stillExpected));
+
+    const monthCard = `<div class="outlook-card outlook-card--month"${ml.target != null ? ` data-level="${ml.targetLevel}"` : ""}>` +
+      `<div class="outlook-card-head"><span class="outlook-card-label">${tf("outlookMonthTitle", ml.monthName)}</span>${targetChipHTML}</div>` +
+      `<span class="outlook-card-value">${eur(ml.landing)}</span>` +
+      `<div class="outlook-card-sub">${eur(ml.shippedMonthToDate)} ${T("outlookShippedMtd")}${ml.partialMonth ? "*" : ""} · ${eur(ml.stillExpected)} ${T("outlookStillExpected")}</div>` +
+      `<div class="outlook-bar-wrap" role="img" aria-label="${esc(barAria)}">` +
+        `<div class="outlook-bar-segment outlook-bar--shipped" style="width:${shippedPct}%" title="${esc(T("outlookShippedMtd"))}: ${eur(ml.shippedMonthToDate)}"></div>` +
+        `<div class="outlook-bar-segment outlook-bar--expected" style="width:${expectedPct}%" title="${esc(T("outlookStillExpected"))}: ${eur(ml.stillExpected)}"></div>` +
+        targetLineHTML +
+      `</div>` +
+      targetSubHTML +
+      `</div>`;
+
+    const notes = [];
+    if (outlook.undatedCount > 0) {
+      notes.push(tf("outlookUndatedNote", eur(outlook.undatedVal), outlook.undatedCount));
+    }
+    if (outlook.calibrated) {
+      notes.push(tf("outlookCalibratedNote", pct(outlook.calibRate * 100, 0), RULES.outlook.calibrationDays));
+    } else if (outlook.calibReason === "filter") {
+      notes.push(T("outlookFilterNote"));
+    } else if (outlook.calibReason === "too_short") {
+      notes.push(tf("outlookHistoryShortNote", RULES.outlook.minHistoryDays));
+    }
+    if (ml.partialMonth && ml.partialFromDate) {
+      notes.push(tf("outlookPartialNote", fmtDate(ml.partialFromDate)));
+    }
+    if (outlook.mismatchCount > 0) {
+      notes.push(tf("outlookMismatchNote", outlook.mismatchCount));
+    }
+
+    const notesHTML = notes.map(n => `<span class="outlook-note-item">${esc(n)}</span>`).join("");
+
+    el.innerHTML = `<div class="panel-head">` +
+      `<div>` +
+        `<h2 id="outlook-title">${T("outlookTitle")}</h2>` +
+        `<p class="panel-note" id="outlook-subtitle">${esc(subtitle)}</p>` +
+      `</div>` +
+      `</div>` +
+      `<div class="outlook-grid">` +
+        readoutCard(T("outlook7d"), outlook.d7) +
+        readoutCard(T("outlook30d"), outlook.d30) +
+        readoutCard(T("outlook90d"), outlook.d90) +
+        monthCard +
+      `</div>` +
+      `<div class="outlook-notes">` +
+        notesHTML +
+      `</div>`;
   }
 
   function renderHorizon(m) {

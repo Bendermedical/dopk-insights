@@ -94,6 +94,32 @@ button.vital:hover .vital-action, button.vital:focus-visible .vital-action { col
 .panel-head { display:flex; justify-content: space-between; align-items: flex-start; gap: var(--s4); margin-bottom: var(--s5); flex-wrap: wrap; }
 .panel-note { margin: var(--s1) 0 0; font-size: var(--fs-sm); color: var(--ink-muted); max-width: 60ch; }
 
+/* ---- Revenue outlook -------------------------------------------------- */
+.panel.outlook { padding: var(--s6) 0; border-bottom: 1px solid var(--rule); }
+.outlook-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 1.35fr); gap: 0; border-top: 1px solid var(--rule-soft); border-bottom: 1px solid var(--rule-soft); }
+.outlook-card { position: relative; padding: var(--s4) var(--s4) var(--s4) calc(var(--s4) + 6px); border-right: 1px solid var(--rule-soft); min-width: 0; display: flex; flex-direction: column; }
+.outlook-card:last-child { border-right: 0; }
+.outlook-card--month[data-level]::before { content: ""; position: absolute; left: 0; top: var(--s4); bottom: var(--s4); width: 4px; background: var(--steel-300); border-radius: 2px; }
+.outlook-card--month[data-level="high"]::before  { background: var(--alarm-high); }
+.outlook-card--month[data-level="med"]::before   { background: var(--alarm-med); }
+.outlook-card--month[data-level="low"]::before   { background: var(--alarm-low); }
+.outlook-card--month[data-level="clear"]::before { background: var(--clear); }
+
+.outlook-card-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s2); }
+.outlook-card-label { font-size: var(--fs-sm); color: var(--ink-muted); font-weight: var(--fw-bold); }
+.outlook-card-value { display: block; font-size: clamp(var(--fs-xl), 2.2vw, var(--fs-2xl)); font-weight: var(--fw-heavy); line-height: 1.1; letter-spacing: -0.02em; margin-top: var(--s2); white-space: nowrap; }
+.outlook-card-sub { font-size: var(--fs-sm); color: var(--ink-muted); margin-top: var(--s1); }
+.outlook-compare { font-size: var(--fs-xs); color: var(--ink-faint); margin-top: var(--s2); }
+
+.outlook-bar-wrap { position: relative; display: flex; height: 16px; width: 100%; background: var(--steel-200); border-radius: var(--r-control); overflow: hidden; margin-top: var(--s3); }
+.outlook-bar-segment { height: 100%; }
+.outlook-bar--shipped { background: var(--clear); }
+.outlook-bar--expected { background: var(--alarm-low); }
+.outlook-target-line { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--graphite); z-index: 2; }
+
+.outlook-notes { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s4); margin-top: var(--s3); font-size: var(--fs-xs); color: var(--ink-muted); }
+.outlook-note-item { display: inline-flex; align-items: center; gap: 4px; }
+
 /* ---- Horizon chart ---------------------------------------------------- */
 .horizon { overflow-x: auto; }
 .horizon svg { min-width: 560px; width: 100%; height: auto; display:block; overflow: visible; }
@@ -292,6 +318,9 @@ table.data tbody tr:hover { background: var(--steel-200); }
   .grid { grid-template-columns: 1fr; }
   .panel, .grid > .panel + .panel { padding: var(--s5) 0; border-left: 0; }
   .grid > .panel + .panel { border-top: 1px solid var(--rule); }
+  .outlook-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .outlook-card:nth-child(2) { border-right: 0; }
+  .outlook-card:nth-child(n+3) { border-top: 1px solid var(--rule-soft); }
 }
 @media (max-width: 560px) {
   .vitals { grid-template-columns: repeat(2, minmax(0,1fr)); }
@@ -299,6 +328,10 @@ table.data tbody tr:hover { background: var(--steel-200); }
   .vital:nth-child(odd) { border-right: 1px solid var(--rule-soft); }
   .vital-value { font-size: var(--fs-xl); }
   .verdict { padding-top: var(--s6); }
+  .outlook-grid { grid-template-columns: 1fr; }
+  .outlook-card { border-right: 0; border-top: 1px solid var(--rule-soft); }
+  .outlook-card:first-child { border-top: 0; }
+  .outlook-card-value { font-size: var(--fs-xl); }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 @media print {
