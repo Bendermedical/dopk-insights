@@ -68,6 +68,19 @@
       wZero: n => `${pl(n, "Position", "Positionen")} mit Nullpreis`,
       wMis: n => `${pl(n, "Position", "Positionen")}, bei denen der Wert nicht Menge × Preis entspricht`, wMisBody: o => `Häufig eine in Tausend erfasste Menge. Aufträge: ${o}.`,
       linesRead: n => `${pl(n, "Position", "Positionen")} gelesen`,
+      viewDetails: "Details anzeigen", closeDialog: "Schließen", exportCsv: "Als CSV exportieren",
+      modalSearchPlaceholder: "In Tabelle suchen …",
+      thDate: "Datum", thDesc: "Bezeichnung", thQty: "Menge", thRest: "Rest", thUnit: "Preis", thStatus: "Status",
+      noMatches: "Keine passenden Positionen gefunden.",
+      filterCount: (shown, total) => `${shown} von ${total} ${total === 1 ? "Position" : "Positionen"}`,
+      totalCount: total => `${total} ${total === 1 ? "Position" : "Positionen"}`,
+      modalSubOpen: (l, o, v) => `${pl(l, "Position", "Positionen")} in ${pl(o, "Auftrag", "Aufträgen")} · Gesamt ${v}`,
+      modalSubLate: (l, o, v) => `${pl(l, "überfällige Position", "überfällige Positionen")} in ${pl(o, "Auftrag", "Aufträgen")} · Gesamt ${v}`,
+      modalSubShip: (l, n, v) => `${pl(l, "Position", "Positionen")} in ${pl(n, "Lieferschein", "Lieferscheinen")} · Gesamt ${v}`,
+      modalSubIn: (l, o, v) => `${pl(l, "neu erfasste Position", "neu erfasste Positionen")} in ${pl(o, "Auftrag", "Aufträgen")} · Gesamt ${v}`,
+      modalSubUnd: (l, o, v) => `${pl(l, "Position ohne Termin", "Positionen ohne Termin")} in ${pl(o, "Auftrag", "Aufträgen")} · Gesamt ${v}`,
+      csvModalHead: ["Auftrag", "Datum", "Kunde", "Artikel", "Bezeichnung", "Auftragsmenge", "Restmenge", "Nettopreis EUR", "Wert EUR", "Liefertermin", "Tage Verzug", "Status"],
+      csvFilePrefixes: { open: "offener_bestand", late: "ueberfaellig", shipped: "heute_versandt", intake: "neue_auftraege", undated: "ohne_termin" },
       csvHead: ["Auftrag", "Kunde", "Artikel", "Bezeichnung", "Restmenge", "Liefertermin", "Tage Verzug", "Offener Wert EUR"], csvName: "ueberfaellig",
       errHeader: "Diese Datei hat keine Kopfzeile mit „Auftrag“ und „Restmenge“. Bitte den DOPK-Export offener Aufträge hochladen.",
       errCol: c => `Die Spalte „${c}“ fehlt.`, errNoLines: "Die Kopfzeile wurde gefunden, aber es folgen keine Auftragspositionen.",
@@ -126,6 +139,19 @@
       wZero: n => `${pl(n, "line", "lines")} with zero price`,
       wMis: n => `${pl(n, "line", "lines")} where the value doesn't match quantity × price`, wMisBody: o => `Often a quantity entered in thousands. Orders: ${o}.`,
       linesRead: n => `${pl(n, "line", "lines")} read`,
+      viewDetails: "View details", closeDialog: "Close", exportCsv: "Export as CSV",
+      modalSearchPlaceholder: "Search table …",
+      thDate: "Date", thDesc: "Description", thQty: "Qty", thRest: "Remaining", thUnit: "Price", thStatus: "Status",
+      noMatches: "No matching lines found.",
+      filterCount: (shown, total) => `${shown} of ${total} ${total === 1 ? "line" : "lines"}`,
+      totalCount: total => `${total} ${total === 1 ? "line" : "lines"}`,
+      modalSubOpen: (l, o, v) => `${pl(l, "line", "lines")} in ${pl(o, "order", "orders")} · Total ${v}`,
+      modalSubLate: (l, o, v) => `${pl(l, "late line", "late lines")} in ${pl(o, "order", "orders")} · Total ${v}`,
+      modalSubShip: (l, n, v) => `${pl(l, "line", "lines")} in ${pl(n, "delivery note", "delivery notes")} · Total ${v}`,
+      modalSubIn: (l, o, v) => `${pl(l, "new line", "new lines")} in ${pl(o, "order", "orders")} · Total ${v}`,
+      modalSubUnd: (l, o, v) => `${pl(l, "undated line", "undated lines")} in ${pl(o, "order", "orders")} · Total ${v}`,
+      csvModalHead: ["Order", "Date", "Customer", "Article", "Description", "Order qty", "Remaining qty", "Unit price EUR", "Value EUR", "Due date", "Days late", "Status"],
+      csvFilePrefixes: { open: "open_backlog", late: "overdue", shipped: "shipped_today", intake: "new_orders", undated: "no_delivery_date" },
       csvHead: ["Order", "Customer", "Article", "Description", "Remaining qty", "Due date", "Days late", "Open value EUR"], csvName: "overdue",
       errHeader: "This file has no header row with “Auftrag” and “Restmenge”. Upload the DOPK open-order export.",
       errCol: c => `Column “${c}” is missing.`, errNoLines: "The header row was found, but no order lines follow it.",
@@ -288,7 +314,7 @@
       in7Val: sum(in7, l => l.val),
       shippedVal: sum(shipped, l => l.val), notes: uniq(shipped, l => l.status), shipCusts: uniq(shipped, l => l.cust),
       onTimePct: shippedDated.length ? (1 - shippedLate.length / shippedDated.length) * 100 : null, shippedLate,
-      intakeVal: sum(intake, l => l.orig), intakeOrders: uniq(intake, l => l.order), intakeCusts: uniq(intake, l => l.cust),
+      intake, intakeVal: sum(intake, l => l.orig), intakeOrders: uniq(intake, l => l.order), intakeCusts: uniq(intake, l => l.cust),
       priceFlags, zeroPrice, mismatch, closeOut, closeOutVal
     };
   }
@@ -347,6 +373,7 @@
     document.documentElement.lang = LANG;
     document.title = T("htmlTitle");
     document.querySelectorAll("[data-i18n]").forEach(el => { el.textContent = T(el.dataset.i18n); });
+    document.querySelectorAll("[data-i18n-placeholder]").forEach(el => el.setAttribute("placeholder", T(el.dataset.i18nPlaceholder)));
     document.querySelectorAll("[data-i18n-label]").forEach(el => el.setAttribute("aria-label", T(el.dataset.i18nLabel)));
     document.querySelectorAll(".lang-switch button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.lang === LANG)));
     if (!DATA) $("#snapshot").textContent = T("noFile");
@@ -376,14 +403,24 @@
 
     const lateLvl = level(m.latePct, RULES.overduePct), undLvl = level(m.undatedPct, RULES.undatedPct);
     const otLvl = m.onTimePct == null ? "low" : level(m.onTimePct, RULES.onTimePct, true);
-    const vit = (lbl, lvl, value, sub, extra = "") => `<div class="vital" data-level="${lvl}"><div class="vital-head"><span class="vital-label">${lbl}</span>${chipHTML(lvl)}</div><span class="vital-value">${value}</span><div class="vital-sub">${sub}</div>${extra}</div>`;
+    const vit = (lbl, lvl, value, sub, extra = "", kind = "open") =>
+      `<button type="button" class="vital" data-kind="${kind}" data-level="${lvl}" aria-haspopup="dialog">` +
+      `<div class="vital-head"><span class="vital-label">${lbl}</span>${chipHTML(lvl)}</div>` +
+      `<span class="vital-value">${value}</span>` +
+      `<div class="vital-sub">${sub}</div>` +
+      `${extra}` +
+      `<div class="vital-action">${T("viewDetails")} <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>` +
+      `</button>`;
     $("#vitals").innerHTML = [
-      vit(T("vOpen"), "low", eur(m.openVal), `${tf("sOpen", m.openLines, m.openOrders)} ${deltaHTML(m.openVal, P?.openVal, false)}`, unfiltered ? spark(hist, "openVal") : ""),
-      vit(T("vLate"), lateLvl, eur(m.lateVal), `${tf("sLate", pct(m.latePct), m.late.length)} ${deltaHTML(m.lateVal, P?.lateVal, true)}`),
-      vit(T("vShip"), otLvl, eur(m.shippedVal), tf("sShip", m.notes, m.onTimePct == null ? null : pct(m.onTimePct, 0))),
-      vit(T("vIn"), "low", eur(m.intakeVal), tf("sIn", m.intakeOrders, m.intakeCusts)),
-      vit(T("vUnd"), undLvl, pct(m.undatedPct, 0), tf("sUnd", eur(m.undatedVal), m.undated.length))
+      vit(T("vOpen"), "low", eur(m.openVal), `${tf("sOpen", m.openLines, m.openOrders)} ${deltaHTML(m.openVal, P?.openVal, false)}`, unfiltered ? spark(hist, "openVal") : "", "open"),
+      vit(T("vLate"), lateLvl, eur(m.lateVal), `${tf("sLate", pct(m.latePct), m.late.length)} ${deltaHTML(m.lateVal, P?.lateVal, true)}`, "", "late"),
+      vit(T("vShip"), otLvl, eur(m.shippedVal), tf("sShip", m.notes, m.onTimePct == null ? null : pct(m.onTimePct, 0)), "", "shipped"),
+      vit(T("vIn"), "low", eur(m.intakeVal), tf("sIn", m.intakeOrders, m.intakeCusts), "", "intake"),
+      vit(T("vUnd"), undLvl, pct(m.undatedPct, 0), tf("sUnd", eur(m.undatedVal), m.undated.length), "", "undated")
     ].join("");
+    $("#vitals").querySelectorAll("button.vital").forEach(btn => {
+      btn.addEventListener("click", () => openDetailModal(btn.dataset.kind));
+    });
 
     renderHorizon(m);
     renderShare(m);
@@ -469,8 +506,247 @@
     if (!I18N[l] || l === LANG) return;
     LANG = l;
     try { localStorage.setItem(LS_LANG, l); } catch (e) {}
-    if (DATA) { fillFilter(true); render(); } else applyStatic();
+    if (DATA) { fillFilter(true); render(); updateOpenModal(); } else applyStatic();
     const err = $("#error"); if (!err.hidden) err.hidden = true;
+  }
+
+  // -------------------------------------------------------- detail modal
+  let MODAL_STATE = {
+    open: false,
+    kind: "open",
+    lines: [],
+    sortKey: "val",
+    sortDir: "desc",
+    query: ""
+  };
+
+  function getModalData(kind) {
+    if (!DATA) return null;
+    const m = compute(DATA.lines, DATA.reportDate, FILTER);
+    const scope = FILTER === "__all" ? "" : FILTER === "__xtop" ? tf("scopeX", shortName(m.topCust)) : tf("scopeOne", shortName(FILTER));
+    const scopeSuffix = scope ? ` (${scope.trim()})` : "";
+    const map = {
+      open: {
+        lines: m.open,
+        title: T("vOpen"),
+        sub: tf("modalSubOpen", m.open.length, uniq(m.open, l => l.order), eurFull(m.openVal)) + scopeSuffix,
+        defaultSort: "val",
+        defaultDir: "desc"
+      },
+      late: {
+        lines: m.late,
+        title: T("vLate"),
+        sub: tf("modalSubLate", m.late.length, uniq(m.late, l => l.order), eurFull(m.lateVal)) + scopeSuffix,
+        defaultSort: "late",
+        defaultDir: "desc"
+      },
+      shipped: {
+        lines: m.shipped,
+        title: T("vShip"),
+        sub: tf("modalSubShip", m.shipped.length, uniq(m.shipped, l => l.status), eurFull(m.shippedVal)) + scopeSuffix,
+        defaultSort: "val",
+        defaultDir: "desc"
+      },
+      intake: {
+        lines: m.intake,
+        title: T("vIn"),
+        sub: tf("modalSubIn", m.intake.length, uniq(m.intake, l => l.order), eurFull(m.intakeVal)) + scopeSuffix,
+        defaultSort: "val",
+        defaultDir: "desc"
+      },
+      undated: {
+        lines: m.undated,
+        title: T("vUnd"),
+        sub: tf("modalSubUnd", m.undated.length, uniq(m.undated, l => l.order), eurFull(m.undatedVal)) + scopeSuffix,
+        defaultSort: "val",
+        defaultDir: "desc"
+      }
+    };
+    return map[kind] || map.open;
+  }
+
+  function openDetailModal(kind) {
+    const data = getModalData(kind);
+    if (!data) return;
+    MODAL_STATE.open = true;
+    MODAL_STATE.kind = kind;
+    MODAL_STATE.lines = data.lines;
+    MODAL_STATE.sortKey = data.defaultSort;
+    MODAL_STATE.sortDir = data.defaultDir;
+    MODAL_STATE.query = "";
+
+    $("#modal-title").textContent = data.title;
+    $("#modal-subtitle").textContent = data.sub;
+    const searchInput = $("#modal-search");
+    if (searchInput) searchInput.value = "";
+
+    renderModalTable();
+
+    const dlg = $("#detail-modal");
+    if (dlg && typeof dlg.showModal === "function") {
+      try { dlg.showModal(); } catch (e) {}
+      if (searchInput) setTimeout(() => searchInput.focus(), 50);
+    }
+  }
+
+  function updateOpenModal() {
+    if (!MODAL_STATE.open) return;
+    const data = getModalData(MODAL_STATE.kind);
+    if (!data) return;
+    MODAL_STATE.lines = data.lines;
+    $("#modal-title").textContent = data.title;
+    $("#modal-subtitle").textContent = data.sub;
+    renderModalTable();
+  }
+
+  function getFilteredSortedModalLines() {
+    const q = (MODAL_STATE.query || "").trim().toLowerCase();
+    const rd = DATA ? DATA.reportDate : new Date();
+    let list = MODAL_STATE.lines || [];
+
+    if (q) {
+      list = list.filter(l => {
+        const orderStr = String(l.order || "");
+        const custStr = (l.cust || "").toLowerCase();
+        const shortStr = (l.short || "").toLowerCase();
+        const artStr = (l.art || "").toLowerCase();
+        const descStr = (l.desc || "").toLowerCase();
+        const statusStr = (l.status || "").toLowerCase();
+        const dateStr = fmtDate(l.date).toLowerCase();
+        const dueStr = fmtDate(l.due).toLowerCase();
+        return orderStr.includes(q) || custStr.includes(q) || shortStr.includes(q) ||
+               artStr.includes(q) || descStr.includes(q) || statusStr.includes(q) ||
+               dateStr.includes(q) || dueStr.includes(q);
+      });
+    }
+
+    const { sortKey, sortDir } = MODAL_STATE;
+    const sign = sortDir === "asc" ? 1 : -1;
+
+    return [...list].sort((a, b) => {
+      let va, vb;
+      switch (sortKey) {
+        case "order": va = a.order; vb = b.order; break;
+        case "date": va = a.date ? +a.date : 0; vb = b.date ? +b.date : 0; break;
+        case "cust": return sign * (a.short || a.cust || "").localeCompare(b.short || b.cust || "", LOC());
+        case "art": return sign * (a.art || "").localeCompare(b.art || "", LOC());
+        case "desc": return sign * (a.desc || "").localeCompare(b.desc || "", LOC());
+        case "qty": va = a.qty; vb = b.qty; break;
+        case "rest": va = a.rest; vb = b.rest; break;
+        case "price": va = a.unit; vb = b.unit; break;
+        case "val":
+          va = MODAL_STATE.kind === "intake" ? a.orig : a.val;
+          vb = MODAL_STATE.kind === "intake" ? b.orig : b.val;
+          break;
+        case "due":
+          va = a.due ? +a.due : (sortDir === "asc" ? Infinity : -Infinity);
+          vb = b.due ? +b.due : (sortDir === "asc" ? Infinity : -Infinity);
+          break;
+        case "late":
+          va = a.due && a.due < rd ? Math.round((rd - a.due) / DAY) : -1;
+          vb = b.due && b.due < rd ? Math.round((rd - b.due) / DAY) : -1;
+          break;
+        case "status": return sign * (a.status || "").localeCompare(b.status || "", LOC());
+        default:
+          va = a.val; vb = b.val;
+      }
+      return va === vb ? 0 : (va > vb ? sign : -sign);
+    });
+  }
+
+  function renderModalTable() {
+    const list = getFilteredSortedModalLines();
+    const rd = DATA ? DATA.reportDate : new Date();
+    const total = (MODAL_STATE.lines || []).length;
+    const q = (MODAL_STATE.query || "").trim();
+
+    const countEl = $("#modal-filter-count");
+    if (countEl) {
+      countEl.textContent = q ? tf("filterCount", list.length, total) : tf("totalCount", total);
+    }
+
+    document.querySelectorAll(".data--modal th[data-sort]").forEach(th => {
+      if (th.dataset.sort === MODAL_STATE.sortKey) {
+        th.setAttribute("data-sorted", MODAL_STATE.sortDir);
+        th.setAttribute("aria-sort", MODAL_STATE.sortDir === "asc" ? "ascending" : "descending");
+      } else {
+        th.removeAttribute("data-sorted");
+        th.removeAttribute("aria-sort");
+      }
+    });
+
+    const tbody = $("#modal-table-body");
+    if (!tbody) return;
+
+    if (!list.length) {
+      tbody.innerHTML = `<tr><td colspan="12" class="dialog-empty">${T("noMatches")}</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = list.map(l => {
+      const isLate = l.due && l.due < rd;
+      const daysLate = isLate ? Math.round((rd - l.due) / DAY) : 0;
+      const lateHTML = isLate
+        ? `<span class="late">${tf("days", daysLate)}</span>`
+        : `<span style="color:var(--ink-faint)">–</span>`;
+      const val = MODAL_STATE.kind === "intake" ? l.orig : l.val;
+      const chipClass = l.shipped ? "chip--clear" : isLate ? "chip--high" : "chip--low";
+      const statusBadge = l.status
+        ? `<span class="chip ${chipClass}">${esc(l.status)}</span>`
+        : `<span style="color:var(--ink-faint)">–</span>`;
+
+      return `<tr>` +
+        `<td>${l.order}</td>` +
+        `<td>${fmtDate(l.date)}</td>` +
+        `<td class="clip" title="${esc(l.cust)}">${esc(l.short)}</td>` +
+        `<td><code>${esc(l.art)}</code></td>` +
+        `<td class="clip" title="${esc(l.desc)}">${esc(l.desc)}</td>` +
+        `<td class="num">${nf(l.qty)}</td>` +
+        `<td class="num">${nf(l.rest)}</td>` +
+        `<td class="num">${eurUnit(l.unit)}</td>` +
+        `<td class="num" style="font-weight:var(--fw-bold)">${eurFull(val)}</td>` +
+        `<td class="num">${fmtDate(l.due)}</td>` +
+        `<td class="num">${lateHTML}</td>` +
+        `<td>${statusBadge}</td>` +
+        `</tr>`;
+    }).join("");
+  }
+
+  function exportModalCsv() {
+    if (!DATA || !MODAL_STATE.lines.length) return;
+    const rd = DATA.reportDate;
+    const de = LANG === "de";
+    const n2 = v => de ? (v != null ? Number(v).toFixed(2).replace(".", ",") : "") : (v != null ? Number(v).toFixed(2) : "");
+    const nInt = v => de ? (v != null ? String(v).replace(".", ",") : "") : (v != null ? String(v) : "");
+
+    const list = getFilteredSortedModalLines();
+    const rows = list.map(l => {
+      const isLate = l.due && l.due < rd;
+      const daysLate = isLate ? Math.round((rd - l.due) / DAY) : 0;
+      const val = MODAL_STATE.kind === "intake" ? l.orig : l.val;
+      return [
+        l.order,
+        fmtDate(l.date),
+        l.cust,
+        l.art,
+        l.desc,
+        nInt(l.qty),
+        nInt(l.rest),
+        n2(l.unit),
+        n2(val),
+        fmtDate(l.due),
+        daysLate ? daysLate : "",
+        l.status || ""
+      ];
+    });
+
+    const csv = "\ufeff" + [T("csvModalHead"), ...rows].map(r => r.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(";")).join("\r\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const prefixes = T("csvFilePrefixes") || {};
+    const namePrefix = prefixes[MODAL_STATE.kind] || "detail";
+    a.download = `${namePrefix}_${iso(rd)}.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
   }
 
   function exportLate() {
@@ -555,8 +831,46 @@
     document.querySelectorAll("[data-archive]").forEach(b => b.addEventListener("click", () => archive.click()));
     archive.addEventListener("change", e => { readFiles(e.target.files); archive.value = ""; });
     $("#notice button").addEventListener("click", () => showNotice("", ""));
-    $("#filter").addEventListener("change", e => { FILTER = e.target.value; render(); });
+    $("#filter").addEventListener("change", e => { FILTER = e.target.value; render(); updateOpenModal(); });
     $("#export-late").addEventListener("click", exportLate);
+
+    // Detail modal listeners
+    const modal = $("#detail-modal");
+    if (modal) {
+      const closeBtn = $("#modal-close");
+      if (closeBtn) closeBtn.addEventListener("click", () => modal.close());
+      modal.addEventListener("close", () => { MODAL_STATE.open = false; });
+      modal.addEventListener("click", e => {
+        const rect = modal.getBoundingClientRect();
+        const inDialog = (
+          rect.top <= e.clientY && e.clientY <= rect.top + rect.height &&
+          rect.left <= e.clientX && e.clientX <= rect.left + rect.width
+        );
+        if (!inDialog) modal.close();
+      });
+      const searchInput = $("#modal-search");
+      if (searchInput) {
+        searchInput.addEventListener("input", e => {
+          MODAL_STATE.query = e.target.value;
+          renderModalTable();
+        });
+      }
+      const exportBtn = $("#modal-export");
+      if (exportBtn) exportBtn.addEventListener("click", exportModalCsv);
+      document.querySelectorAll(".data--modal th[data-sort]").forEach(th => {
+        th.addEventListener("click", () => {
+          const key = th.dataset.sort;
+          if (MODAL_STATE.sortKey === key) {
+            MODAL_STATE.sortDir = MODAL_STATE.sortDir === "asc" ? "desc" : "asc";
+          } else {
+            MODAL_STATE.sortKey = key;
+            MODAL_STATE.sortDir = (key === "order" || key === "art" || key === "cust" || key === "desc" || key === "status") ? "asc" : "desc";
+          }
+          renderModalTable();
+        });
+      });
+    }
+
     $("#print").addEventListener("click", () => window.print());
     $("#clear").addEventListener("click", () => { try { localStorage.removeItem(LS_HISTORY); localStorage.removeItem(LS_LAST); } catch (e) {} location.reload(); });
     let depth = 0;

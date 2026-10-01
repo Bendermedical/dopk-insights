@@ -87,6 +87,48 @@
     </div>
   </main>
 
+  <dialog id="detail-modal" class="detail-dialog" closedby="any" aria-labelledby="modal-title">
+    <div class="dialog-inner">
+      <header class="dialog-head">
+        <div class="dialog-titles">
+          <h2 id="modal-title" class="dialog-title"></h2>
+          <div id="modal-subtitle" class="dialog-subtitle"></div>
+        </div>
+        <div class="dialog-actions no-print">
+          <button type="button" class="btn btn--quiet" id="modal-export" data-i18n="exportCsv">Als CSV exportieren</button>
+          <button type="button" class="dialog-close" id="modal-close" aria-label="Schließen" data-i18n-label="closeDialog">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+      </header>
+      <div class="dialog-toolbar no-print">
+        <input type="search" id="modal-search" class="search-input" data-i18n-placeholder="modalSearchPlaceholder" placeholder="In Tabelle suchen …">
+        <span id="modal-filter-count" class="dialog-filter-count"></span>
+      </div>
+      <div class="dialog-body table-scroll">
+        <table class="data data--modal">
+          <thead>
+            <tr>
+              <th data-sort="order" data-i18n="thOrder">Auftrag</th>
+              <th data-sort="date" data-i18n="thDate">Datum</th>
+              <th data-sort="cust" data-i18n="thCust">Kunde</th>
+              <th data-sort="art" data-i18n="thArt">Artikel</th>
+              <th data-sort="desc" data-i18n="thDesc">Bezeichnung</th>
+              <th class="num" data-sort="qty" data-i18n="thQty">Menge</th>
+              <th class="num" data-sort="rest" data-i18n="thRest">Rest</th>
+              <th class="num" data-sort="price" data-i18n="thUnit">Preis</th>
+              <th class="num" data-sort="val" data-i18n="thVal">Offener Wert</th>
+              <th class="num" data-sort="due" data-i18n="thDue">Fällig</th>
+              <th class="num" data-sort="late" data-i18n="thLate">Verzug</th>
+              <th data-sort="status" data-i18n="thStatus">Status</th>
+            </tr>
+          </thead>
+          <tbody id="modal-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </dialog>
+
   <footer class="foot">
     <span id="foot-file"></span>
     <span class="no-print"><button class="btn btn--quiet" type="button" data-archive data-i18n="importArchive">Archiv importieren</button> <button class="btn btn--quiet" type="button" id="print" data-i18n="print">Drucken oder als PDF speichern</button> <button class="btn btn--quiet" type="button" id="clear" data-i18n="clear">Gespeicherten Verlauf löschen</button></span>
