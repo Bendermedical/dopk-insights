@@ -4,7 +4,6 @@
    decoration; it follows the alarm-priority convention of medical devices
    (IEC 60601-1-8): red = act now, yellow = watch, cyan = information.
    ========================================================================== */
-@import url("https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:ital,wght@0,300..800;1,400&display=swap");
 
 :root {
   /* Base: surgical steel */

@@ -6,11 +6,12 @@
 <meta name="robots" content="noindex, nofollow">
 <title>DOPK Insight: täglicher Auftragsbestand</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%231F2629'/%3E%3Crect x='7' y='18' width='4' height='7' fill='%23CF2E3E'/%3E%3Crect x='14' y='10' width='4' height='15' fill='%2311879A'/%3E%3Crect x='21' y='14' width='4' height='11' fill='%23E9A800'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="assets/tokens.css">
-<link rel="stylesheet" href="assets/components.css">
+<link rel="stylesheet" href="../assets/tokens.css">
+<link rel="stylesheet" href="../assets/components.css">
 </head>
 <body>
 <div class="wrap">
+  <section><h1>Drill-down acceptance tests</h1><ol id="test-results" aria-live="polite"></ol></section>
   <header class="topbar">
     <div class="mark">
       <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" fill="#1F2629"/><rect x="7" y="18" width="4" height="7" fill="#CF2E3E"/><rect x="14" y="10" width="4" height="15" fill="#11879A"/><rect x="21" y="14" width="4" height="11" fill="#E9A800"/></svg>
@@ -149,7 +150,11 @@
     <span class="no-print"><button class="btn btn--quiet" type="button" data-archive data-i18n="importArchive">Archiv importieren</button> <button class="btn btn--quiet" type="button" id="print" data-i18n="print">Drucken oder als PDF speichern</button> <button class="btn btn--quiet" type="button" id="clear" data-i18n="clear">Gespeicherten Verlauf löschen</button></span>
   </footer>
 </div>
-<script src="assets/vendor/xlsx.full.min.js"></script>
-<script src="assets/app.js"></script>
+<script src="../assets/vendor/xlsx.full.min.js"></script>
+<script src="test-observer.js"></script>
+<script src="fixture.js"></script>
+<script src="../assets/app.js"></script>
+<script src="drilldown-test.js"></script>
 </body>
 </html>
+

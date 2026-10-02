@@ -34,6 +34,27 @@
   const pl = (n, one, many) => n + " " + (n === 1 ? one : many);
   const I18N = {
     de: {
+      drillHint: "Tipp: Balken, Kunden und Auftragsnummern sind anklickbar.",
+      resetView: "Zurücksetzen",
+      periodNote: "Zeitraum gilt für offene Positionen",
+      removeFilter: "Filter entfernen",
+      dueIn: "Fällig in",
+      orderAge: "Auftragsalter",
+      undatedTitle: "Positionen ohne Liefertermin",
+      fullExport: "Für die vollständige Liste exportieren",
+      fulfilment: "Erfüllungsgrad",
+      delivered: "Geliefert",
+      shippedStatus: "Versandt heute",
+      orderDate: "Auftragsdatum",
+      otherGroup: "Weitere Kunden",
+      tableEmpty: "Keine passenden Positionen.",
+      unitComparison: "je Einheit; üblich",
+      orderDrawer: "Auftragsdetails",
+      filterScope: "Filterauswahl",
+      monthTitle: m => `Positionen fällig im ${m}`,
+      showAll: n => `Alle ${n} anzeigen`,
+      drawerSummary: (n, l) => `${pl(n, "offene Position", "offene Positionen")} · ${pl(l, "überfällige Position", "überfällige Positionen")}`,
+
       htmlTitle: "DOPK Insight: täglicher Auftragsbestand",
       tagline: "Täglicher Auftragsbestand", noFile: "Keine Datei geladen", snapshot: "Stand",
       customer: "Kunde", allCustomers: "Alle Kunden", allExcept: n => `Alle außer ${n}`,
@@ -69,7 +90,7 @@
       chartLabel: "Offener Wert nach Liefermonat",
       dropNote: m => `Geplante Lieferungen fallen im ${m} unter die Hälfte des 6-Monats-Schnitts. Neue Abrufe rechtzeitig einplanen.`,
       noDropNote: "Geplante Lieferungen bleiben im sichtbaren Auftragsbestand über der Hälfte des 6-Monats-Schnitts.",
-      others: n => `${n} weitere Kunden`, custsWith: "Kunden mit offenen Aufträgen", hhi: "HHI-Index",
+      others: n => pl(n, "weiterer Kunde", "weitere Kunden"), custsWith: "Kunden mit offenen Aufträgen", hhi: "HHI-Index",
       hhiHigh: "Stark konzentriert", hhiMed: "Mäßig konzentriert", hhiLow: "Diversifiziert",
       lateCount: (l, o) => `${pl(l, "überfällige Position", "überfällige Positionen")} in ${pl(o, "Auftrag", "Aufträgen")}. Die 10 größten nach Wert sind aufgeführt.`,
       noLate: "Keine Position ist überfällig.", allOnPlan: "Alle offenen Positionen liegen im Plan.", days: d => `${d} Tg.`,
@@ -131,6 +152,27 @@
       outlookMismatchNote: n => `${pl(n, "Position", "Positionen")} mit Rechenabweichung enthalten (Wert verwendet)`
     },
     en: {
+      drillHint: "Tip: bars, customers and order numbers are clickable.",
+      resetView: "Reset",
+      periodNote: "Period applies to open lines",
+      removeFilter: "Remove filter",
+      dueIn: "Due in",
+      orderAge: "Order age",
+      undatedTitle: "Lines without delivery date",
+      fullExport: "Export for the full list",
+      fulfilment: "Fulfilment",
+      delivered: "Delivered",
+      shippedStatus: "Shipped today",
+      orderDate: "Order date",
+      otherGroup: "Other customers",
+      tableEmpty: "No matching lines.",
+      unitComparison: "per unit; typical",
+      orderDrawer: "Order details",
+      filterScope: "Filter scope",
+      monthTitle: m => `Lines due in ${m}`,
+      showAll: n => `Show all ${n}`,
+      drawerSummary: (n, l) => `${pl(n, "open line", "open lines")} · ${pl(l, "late line", "late lines")}`,
+
       htmlTitle: "DOPK Insight: daily order book",
       tagline: "Daily order book", noFile: "No file loaded", snapshot: "Snapshot",
       customer: "Customer", allCustomers: "All customers", allExcept: n => `All except ${n}`,
@@ -166,7 +208,7 @@
       chartLabel: "Open value by delivery month",
       dropNote: m => `Scheduled deliveries fall below half the 6-month average in ${m}. Plan new call-offs before then.`,
       noDropNote: "Scheduled deliveries stay above half the 6-month average across the visible order book.",
-      others: n => `${n} other customers`, custsWith: "customers with open orders", hhi: "HHI index",
+      others: n => pl(n, "other customer", "other customers"), custsWith: "customers with open orders", hhi: "HHI index",
       hhiHigh: "Highly concentrated", hhiMed: "Moderately concentrated", hhiLow: "Diversified",
       lateCount: (l, o) => `${pl(l, "late line", "late lines")} in ${pl(o, "order", "orders")}. The 10 largest by value are shown.`,
       noLate: "No lines are past their delivery date.", allOnPlan: "Every open line is on schedule.", days: d => `${d} d`,
@@ -235,12 +277,18 @@
   const DAY = 86400000;
   // ---- language
   const LS_LANG = "dopk.lang.v1";
-  let LANG = (() => { try { return localStorage.getItem(LS_LANG) || "de"; } catch (e) { return "de"; } })();
+  let LANG = (() => { if (window.DOPK_FIXTURE) return "de"; try { return localStorage.getItem(LS_LANG) || "de"; } catch (e) { return "de"; } })();
   if (!I18N[LANG]) LANG = "de";
   const T = key => I18N[LANG][key] ?? I18N.en[key] ?? key;
   const tf = (key, ...a) => { const v = T(key); return typeof v === "function" ? v(...a) : v; };
   const LOC = () => LANG === "de" ? "de-DE" : "en-GB";
-  const nf = (v, d = 0) => v.toLocaleString(LOC(), { minimumFractionDigits: d, maximumFractionDigits: d });
+  const NUMBER_FORMATS = new Map();
+  const DATE_FORMATS = new Map();
+  const nf = (v, d = 0) => {
+    const key = `${LANG}:${d}`;
+    if (!NUMBER_FORMATS.has(key)) NUMBER_FORMATS.set(key, new Intl.NumberFormat(LOC(), { minimumFractionDigits: d, maximumFractionDigits: d }));
+    return NUMBER_FORMATS.get(key).format(v);
+  };
 
   const eur = v => {
     const a = Math.abs(v), sign = v < 0 ? "−" : "";
@@ -259,7 +307,11 @@
   const eurFull = v => LANG === "de" ? nf(v) + " €" : "€" + nf(v);
   const eurUnit = v => LANG === "de" ? nf(v, 2) + " €" : "€" + v.toFixed(2);
   const pct = (v, d = 1) => (LANG === "de" ? nf(isFinite(v) ? v : 0, d) + " %" : (isFinite(v) ? v.toFixed(d) : "0") + "%");
-  const fmtDate = d => d ? String(d.getDate()).padStart(2, "0") + "." + String(d.getMonth() + 1).padStart(2, "0") + "." + d.getFullYear() : "–";
+  const fmtDate = d => {
+    if (!d) return "–";
+    if (!DATE_FORMATS.has(LANG)) DATE_FORMATS.set(LANG, new Intl.DateTimeFormat(LOC(), { day: "2-digit", month: "2-digit", year: "numeric" }));
+    return DATE_FORMATS.get(LANG).format(d);
+  };
   const iso = d => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
   const monthName = (m, y, withYear) => T("months")[m] + (withYear ? " " + (withYear === "short" ? String(y).slice(2) : y) : "");
   const sum = (a, f) => a.reduce((s, x) => s + (f ? f(x) : x), 0);
@@ -273,7 +325,7 @@
     const m = String(v).match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
     return m ? new Date(+m[3], +m[2] - 1, +m[1]) : null;
   }
-  const num = v => { if (v == null || v === "") return null; if (typeof v === "number") return v; const n = parseFloat(String(v).replace(/\./g, "").replace(",", ".")); return isNaN(n) ? null : n; };
+  const num = v => { if (v == null || v === "") return null; if (typeof v === "number") return v; const n = parseFloat(String(v).trim().replace(/\s/g, "").replace(/\.(?=.*[,])/g, "").replace(",", ".")); return isNaN(n) ? null : n; };
   const cleanName = n => String(n || "").split(/\s{2,}|\s[A-Z]{2}-\d{4,5}/)[0].trim() || "Unknown";
   const shortName = n => { const s = n.replace(/\b(GmbH|mbH|& Co\.? ?KG|Co\.KG|KG|A\/S|AG|e\.V\.)\b/g, "").replace(/\s+/g, " ").trim(); if (s.length <= 28) return s; const w = s.split(" "); let out = ""; for (const x of w) { if ((out + " " + x).trim().length > 28) break; out = (out + " " + x).trim(); } return out || s.slice(0, 27) + "…"; };
 
@@ -321,26 +373,31 @@
   }
 
   // ------------------------------------------------------------- metrics
-  function compute(all, rd, filter) {
+  function compute(all, rd, view = {}, options = {}) {
+    const customer = options.ignore === "customer" ? null : view.customer;
+    const period = options.ignore === "period" ? null : view.period;
     let L = all;
     const custTotals = {};
     all.filter(l => !l.shipped).forEach(l => custTotals[l.cust] = (custTotals[l.cust] || 0) + l.val);
     const topCust = Object.entries(custTotals).sort((a, b) => b[1] - a[1])[0]?.[0];
-    if (filter === "__xtop") L = all.filter(l => l.cust !== topCust);
-    else if (filter && filter !== "__all") L = all.filter(l => l.cust === filter);
+    const topThree = Object.entries(custTotals).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([c]) => c);
+    if (customer === "__xtop") L = all.filter(l => !topThree.includes(l.cust));
+    else if (customer) L = all.filter(l => l.cust === customer);
+    const customerLines = L;
+    if (period) L = L.filter(l => !l.shipped && matchesPeriod(l, rd, period));
 
-    const open = L.filter(l => !l.shipped), shipped = L.filter(l => l.shipped);
+    const open = L.filter(l => !l.shipped), shipped = customerLines.filter(l => l.shipped);
     const openVal = sum(open, l => l.val);
     const late = open.filter(l => l.due && l.due < rd), undated = open.filter(l => !l.due);
     const lateVal = sum(late, l => l.val), undatedVal = sum(undated, l => l.val);
     const in7 = open.filter(l => l.due && l.due >= rd && l.due <= new Date(+rd + 7 * DAY));
     const shippedDated = shipped.filter(l => l.due);
     const shippedLate = shippedDated.filter(l => l.due < rd);
-    const intake = L.filter(l => l.date && +l.date === +rd);
+    const intake = customerLines.filter(l => l.date && +l.date === +rd);
 
     // horizon: months from report month to last due date
     const months = [];
-    const last = open.reduce((m, l) => l.due && l.due > m ? l.due : m, rd);
+    const last = all.filter(l => !l.shipped).reduce((m, l) => l.due && l.due > m ? l.due : m, rd);
     for (let d = new Date(rd.getFullYear(), rd.getMonth(), 1); d <= last; d = new Date(d.getFullYear(), d.getMonth() + 1, 1)) {
       const next = new Date(d.getFullYear(), d.getMonth() + 1, 1);
       const inM = open.filter(l => l.due && l.due >= rd && l.due >= d && l.due < next);
@@ -357,18 +414,19 @@
     const lateByCust = [...custs].sort((a, b) => b.late - a.late);
 
     // exceptions
+    const visibleLines = new Set(L), visibleOrders = new Set(L.map(l => l.order));
     const byArt = {};
-    L.forEach(l => { if (l.unit > 0) (byArt[l.art] = byArt[l.art] || []).push(l); });
+    all.forEach(l => { if (l.unit > 0) (byArt[l.art] = byArt[l.art] || []).push(l); });
     const priceFlags = [];
     Object.values(byArt).forEach(arr => {
       if (uniq(arr, l => l.cust) < 3) return;
       const med = median(arr.map(l => l.unit));
-      arr.forEach(l => { const r = l.unit / med; if (r < RULES.priceLow || r > RULES.priceHigh) priceFlags.push({ l, med, r }); });
+      arr.forEach(l => { const r = l.unit / med; if (visibleLines.has(l) && (r < RULES.priceLow || r > RULES.priceHigh)) priceFlags.push({ l, med, r }); });
     });
     const zeroPrice = L.filter(l => l.price === 0 && l.rest > 0);
     const mismatch = L.filter(l => Math.abs(l.calc - l.val) > 0.05);
     const orders = {};
-    L.forEach(l => { if (l.quote != null && !(l.order in orders)) orders[l.order] = { q: l.quote, cust: l.cust }; });
+    all.filter(l => visibleOrders.has(l.order)).forEach(l => { if (l.quote != null && !(l.order in orders)) orders[l.order] = { q: l.quote, cust: l.cust }; });
     const closeOut = Object.entries(orders).filter(([, o]) => o.q >= RULES.closeOutQuote && o.q < 100);
     const closeOutVal = sum(open.filter(l => closeOut.some(([k]) => +k === l.order)), l => l.val);
 
@@ -381,7 +439,8 @@
       shippedVal: sum(shipped, l => l.val), notes: uniq(shipped, l => l.status), shipCusts: uniq(shipped, l => l.cust),
       onTimePct: shippedDated.length ? (1 - shippedLate.length / shippedDated.length) * 100 : null, shippedLate,
       intake, intakeVal: sum(intake, l => l.orig), intakeOrders: uniq(intake, l => l.order), intakeCusts: uniq(intake, l => l.cust),
-      priceFlags, zeroPrice, mismatch, closeOut, closeOutVal
+      priceFlags, zeroPrice, mismatch, closeOut, closeOutVal,
+      watchShippedLate: period ? shippedLate.filter(l => matchesPeriod(l, rd, period)) : shippedLate
     };
   }
 
@@ -390,7 +449,10 @@
     const custTotals = {};
     lines.filter(l => !l.shipped).forEach(l => custTotals[l.cust] = (custTotals[l.cust] || 0) + l.val);
     const topCust = Object.entries(custTotals).sort((a, b) => b[1] - a[1])[0]?.[0];
-    if (filter === "__xtop") L = lines.filter(l => l.cust !== topCust);
+    if (filter === "__xtop") {
+      const topThree = Object.entries(custTotals).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([c]) => c);
+      L = lines.filter(l => !topThree.includes(l.cust));
+    }
     else if (filter && filter !== "__all") L = lines.filter(l => l.cust === filter);
 
     const open = L.filter(l => !l.shipped);
@@ -531,7 +593,9 @@
       }
     }
 
-    const shippedMonthToDate = monthDeliveredPrior + shippedTodayVal;
+    // Legacy snapshots have no customer identity. Filtered month-to-date
+    // shipments use today's known customer lines and are marked partial.
+    const shippedMonthToDate = (filter === "__all" ? monthDeliveredPrior : 0) + shippedTodayVal;
 
     let firstWorkingDay = new Date(rdYear, rdMonth, 1);
     if (firstWorkingDay.getDay() === 0) firstWorkingDay.setDate(2);
@@ -548,6 +612,7 @@
       partialMonth = true;
       partialFromDate = monthSnaps.length ? new Date(monthSnaps[0] + "T00:00:00") : rd;
     }
+    if (filter !== "__all") { partialMonth = true; partialFromDate = rd; }
 
     const schedMonth = sum(open.filter(l => l.due && l.due >= d1 && l.due <= monthEnd), l => l.val);
     const daysRem = Math.max(0, Math.round((monthEnd - rd) / DAY));
@@ -601,9 +666,11 @@
   const level = (v, r, invert) => invert ? (v < r.high ? "high" : v < r.med ? "med" : "clear") : (v > r.high ? "high" : v > r.med ? "med" : v > 0 ? "low" : "clear");
 
   // ------------------------------------------------------------- history
+  // The unlinked fixture page runs without overwriting a user's real history.
+  const TEST_STORAGE = new Map();
   const store = {
-    get(k, f) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : f; } catch (e) { return f; } },
-    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
+    get(k, f) { if (window.DOPK_FIXTURE) return TEST_STORAGE.has(k) ? TEST_STORAGE.get(k) : f; try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : f; } catch (e) { return f; } },
+    set(k, v) { if (window.DOPK_FIXTURE) { TEST_STORAGE.set(k, v); return true; } try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
   };
   function recordHistory(data, m) {
     const h = store.get(LS_HISTORY, { snaps: {} });
@@ -631,7 +698,77 @@
   }
 
   // ------------------------------------------------------------- render
-  let DATA = null, FILTER = "__all";
+  let DATA = null;
+  let VIEW = { customer: null, period: null, order: null };
+  let TABLE_ALL = false, WATCH_OPEN = null, WATCH_ALL = false;
+  let FILTER_DATA = null, FILTER_LANG = null, STATIC_LANG = null;
+  let OUTLOOK_DATA = null, OUTLOOK_CUSTOMER = null, OUTLOOK_LANG = null;
+  let DRAWER_RETURN = null, DRAWER_OVERFLOW = "", HASH_LOADED = false;
+  const monthKey = d => iso(d).slice(0, 7);
+  const daysBetween = (a, b) => Math.round((Date.UTC(a.getFullYear(), a.getMonth(), a.getDate()) - Date.UTC(b.getFullYear(), b.getMonth(), b.getDate())) / DAY);
+  const periodName = p => p === "late" ? T("vLate") : p === "undated" ? T("vUnd") : monthName(+p.slice(5) - 1, +p.slice(0, 4), true);
+  const orderButton = l => `<button type="button" class="text-action order-link" data-action="order" data-value="${l.order}" aria-haspopup="dialog">${l.order}</button>`;
+
+  function matchesPeriod(l, rd, p) {
+    if (p === "late") return !!l.due && l.due < rd;
+    if (p === "undated") return !l.due;
+    return !!l.due && l.due >= rd && monthKey(l.due) === p;
+  }
+
+  function validateView(v) {
+    if (!DATA) return { ...v };
+    const { lines, reportDate: rd } = DATA;
+    const customer = v.customer === "__xtop"
+      ? (uniq(lines.filter(l => !l.shipped), l => l.cust) > 3 ? "__xtop" : null)
+      : lines.some(l => l.cust === v.customer) ? v.customer : null;
+    const last = lines.reduce((d, l) => !l.shipped && l.due && l.due > d ? l.due : d, rd);
+    const validMonth = /^\d{4}-(0[1-9]|1[0-2])$/.test(v.period) && v.period >= monthKey(rd) && v.period <= monthKey(last);
+    const period = v.period === "late" || v.period === "undated" || validMonth ? v.period : null;
+    const order = lines.some(l => String(l.order) === String(v.order)) ? String(v.order) : null;
+    return { customer, period, order };
+  }
+
+  function readHash() {
+    const params = new URLSearchParams(location.hash.slice(1));
+    return { customer: params.get("c"), period: params.get("p"), order: params.get("o") };
+  }
+
+  function applyView(changes, navigation = "auto") {
+    const old = VIEW;
+    VIEW = validateView({ ...VIEW, ...changes });
+    const filterChanged = old.customer !== VIEW.customer || old.period !== VIEW.period;
+    if (filterChanged) { TABLE_ALL = false; WATCH_OPEN = null; WATCH_ALL = false; }
+    const params = new URLSearchParams();
+    if (VIEW.customer) params.set("c", VIEW.customer);
+    if (VIEW.period) params.set("p", VIEW.period);
+    if (VIEW.order) params.set("o", VIEW.order);
+    const hash = params.toString().replace(/\+/g, "%20");
+    const url = location.pathname + location.search + (hash ? "#" + hash : "");
+    if (navigation !== "pop") window.history[navigation === "auto" && filterChanged ? "pushState" : "replaceState"](null, "", url);
+    if (DATA) {
+      if (FILTER_DATA !== DATA || FILTER_LANG !== LANG) fillFilter();
+      else $("#filter").value = VIEW.customer || "__all";
+      render(Object.keys(changes).length === 1 && "order" in changes);
+    }
+  }
+
+  function restoreView() {
+    const next = HASH_LOADED ? VIEW : readHash();
+    HASH_LOADED = true;
+    applyView({ ...next, order: next.order }, "replace");
+  }
+
+  function renderBreadcrumb() {
+    const active = VIEW.customer || VIEW.period;
+    const bar = $("#breadcrumb");
+    bar.hidden = !active;
+    bar.innerHTML = active ? `<span>${T("allCustomers")}</span>` +
+      (VIEW.customer ? `<span aria-hidden="true">›</span><span class="crumb">${esc(VIEW.customer === "__xtop" ? T("otherGroup") : shortName(VIEW.customer))}<button type="button" class="text-action crumb-remove" data-action="remove-customer" aria-label="${esc(T("removeFilter") + ": " + (VIEW.customer === "__xtop" ? T("otherGroup") : VIEW.customer))}">×</button></span>` : "") +
+      (VIEW.period ? `<span aria-hidden="true">›</span><span class="crumb">${esc(periodName(VIEW.period))}<button type="button" class="text-action crumb-remove" data-action="remove-period" aria-label="${esc(T("removeFilter") + ": " + periodName(VIEW.period))}">×</button></span>` : "") +
+      `<button type="button" class="text-action reset-view" data-action="reset">${T("resetView")}</button>` +
+      (VIEW.period ? `<span class="period-note">${T("periodNote")}</span>` : "") : "";
+  }
+
 
   function deltaHTML(now, before, goodWhenDown) {
     if (before == null) return "";
@@ -650,6 +787,8 @@
   const chipHTML = l => `<span class="chip chip--${l}">${T("chips")[l]}</span>`;
 
   function applyStatic() {
+    if (STATIC_LANG === LANG) return;
+    STATIC_LANG = LANG;
     document.documentElement.lang = LANG;
     document.title = T("htmlTitle");
     document.querySelectorAll("[data-i18n]").forEach(el => { el.textContent = T(el.dataset.i18n); });
@@ -659,18 +798,19 @@
     if (!DATA) $("#snapshot").textContent = T("noFile");
   }
 
-  function render() {
+  function render(drawerOnly = false) {
+    if (drawerOnly) { renderOrderDrawer(); return; }
     applyStatic();
     const { lines, reportDate: rd } = DATA;
-    const m = compute(lines, rd, FILTER);
-    const unfiltered = FILTER === "__all";
+    const m = compute(lines, rd, VIEW);
+    const unfiltered = !VIEW.customer && !VIEW.period;
     const hist = store.get(LS_HISTORY, { snaps: {} });
     const prev = unfiltered ? previous(hist, rd) : null;
     const P = prev?.snap;
     const cmp = unfiltered ? compare(prev, lines) : null;
 
     $("#snapshot").innerHTML = `${T("snapshot")} <strong>${fmtDate(rd)}</strong>`;
-    const scope = FILTER === "__all" ? "" : FILTER === "__xtop" ? tf("scopeX", shortName(m.topCust)) : tf("scopeOne", shortName(FILTER));
+    const scope = VIEW.customer === "__xtop" ? tf("scopeOne", T("otherGroup")) : VIEW.customer ? tf("scopeOne", shortName(VIEW.customer)) : "";
 
     const topLate = m.lateByCust[0];
     const lateShare = m.lateVal && topLate ? topLate.late / m.lateVal * 100 : 0;
@@ -679,18 +819,19 @@
     if (m.lateVal > 0 && topLate) s.push(lateShare > 99.5 ? tf("lateAll", topLate.short) : tf("lateShare", pct(lateShare, 0), topLate.short));
     s.push(m.in7Val > 0 ? tf("due7", eur(m.in7Val)) : tf("due7none", m.lateVal > 0));
     s.push(tf("todayLine", m.notes, eur(m.shippedVal), m.intakeOrders, eur(m.intakeVal)));
-    $("#verdict").innerHTML = `<h1>${esc(h1)}</h1><p>${esc(s.join(" "))}</p>`;
+    $("#verdict").innerHTML = `<h1>${esc(h1)}</h1><p>${esc(s.join(" "))}</p>` +
+      (!store.get("dopk.hint.v1", false) ? `<div class="drill-hint no-print"><span>${T("drillHint")}</span><button type="button" class="text-action" data-action="dismiss-hint" aria-label="${T("dismiss")}">×</button></div>` : "");
+    renderBreadcrumb();
 
     const lateLvl = level(m.latePct, RULES.overduePct), undLvl = level(m.undatedPct, RULES.undatedPct);
     const otLvl = m.onTimePct == null ? "low" : level(m.onTimePct, RULES.onTimePct, true);
-    const vit = (lbl, lvl, value, sub, extra = "", kind = "open") =>
-      `<button type="button" class="vital" data-kind="${kind}" data-level="${lvl}" aria-haspopup="dialog">` +
-      `<div class="vital-head"><span class="vital-label">${lbl}</span>${chipHTML(lvl)}</div>` +
-      `<span class="vital-value">${value}</span>` +
-      `<div class="vital-sub">${sub}</div>` +
-      `${extra}` +
-      `<div class="vital-action">${T("viewDetails")} <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>` +
-      `</button>`;
+    const vit = (lbl, lvl, value, sub, extra = "", kind = "open") => {
+      const clickable = kind === "late" || kind === "undated";
+      const tag = clickable ? "button" : "div";
+      return `<${tag} class="vital" data-kind="${kind}" data-level="${lvl}"${clickable ? ` type="button" data-action="period" data-value="${kind}" aria-pressed="${VIEW.period === kind}"` : ""}>` +
+        `<div class="vital-head"><span class="vital-label">${lbl}</span>${chipHTML(lvl)}</div>` +
+        `<span class="vital-value">${value}</span><div class="vital-sub">${sub}</div>${extra}</${tag}>`;
+    };
     $("#vitals").innerHTML = [
       vit(T("vOpen"), "low", eur(m.openVal), `${tf("sOpen", m.openLines, m.openOrders)} ${deltaHTML(m.openVal, P?.openVal, false)}`, unfiltered ? spark(hist, "openVal") : "", "open"),
       vit(T("vLate"), lateLvl, eur(m.lateVal), `${tf("sLate", pct(m.latePct), m.late.length)} ${deltaHTML(m.lateVal, P?.lateVal, true)}`, "", "late"),
@@ -698,17 +839,16 @@
       vit(T("vIn"), "low", eur(m.intakeVal), tf("sIn", m.intakeOrders, m.intakeCusts), "", "intake"),
       vit(T("vUnd"), undLvl, pct(m.undatedPct, 0), tf("sUnd", eur(m.undatedVal), m.undated.length), "", "undated")
     ].join("");
-    $("#vitals").querySelectorAll("button.vital").forEach(btn => {
-      btn.addEventListener("click", () => openDetailModal(btn.dataset.kind));
-    });
+    if (OUTLOOK_DATA !== DATA || OUTLOOK_CUSTOMER !== VIEW.customer || OUTLOOK_LANG !== LANG) {
+      renderOutlook(computeOutlook(lines, rd, VIEW.customer || "__all", hist), rd);
+      OUTLOOK_DATA = DATA; OUTLOOK_CUSTOMER = VIEW.customer; OUTLOOK_LANG = LANG;
+    }
 
-    const outlook = computeOutlook(lines, rd, FILTER, hist);
-    renderOutlook(outlook, rd);
-
-    renderHorizon(m);
-    renderShare(m);
+    renderHorizon(VIEW.period ? compute(lines, rd, VIEW, { ignore: "period" }) : m);
+    renderShare(VIEW.customer ? compute(lines, rd, VIEW, { ignore: "customer" }) : m);
     renderLate(m, rd);
     renderWatch(m, cmp, prev);
+    renderOrderDrawer();
     $("#foot-file").textContent = `${DATA.fileName || "DOPK export"} · ${tf("linesRead", lines.length)}`;
     $("#app").hidden = false; $("#empty").hidden = true;
   }
@@ -803,21 +943,22 @@
   }
 
   function renderHorizon(m) {
-    const cols = [{ label: T("colLate"), full: T("colLateFull"), val: m.lateVal, n: m.late.length, kind: "late" },
-      ...m.months.map(x => ({ label: monthName(x.m, x.y, x.yearTag ? "short" : false), full: monthName(x.m, x.y, true), val: x.val, n: x.n, kind: "flow" })),
-      { label: T("colUnd"), full: T("colUndFull"), val: m.undatedVal, n: m.undated.length, kind: "undated" }];
+    const cols = [{ label: T("colLate"), full: T("colLateFull"), val: m.lateVal, n: m.late.length, kind: "late", value: "late" },
+      ...m.months.map(x => ({ label: monthName(x.m, x.y, x.yearTag ? "short" : false), full: monthName(x.m, x.y, true), val: x.val, n: x.n, kind: "flow", value: `${x.y}-${String(x.m + 1).padStart(2, "0")}` })),
+      { label: T("colUnd"), full: T("colUndFull"), val: m.undatedVal, n: m.undated.length, kind: "undated", value: "undated" }];
     const W = 820, H = 280, top = 26, bottom = 34, gap = 6;
     const cw = (W - gap * (cols.length + 1)) / cols.length;
     const max = Math.max(1, ...cols.map(c => c.val));
     const y = v => top + (H - top - bottom) * (1 - v / max);
-    let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(T("chartLabel"))}"><defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="var(--alarm-med-tint)"/><line x1="0" y1="0" x2="0" y2="6" stroke="var(--alarm-med)" stroke-width="3"/></pattern></defs>`;
+    let svg = `<svg viewBox="0 0 ${W} ${H}" role="group" aria-label="${esc(T("chartLabel"))}"><defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="var(--alarm-med-tint)"/><line x1="0" y1="0" x2="0" y2="6" stroke="var(--alarm-med)" stroke-width="3"/></pattern></defs>`;
     [0.5, 1].forEach(f => { svg += `<line x1="0" x2="${W}" y1="${y(max * f)}" y2="${y(max * f)}" stroke="var(--rule-soft)"/>`; });
     if (m.avg6) svg += `<line x1="${gap + cw + gap}" x2="${W - cw - gap * 2}" y1="${y(m.avg6)}" y2="${y(m.avg6)}" stroke="var(--ink-muted)" stroke-dasharray="3 4"/><text x="${W - cw - gap * 2}" y="${y(m.avg6) - 6}" text-anchor="end" font-size="11" fill="var(--ink-muted)">${esc(tf("avg6", eur(m.avg6)))}</text>`;
     cols.forEach((c, i) => {
       const x = gap + i * (cw + gap), yy = y(c.val), fill = c.kind === "late" ? COLORS.late : c.kind === "undated" ? "url(#hatch)" : COLORS.flow;
       const dim = c.kind === "flow" && m.dropIdx >= 0 && i - 1 >= m.dropIdx;
-      svg += `<g class="col" tabindex="0"><title>${esc(tf("tip", c.full, eurFull(c.val), c.n))}</title>`;
-      svg += `<rect class="bar-fill" x="${x}" y="${yy}" width="${cw}" height="${Math.max(0, H - bottom - yy)}" fill="${fill}" opacity="${dim ? 0.45 : 1}"/>`;
+      svg += `<g class="col" role="button" tabindex="0" data-action="period" data-value="${c.value}" aria-pressed="${VIEW.period === c.value}" aria-label="${esc(tf("tip", c.full, eurFull(c.val), c.n))}">`;
+      svg += `<rect class="bar-hit" x="${x}" y="0" width="${cw}" height="${H}" fill="transparent"/>`;
+      svg += `<rect class="bar-fill" x="${x}" y="${yy}" width="${cw}" height="${Math.max(0, H - bottom - yy)}" fill="${fill}" opacity="${VIEW.period && VIEW.period !== c.value ? 0.35 : dim ? 0.45 : 1}"/>`;
       if (c.val > 0) svg += `<text x="${x + cw / 2}" y="${yy - 6}" text-anchor="middle" font-size="12" font-weight="700" fill="var(--ink)">${esc(eurShort(c.val))}</text>`;
       svg += `<text x="${x + cw / 2}" y="${H - bottom + 18}" text-anchor="middle" font-size="12" fill="${c.kind === "late" ? "#9E1F2D" : "var(--ink-muted)"}" font-weight="${c.kind === "flow" ? 400 : 700}">${esc(c.label)}</text></g>`;
       if (i === 0) svg += `<line x1="${x + cw + gap / 2}" x2="${x + cw + gap / 2}" y1="${top - 10}" y2="${H - bottom + 4}" stroke="var(--graphite)" stroke-width="1.5"/><text x="${x + cw + gap / 2 + 4}" y="${top - 12}" font-size="11" font-weight="700" fill="var(--ink)">${T("today")}</text>`;
@@ -829,55 +970,88 @@
   }
 
   function renderShare(m) {
-    const top = m.custs.slice(0, 3), rest = m.custs.slice(3);
-    const seg = top.map((c, i) => ({ name: c.name, short: c.short, val: c.val, color: SHARE_COLORS[i] }));
-    if (rest.length) seg.push({ name: tf("others", rest.length), short: tf("others", rest.length), val: sum(rest, c => c.val), color: SHARE_COLORS[3] });
+    const totals = {};
+    DATA.lines.filter(l => !l.shipped).forEach(l => {
+      if (!totals[l.cust]) totals[l.cust] = { name: l.cust, short: l.short, val: 0, lines: 0, late: 0 };
+      totals[l.cust].val += l.val;
+    });
+    const base = Object.values(totals).sort((a, b) => b.val - a.val);
+    const contextual = base.map(c => m.custs.find(x => x.name === c.name) || { ...c, val: 0, lines: 0, late: 0 });
+    const top = contextual.slice(0, 3), rest = contextual.slice(3);
+    const seg = top.map((c, i) => ({ value: c.name, name: c.name, short: c.short, val: c.val, color: SHARE_COLORS[i] }));
+    const selectedOther = rest.find(c => c.name === VIEW.customer);
+    if (selectedOther) seg.push({ value: selectedOther.name, name: selectedOther.name, short: selectedOther.short, val: selectedOther.val, color: SHARE_COLORS[3] });
+    const grouped = rest.filter(c => c !== selectedOther);
+    if (grouped.length) seg.push({ value: "__xtop", name: tf("others", grouped.length), short: tf("others", grouped.length), val: sum(grouped, c => c.val), color: SHARE_COLORS[3] });
     const Tot = m.openVal || 1;
-    $("#share-bar").innerHTML = seg.map(s => `<div style="width:${s.val / Tot * 100}%;background:${s.color}" title="${esc(s.name)}: ${pct(s.val / Tot * 100)}"></div>`).join("");
-    $("#share-list").innerHTML = seg.map(s => `<li><i style="background:${s.color}"></i><span class="name" title="${esc(s.name)}">${esc(s.short)}</span><span class="pct">${pct(s.val / Tot * 100)}</span><span class="eur">${eur(s.val)}</span></li>`).join("");
+    $("#share-bar").innerHTML = seg.map(s => `<div role="button" tabindex="0" data-action="customer" data-value="${esc(s.value)}" aria-pressed="${VIEW.customer === s.value}" aria-label="${esc(s.name)}: ${pct(s.val / Tot * 100)}" style="width:${s.val / Tot * 100}%;background:${s.color};opacity:${VIEW.customer && VIEW.customer !== s.value ? 0.35 : 1}"></div>`).join("");
+    $("#share-list").innerHTML = seg.map(s => `<li role="button" tabindex="0" data-action="customer" data-value="${esc(s.value)}" aria-pressed="${VIEW.customer === s.value}"><i style="background:${s.color}"></i><span class="name" title="${esc(s.name)}">${esc(s.short)}</span><span class="pct">${pct(s.val / Tot * 100)}</span><span class="eur">${eur(s.val)}</span></li>`).join("");
     const lvl = m.hhi > 2500 ? "high" : m.hhi > 1500 ? "med" : "clear";
     const txt = m.hhi > 2500 ? T("hhiHigh") : m.hhi > 1500 ? T("hhiMed") : T("hhiLow");
     $("#share-stats").innerHTML = `<div><b>${m.custs.length}</b>${T("custsWith")}</div><div><b>${nf(Math.round(m.hhi))}</b>${T("hhi")} <span class="chip chip--${lvl}">${txt}</span></div>`;
   }
 
+  function tableLines(m) {
+    return [...(VIEW.period && VIEW.period !== "late" ? m.open : m.late)].sort((a, b) => b.val - a.val);
+  }
+
   function renderLate(m, rd) {
-    const rows = [...m.late].sort((a, b) => b.val - a.val).slice(0, 10);
-    $("#late-count").textContent = m.late.length ? tf("lateCount", m.late.length, uniq(m.late, l => l.order)) : T("noLate");
-    $("#late-body").innerHTML = rows.length ? rows.map(l => `<tr><td>${l.order}</td><td class="clip" title="${esc(l.cust)}">${esc(l.short)}</td><td class="clip" title="${esc(l.desc)}">${esc(l.desc)}</td><td class="num">${fmtDate(l.due)}</td><td class="num late">${tf("days", Math.round((rd - l.due) / DAY))}</td><td class="num">${eurFull(l.val)}</td></tr>`).join("")
-      : `<tr><td colspan="6">${T("allOnPlan")}</td></tr>`;
-    $("#export-late").disabled = !m.late.length;
+    const list = tableLines(m), rows = list.slice(0, TABLE_ALL ? 50 : 10);
+    const p = VIEW.period;
+    const daysTitle = p === "undated" ? T("orderAge") : p && p !== "late" ? T("dueIn") : T("thLate");
+    $("#late-title").textContent = p === "undated" ? T("undatedTitle") : p && p !== "late" ? tf("monthTitle", periodName(p)) : T("lateTitle");
+    $("#late-days").textContent = daysTitle;
+    $("#late-count").textContent = tf("filterCount", rows.length, list.length);
+    $("#late-body").innerHTML = rows.length ? rows.map(l => {
+      const days = p === "undated" ? (l.date ? daysBetween(rd, l.date) : null) : p && p !== "late" ? daysBetween(l.due, rd) : daysBetween(rd, l.due);
+      return `<tr><td>${orderButton(l)}</td><td class="clip" title="${esc(l.cust)}">${esc(l.short)}</td><td class="clip" title="${esc(l.desc)}">${esc(l.desc)}</td><td class="num">${fmtDate(l.due)}</td><td class="num${!p || p === "late" ? " late" : ""}">${days == null ? "–" : tf("days", days)}</td><td class="num">${eurFull(l.val)}</td></tr>`;
+    }).join("") : `<tr><td colspan="6">${T("tableEmpty")}</td></tr>`;
+    $("#late-more").innerHTML = list.length > rows.length ? TABLE_ALL ? `<span class="panel-note">${T("fullExport")}</span>` : `<button type="button" class="text-action" data-action="table-all">${tf("showAll", list.length)}</button>` : "";
+    $("#export-late").textContent = T("exportCsv");
+    $("#export-late").disabled = !list.length;
+  }
+
+
+  function exceptionGroups(m) {
+    return [
+      { id: "ship-late", lvl: "high", t: tf("wShipLate", m.watchShippedLate.length), b: tf("wShipLateBody", eur(sum(m.watchShippedLate, l => l.val))), lines: m.watchShippedLate },
+      { id: "close-out", lvl: "low", t: tf("wClose", m.closeOut.length, RULES.closeOutQuote), b: tf("wCloseBody", eur(m.closeOutVal)), lines: m.open.filter(l => m.closeOut.some(([k]) => +k === l.order)) },
+      { id: "price", lvl: "med", t: tf("wPrice", m.priceFlags.length), b: m.priceFlags.length ? (() => { const w = [...m.priceFlags].sort((a, b) => a.r - b.r)[0]; return tf("wPriceBody", w.l.art, w.l.short, eurUnit(w.l.unit), eurUnit(w.med)); })() : "", lines: m.priceFlags.map(w => w.l) },
+      { id: "zero", lvl: "high", t: tf("wZero", m.zeroPrice.length), b: m.zeroPrice.slice(0, 2).map(l => `${l.order} ${l.short}, ${l.desc}`).join("; "), lines: m.zeroPrice },
+      { id: "mismatch", lvl: "med", t: tf("wMis", m.mismatch.length), b: tf("wMisBody", [...new Set(m.mismatch.map(l => l.order))].join(", ")), lines: m.mismatch }
+    ].filter(i => i.lines.length);
   }
 
   function renderWatch(m, cmp, prev) {
-    const items = [];
-    if (cmp) items.push({ lvl: cmp.pushed ? "med" : "clear", t: tf("wSince", fmtDate(new Date(prev.date + "T00:00:00"))), b: tf("wSinceBody", cmp.completed, eur(cmp.completedVal), cmp.pushed, eur(cmp.pushedVal)) });
-    else items.push({ lvl: "low", t: T("wTrack"), b: T("wTrackBody") });
-    if (m.shippedLate.length) items.push({ lvl: "high", t: tf("wShipLate", m.shippedLate.length), b: tf("wShipLateBody", eur(sum(m.shippedLate, l => l.val))) });
-    if (m.closeOut.length) items.push({ lvl: "low", t: tf("wClose", m.closeOut.length, RULES.closeOutQuote), b: tf("wCloseBody", eur(m.closeOutVal)) });
-    if (m.priceFlags.length) {
-      const w = [...m.priceFlags].sort((a, b) => a.r - b.r)[0];
-      items.push({ lvl: "med", t: tf("wPrice", m.priceFlags.length), b: tf("wPriceBody", w.l.art, w.l.short, eurUnit(w.l.unit), eurUnit(w.med)) });
-    }
-    if (m.zeroPrice.length) items.push({ lvl: "high", t: tf("wZero", m.zeroPrice.length), b: m.zeroPrice.slice(0, 2).map(l => `${l.order} ${l.short}, ${l.desc}`).join("; ") + "." });
-    if (m.mismatch.length) items.push({ lvl: "med", t: tf("wMis", m.mismatch.length), b: tf("wMisBody", [...new Set(m.mismatch.map(l => l.order))].slice(0, 6).join(", ")) });
-    $("#watch").innerHTML = items.map(i => `<li><div class="w-head"><span class="w-title">${esc(i.t)}</span>${chipHTML(i.lvl)}</div><div class="w-body">${esc(i.b)}</div></li>`).join("");
+    const history = cmp ? { lvl: cmp.pushed ? "med" : "clear", t: tf("wSince", fmtDate(new Date(prev.date + "T00:00:00"))), b: tf("wSinceBody", cmp.completed, eur(cmp.completedVal), cmp.pushed, eur(cmp.pushedVal)) } : { lvl: "low", t: T("wTrack"), b: T("wTrackBody") };
+    const items = [history, ...exceptionGroups(m)];
+    $("#watch").innerHTML = items.map(i => {
+      const expanded = WATCH_OPEN === i.id;
+      const head = `<span class="w-title">${esc(i.t)}</span>${chipHTML(i.lvl)}`;
+      return `<li>${i.id ? `<button type="button" class="w-head text-action" data-action="watch" data-value="${i.id}" aria-expanded="${expanded}" aria-controls="watch-${i.id}">${head}</button>` : `<div class="w-head">${head}</div>`}<div class="w-body">${esc(i.b)}</div>` +
+        (i.id ? `<div id="watch-${i.id}"${expanded ? "" : " hidden"}>${expanded ? `<ul class="watch-lines">${i.lines.slice(0, WATCH_ALL ? i.lines.length : 8).map(l => {
+          const price = i.id === "price" ? m.priceFlags.find(w => w.l === l) : null;
+          return `<li>${orderButton(l)} · ${esc(l.art)} · ${esc(l.short)} · ${price ? `${eurUnit(l.unit)} ${T("unitComparison")} ${eurUnit(price.med)}` : eurFull(l.val)}</li>`;
+        }).join("")}</ul>${i.lines.length > 8 && !WATCH_ALL ? `<button type="button" class="text-action" data-action="watch-all">${tf("showAll", i.lines.length)}</button>` : ""}` : ""}</div>` : "") + `</li>`;
+    }).join("");
   }
 
-  function fillFilter(keep) {
+
+  function fillFilter() {
     const custs = {};
-    DATA.lines.filter(l => !l.shipped).forEach(l => custs[l.cust] = (custs[l.cust] || 0) + l.val);
+    DATA.lines.forEach(l => { custs[l.cust] = (custs[l.cust] || 0) + (!l.shipped ? l.val : 0); });
     const sorted = Object.entries(custs).sort((a, b) => b[1] - a[1]);
     const sel = $("#filter");
-    sel.innerHTML = `<option value="__all">${esc(T("allCustomers"))}</option>` + (sorted.length > 1 ? `<option value="__xtop">${esc(tf("allExcept", shortName(sorted[0][0])))}</option>` : "") +
-      sorted.map(([c]) => `<option value="${esc(c)}">${esc(shortName(c))}</option>`).join("");
-    if (!keep) FILTER = "__all";
-    sel.value = FILTER;
+    sel.innerHTML = `<option value="__all">${esc(T("allCustomers"))}</option>` + (sorted.length > 3 ? `<option value="__xtop">${esc(T("otherGroup"))}</option>` : "") + sorted.map(([c]) => `<option value="${esc(c)}">${esc(shortName(c))}</option>`).join("");
+    sel.value = VIEW.customer || "__all";
+    FILTER_DATA = DATA; FILTER_LANG = LANG;
   }
+
 
   function setLang(l) {
     if (!I18N[l] || l === LANG) return;
     LANG = l;
-    try { localStorage.setItem(LS_LANG, l); } catch (e) {}
+    try { if (!window.DOPK_FIXTURE) localStorage.setItem(LS_LANG, l); } catch (e) {}
     if (DATA) { fillFilter(true); render(); updateOpenModal(); } else applyStatic();
     const err = $("#error"); if (!err.hidden) err.hidden = true;
   }
@@ -894,8 +1068,8 @@
 
   function getModalData(kind) {
     if (!DATA) return null;
-    const m = compute(DATA.lines, DATA.reportDate, FILTER);
-    const scope = FILTER === "__all" ? "" : FILTER === "__xtop" ? tf("scopeX", shortName(m.topCust)) : tf("scopeOne", shortName(FILTER));
+    const m = compute(DATA.lines, DATA.reportDate, VIEW);
+    const scope = VIEW.customer === "__xtop" ? tf("scopeOne", T("otherGroup")) : VIEW.customer ? tf("scopeOne", shortName(VIEW.customer)) : "";
     const scopeSuffix = scope ? ` (${scope.trim()})` : "";
     const map = {
       open: {
@@ -1068,7 +1242,7 @@
         : `<span style="color:var(--ink-faint)">–</span>`;
 
       return `<tr>` +
-        `<td>${l.order}</td>` +
+        `<td>${orderButton(l)}</td>` +
         `<td>${fmtDate(l.date)}</td>` +
         `<td class="clip" title="${esc(l.cust)}">${esc(l.short)}</td>` +
         `<td><code>${esc(l.art)}</code></td>` +
@@ -1121,27 +1295,97 @@
     document.body.appendChild(a); a.click(); a.remove();
   }
 
-  function exportLate() {
-    const m = compute(DATA.lines, DATA.reportDate, FILTER);
-    const de = LANG === "de";
-    const n2 = v => de ? v.toFixed(2).replace(".", ",") : v.toFixed(2);
-    const rows = [...m.late].sort((a, b) => b.val - a.val).map(l => [l.order, l.cust, l.art, l.desc, de ? String(l.rest).replace(".", ",") : l.rest, fmtDate(l.due), Math.round((DATA.reportDate - l.due) / DAY), n2(l.val)]);
-    const csv = "\ufeff" + [T("csvHead"), ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(";")).join("\r\n");
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-    a.download = `${T("csvName")}_${iso(DATA.reportDate)}.csv`;
-    document.body.appendChild(a); a.click(); a.remove();
+  function buildViewCsv() {
+    const m = compute(DATA.lines, DATA.reportDate, VIEW), list = tableLines(m);
+    const de = LANG === "de", p = VIEW.period;
+    const daysTitle = p === "undated" ? T("orderAge") : p && p !== "late" ? T("dueIn") : T("thLate");
+    const head = [...T("csvHead")]; head[6] = daysTitle;
+    const cell = v => `"${String(v ?? "").replace(/"/g, '\"\"')}"`;
+    const rows = list.map(l => [l.order, l.cust, l.art, l.desc, de ? String(l.rest).replace(".", ",") : l.rest, fmtDate(l.due), p === "undated" ? (l.date ? daysBetween(DATA.reportDate, l.date) : "") : p && p !== "late" ? daysBetween(l.due, DATA.reportDate) : daysBetween(DATA.reportDate, l.due), de ? l.val.toFixed(2).replace(".", ",") : l.val.toFixed(2)]);
+    const prefix = p === "undated" ? "ohne-termin" : p && p !== "late" ? `faellig_${p}` : "ueberfaellig";
+    const customer = VIEW.customer ? "_" + (VIEW.customer === "__xtop" ? "weitere-kunden" : VIEW.customer).replace(/[<>:"/\\|?*\x00-\x1f]/g, "-").replace(/\s+/g, "_") : "";
+    return { csv: "\ufeff" + [head, ...rows].map(r => r.map(cell).join(";")).join("\r\n"), name: `${prefix}${customer}_${iso(DATA.reportDate)}.csv`, lines: list };
   }
 
-  // ------------------------------------------------------------- loading
+  function exportLate() {
+    const { csv, name } = buildViewCsv();
+    const a = document.createElement("a"), url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+
+  function renderOrderDrawer() {
+    const dlg = $("#order-drawer");
+    if (!VIEW.order) {
+      if (dlg.open) {
+        dlg.close(); document.body.style.overflow = DRAWER_OVERFLOW;
+        const origin = DRAWER_RETURN;
+        const target = origin?.isConnected ? origin : [...document.querySelectorAll('[data-action="order"]')].find(el => el.dataset.value === origin?.dataset.value);
+        (target || $("#filter")).focus(); DRAWER_RETURN = null;
+      }
+      return;
+    }
+    const { lines, reportDate: rd } = DATA;
+    const list = lines.filter(l => String(l.order) === VIEW.order).sort((a, b) => (a.due ? +a.due : Infinity) - (b.due ? +b.due : Infinity));
+    const open = list.filter(l => !l.shipped), late = list.filter(l => l.due && l.due < rd);
+    const quote = list.find(l => l.quote != null)?.quote ?? 0;
+    $("#order-title").textContent = `${T("thOrder")} ${VIEW.order}`;
+    $("#order-summary").textContent = `${list[0].cust} · ${T("orderDate")}: ${fmtDate(list.find(l => l.date)?.date)} · ${T("fulfilment")}: ${pct(quote, 0)} · ${T("thVal")}: ${eurFull(sum(open, l => l.val))} · ${tf("drawerSummary", open.length, late.length)}`;
+    const headers = ["thArt", "thDesc", "thQty", "thRest", "delivered", "thDue", "thLate", "thStatus", "thVal"];
+    $("#order-lines").innerHTML = `<thead><tr>${headers.map(k => `<th>${T(k)}</th>`).join("")}</tr></thead><tbody>${list.map(l => {
+      const values = [esc(l.art), esc(l.desc), nf(l.qty, Number.isInteger(l.qty) ? 0 : 2), nf(l.rest, Number.isInteger(l.rest) ? 0 : 2), pct(l.qty ? (l.qty - l.rest) / l.qty * 100 : 0, 0), fmtDate(l.due), l.due && l.due < rd ? tf("days", daysBetween(rd, l.due)) : "–", esc(l.shipped ? T("shippedStatus") : l.status), eurFull(l.val)];
+      return `<tr>${values.map((v, i) => `<td data-label="${esc(T(headers[i]))}"${i === 6 && l.due && l.due < rd ? ' class="late"' : ""}>${v}</td>`).join("")}</tr>`;
+    }).join("")}</tbody>`;
+    const groups = exceptionGroups(compute(lines, rd, {})).filter(i => i.lines.some(l => String(l.order) === VIEW.order));
+    $("#order-notes").innerHTML = groups.map(i => {
+      const count = i.lines.filter(l => String(l.order) === VIEW.order).length;
+      const note = i.id === "close-out" ? tf("wClose", 1, RULES.closeOutQuote) : tf({ "ship-late": "wShipLate", price: "wPrice", zero: "wZero", mismatch: "wMis" }[i.id], count);
+      return `<p class="panel-note">${esc(note)}</p>`;
+    }).join("");
+    if (!dlg.open) {
+      DRAWER_OVERFLOW = document.body.style.overflow;
+      dlg.showModal(); document.body.style.overflow = "hidden";
+      $("#order-close").focus();
+    }
+  }
+
+  function handleAction(e) {
+    const target = e.target.closest?.("[data-action]");
+    if (!target) return;
+    if (e.type === "keydown") {
+      if (target.tagName === "BUTTON" || !["Enter", " "].includes(e.key)) return;
+      e.preventDefault();
+    }
+    const action = target.dataset.action, value = target.dataset.value;
+    if (action !== "dismiss-hint") store.set("dopk.hint.v1", true);
+    if (action === "customer") applyView({ customer: VIEW.customer === value ? null : value });
+    else if (action === "period") applyView({ period: VIEW.period === value ? null : value });
+    else if (action === "remove-customer") applyView({ customer: null });
+    else if (action === "remove-period") applyView({ period: null });
+    else if (action === "reset") applyView({ customer: null, period: null, order: null });
+    else if (action === "order") { DRAWER_RETURN = target; applyView({ order: value }); }
+    else if (action === "close-order") applyView({ order: null });
+    else if (action === "watch") { WATCH_OPEN = WATCH_OPEN === value ? null : value; WATCH_ALL = false; applyView({}); }
+    else if (action === "watch-all") { WATCH_ALL = true; applyView({}); }
+    else if (action === "table-all") { TABLE_ALL = true; applyView({}); }
+    else if (action === "dismiss-hint") { store.set("dopk.hint.v1", true); applyView({}); }
+    // Rendering replaces controls: keep keyboard focus on the equivalent target.
+    if (action !== "order" && action !== "close-order" && !VIEW.order) {
+      const replacement = [...document.querySelectorAll("[data-action]")].find(el => el.dataset.action === action && el.dataset.value === value);
+      (replacement || $("#filter")).focus({ preventScroll: true });
+    }
+  }
+
   function showError(msg) { const n = $("#error"); n.textContent = msg; n.hidden = false; }
   function loadAoa(aoa, fileName, remember) {
     try {
       DATA = parseRows(aoa, fileName);
       $("#error").hidden = true;
-      recordHistory(DATA, compute(DATA.lines, DATA.reportDate, "__all"));
+      recordHistory(DATA, compute(DATA.lines, DATA.reportDate, {}));
       if (remember) store.set(LS_LAST, { aoa, fileName });
-      fillFilter(); render();
+      restoreView();
     } catch (e) { showError(e.message); $("#empty").hidden = false; $("#app").hidden = true; }
   }
   function fileToAoa(file) {
@@ -1185,16 +1429,29 @@
     ok.forEach(f => { const k = iso(f.data.reportDate); if (byDate[k]) { skipped.push(`${(byDate[k].mod > f.mod ? f : byDate[k]).name} (${T("dupDate")})`); if (byDate[k].mod > f.mod) return; } byDate[k] = f; });
     const snaps = Object.keys(byDate).sort().map(k => byDate[k]);
     if (!snaps.length) { showNotice("", ""); showError(skipped.join(" ")); return; }
-    snaps.forEach(f => recordHistory(f.data, compute(f.data.lines, f.data.reportDate, "__all")));
+    snaps.forEach(f => recordHistory(f.data, compute(f.data.lines, f.data.reportDate, {})));
     const latest = snaps[snaps.length - 1];
     DATA = latest.data; $("#error").hidden = true;
     store.set(LS_LAST, { aoa: latest.aoa, fileName: latest.name });
-    fillFilter(); render();
+    restoreView();
     showNotice(tf("importDone", snaps.length, fmtDate(snaps[0].data.reportDate), fmtDate(latest.data.reportDate)) + (skipped.length ? tf("importSkipped", skipped.join("; ")) : ""), skipped.length ? "warn" : "ok");
   }
 
   function init() {
     applyStatic();
+    $(".wrap").addEventListener("click", handleAction);
+    $(".wrap").addEventListener("keydown", handleAction);
+    window.addEventListener("popstate", () => { if (DATA) applyView(readHash(), "pop"); });
+    window.addEventListener("hashchange", () => { if (DATA) applyView(readHash(), "pop"); });
+    const drawer = $("#order-drawer");
+    drawer.addEventListener("cancel", e => { e.preventDefault(); applyView({ order: null }); });
+    drawer.addEventListener("click", e => { if (e.target === drawer) { const r = drawer.getBoundingClientRect(); if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) applyView({ order: null }); } });
+    drawer.addEventListener("keydown", e => {
+      if (e.key !== "Tab") return;
+      const focusable = [...drawer.querySelectorAll('button, [tabindex="0"]')].filter(el => !el.hidden && !el.disabled);
+      const first = focusable[0], last = focusable[focusable.length - 1];
+      if ((e.shiftKey && document.activeElement === first) || (!e.shiftKey && document.activeElement === last)) { e.preventDefault(); (e.shiftKey ? last : first).focus(); }
+    });
     document.querySelectorAll(".lang-switch button").forEach(b => b.addEventListener("click", () => setLang(b.dataset.lang)));
     const input = $("#file");
     document.querySelectorAll("[data-upload]").forEach(b => b.addEventListener("click", () => input.click()));
@@ -1203,7 +1460,7 @@
     document.querySelectorAll("[data-archive]").forEach(b => b.addEventListener("click", () => archive.click()));
     archive.addEventListener("change", e => { readFiles(e.target.files); archive.value = ""; });
     $("#notice button").addEventListener("click", () => showNotice("", ""));
-    $("#filter").addEventListener("change", e => { FILTER = e.target.value; render(); updateOpenModal(); });
+    $("#filter").addEventListener("change", e => applyView({ customer: e.target.value === "__all" ? null : e.target.value }));
     $("#export-late").addEventListener("click", exportLate);
 
     // Detail modal listeners
@@ -1252,6 +1509,14 @@
     document.addEventListener("dragover", e => e.preventDefault());
     document.addEventListener("drop", e => { e.preventDefault(); depth = 0; dz.classList.remove("is-over"); readFiles(e.dataTransfer.files); });
 
+    if (window.DOPK_FIXTURE) {
+      window.DOPK_TEST = {
+        load: rows => loadAoa(rows, "DOPK_09_09.xlsx", false), applyView, compute, setLang, buildViewCsv,
+        get view() { return { ...VIEW }; }, get data() { return DATA; }, get metrics() { return compute(DATA.lines, DATA.reportDate, VIEW); }
+      };
+      loadAoa(window.DOPK_FIXTURE, "DOPK_09_09.xlsx", false);
+      return;
+    }
     if (window.DOPK_PRELOAD) {
       const wb = XLSX.read(window.DOPK_PRELOAD.base64, { type: "base64" });
       loadAoa(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: true, defval: null }), window.DOPK_PRELOAD.fileName, false);
