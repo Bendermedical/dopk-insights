@@ -1004,7 +1004,8 @@
     $("#late-count").textContent = tf("filterCount", rows.length, list.length);
     $("#late-body").innerHTML = rows.length ? rows.map(l => {
       const days = p === "undated" ? (l.date ? daysBetween(rd, l.date) : null) : p && p !== "late" ? daysBetween(l.due, rd) : daysBetween(rd, l.due);
-      return `<tr><td>${orderButton(l)}</td><td class="clip" title="${esc(l.cust)}">${esc(l.short)}</td><td class="clip" title="${esc(l.desc)}">${esc(l.desc)}</td><td class="num">${fmtDate(l.due)}</td><td class="num${!p || p === "late" ? " late" : ""}">${days == null ? "–" : tf("days", days)}</td><td class="num">${eurFull(l.val)}</td></tr>`;
+      const artText = l.art ? `${l.art} · ${l.desc}` : l.desc;
+      return `<tr><td>${orderButton(l)}</td><td class="clip" title="${esc(l.cust)}">${esc(l.short)}</td><td class="clip" title="${esc(artText)}"><button type="button" class="text-action order-link" data-action="order" data-value="${l.order}" aria-haspopup="dialog">${esc(artText)}</button></td><td class="num">${fmtDate(l.due)}</td><td class="num${!p || p === "late" ? " late" : ""}">${days == null ? "–" : tf("days", days)}</td><td class="num">${eurFull(l.val)}</td></tr>`;
     }).join("") : `<tr><td colspan="6">${T("tableEmpty")}</td></tr>`;
     $("#late-more").innerHTML = list.length > rows.length ? TABLE_ALL ? `<span class="panel-note">${T("fullExport")}</span>` : `<button type="button" class="text-action" data-action="table-all">${tf("showAll", list.length)}</button>` : "";
     $("#export-late").textContent = T("exportCsv");
@@ -1031,7 +1032,7 @@
       return `<li>${i.id ? `<button type="button" class="w-head text-action" data-action="watch" data-value="${i.id}" aria-expanded="${expanded}" aria-controls="watch-${i.id}">${head}</button>` : `<div class="w-head">${head}</div>`}<div class="w-body">${esc(i.b)}</div>` +
         (i.id ? `<div id="watch-${i.id}"${expanded ? "" : " hidden"}>${expanded ? `<ul class="watch-lines">${i.lines.slice(0, WATCH_ALL ? i.lines.length : 8).map(l => {
           const price = i.id === "price" ? m.priceFlags.find(w => w.l === l) : null;
-          return `<li>${orderButton(l)} · ${esc(l.art)} · ${esc(l.short)} · ${price ? `${eurUnit(l.unit)} ${T("unitComparison")} ${eurUnit(price.med)}` : eurFull(l.val)}</li>`;
+          return `<li>${orderButton(l)} · <button type="button" class="text-action order-link" data-action="order" data-value="${l.order}" aria-haspopup="dialog">${esc(l.art)}</button> · ${esc(l.short)} · ${price ? `${eurUnit(l.unit)} ${T("unitComparison")} ${eurUnit(price.med)}` : eurFull(l.val)}</li>`;
         }).join("")}</ul>${i.lines.length > 8 && !WATCH_ALL ? `<button type="button" class="text-action" data-action="watch-all">${tf("showAll", i.lines.length)}</button>` : ""}` : ""}</div>` : "") + `</li>`;
     }).join("");
   }
@@ -1245,7 +1246,7 @@
         `<td>${orderButton(l)}</td>` +
         `<td>${fmtDate(l.date)}</td>` +
         `<td class="clip" title="${esc(l.cust)}">${esc(l.short)}</td>` +
-        `<td><code>${esc(l.art)}</code></td>` +
+        `<td><button type="button" class="text-action order-link" data-action="order" data-value="${l.order}" aria-haspopup="dialog"><code>${esc(l.art)}</code></button></td>` +
         `<td class="clip" title="${esc(l.desc)}">${esc(l.desc)}</td>` +
         `<td class="num">${nf(l.qty)}</td>` +
         `<td class="num">${nf(l.rest)}</td>` +
@@ -1334,9 +1335,10 @@
     $("#order-title").textContent = `${T("thOrder")} ${VIEW.order}`;
     $("#order-summary").textContent = `${list[0].cust} · ${T("orderDate")}: ${fmtDate(list.find(l => l.date)?.date)} · ${T("fulfilment")}: ${pct(quote, 0)} · ${T("thVal")}: ${eurFull(sum(open, l => l.val))} · ${tf("drawerSummary", open.length, late.length)}`;
     const headers = ["thArt", "thDesc", "thQty", "thRest", "delivered", "thDue", "thLate", "thStatus", "thVal"];
-    $("#order-lines").innerHTML = `<thead><tr>${headers.map(k => `<th>${T(k)}</th>`).join("")}</tr></thead><tbody>${list.map(l => {
+    const isNum = [false, false, true, true, true, false, false, false, true];
+    $("#order-lines").innerHTML = `<thead><tr>${headers.map((k, i) => `<th class="${isNum[i] ? "num" : ""}">${T(k)}</th>`).join("")}</tr></thead><tbody>${list.map(l => {
       const values = [esc(l.art), esc(l.desc), nf(l.qty, Number.isInteger(l.qty) ? 0 : 2), nf(l.rest, Number.isInteger(l.rest) ? 0 : 2), pct(l.qty ? (l.qty - l.rest) / l.qty * 100 : 0, 0), fmtDate(l.due), l.due && l.due < rd ? tf("days", daysBetween(rd, l.due)) : "–", esc(l.shipped ? T("shippedStatus") : l.status), eurFull(l.val)];
-      return `<tr>${values.map((v, i) => `<td data-label="${esc(T(headers[i]))}"${i === 6 && l.due && l.due < rd ? ' class="late"' : ""}>${v}</td>`).join("")}</tr>`;
+      return `<tr>${values.map((v, i) => `<td data-label="${esc(T(headers[i]))}" class="${isNum[i] ? "num" : ""}${i === 6 && l.due && l.due < rd ? " late" : ""}">${i === 0 ? `<code>${v}</code>` : v}</td>`).join("")}</tr>`;
     }).join("")}</tbody>`;
     const groups = exceptionGroups(compute(lines, rd, {})).filter(i => i.lines.some(l => String(l.order) === VIEW.order));
     $("#order-notes").innerHTML = groups.map(i => {

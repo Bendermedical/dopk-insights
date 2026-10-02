@@ -365,22 +365,187 @@ table.data tbody tr:hover { background: var(--steel-200); }
 .watch .w-head.text-action { width: 100%; padding: var(--s2) 0; }
 .watch .watch-lines { list-style: none; padding: 0; font-size: var(--fs-sm); }
 .watch-lines li { overflow-wrap: anywhere; }
-.order-link { font-weight: var(--fw-bold); padding-left: 0; }
-.order-drawer { position: fixed; inset: 0 0 0 auto; margin: 0; box-sizing: border-box; width: 440px; max-width: 100vw; height: 100dvh; max-height: 100dvh; padding: var(--s4); border: 0; border-left: 1px solid var(--rule); border-radius: var(--r-panel); background: var(--surface); color: var(--ink); overflow-y: auto; }
-.order-drawer[open] { animation: drawer-enter .12s var(--ease); }
-.order-drawer::backdrop { background: var(--graphite); opacity: .25; }
-.drawer-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); border-bottom: 1px solid var(--rule); padding-bottom: var(--s3); }
-.drawer-head h2 { margin: 0; font-size: var(--fs-lg); }
-.drawer-head button { min-height: 44px; }
-.order-drawer .panel-note { overflow-wrap: anywhere; }
-.drawer-table { margin-top: var(--s4); overflow-x: auto; }
-.order-drawer table.data { min-width: 720px; font-size: var(--fs-xs); }
-.order-drawer table.data th, .order-drawer table.data td { white-space: normal; overflow-wrap: anywhere; padding: var(--s2) var(--s1); }
-.order-drawer table.data td.late { color: var(--alarm-high); }
-@keyframes drawer-enter { from { transform: translateX(100%); } to { transform: translateX(0); } }
-@media (max-width: 860px) {
-  .order-drawer { width: 100vw; border-left: 0; }
+/* ---- Order / Article Drill-down Link --------------------------------- */
+.order-link {
+  font-weight: var(--fw-bold);
+  padding: 0;
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--steel-300);
+  text-underline-offset: 2px;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+  text-align: inherit;
+  transition: color .12s var(--ease), text-decoration-color .12s var(--ease);
 }
+.order-link:hover {
+  color: var(--alarm-low);
+  text-decoration-color: var(--alarm-low);
+}
+
+/* ---- Drill-down Modal Pop-up Window ---------------------------------- */
+.order-drawer {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  box-sizing: border-box;
+  width: min(1080px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
+  max-height: calc(100dvh - 48px);
+  height: fit-content;
+  padding: 0;
+  border: 1px solid var(--rule);
+  border-radius: var(--r-control);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 24px 60px rgba(31, 38, 41, 0.28), 0 4px 16px rgba(31, 38, 41, 0.12);
+  overflow: hidden;
+  z-index: 1000;
+}
+.order-drawer[open] {
+  display: flex;
+  flex-direction: column;
+  animation: modal-pop .18s var(--ease);
+}
+.order-drawer::backdrop {
+  background: rgba(31, 38, 41, 0.55);
+  backdrop-filter: blur(3px);
+}
+@keyframes modal-pop {
+  from { opacity: 0; transform: scale(0.96) translateY(-10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.drawer-inner {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - 48px);
+  overflow: hidden;
+  width: 100%;
+}
+.drawer-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s4);
+  padding: var(--s4) var(--s6);
+  border-bottom: 1px solid var(--rule);
+  background: var(--surface);
+  flex-shrink: 0;
+}
+.drawer-head h2 {
+  margin: 0;
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-heavy);
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+.order-drawer .panel-note,
+.order-drawer #order-summary {
+  margin: var(--s1) 0 0 0;
+  font-size: var(--fs-sm);
+  color: var(--ink-muted);
+  line-height: var(--lh-snug);
+  overflow-wrap: anywhere;
+}
+.drawer-head button,
+.drawer-head .dialog-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  min-height: 38px;
+  padding: 0 var(--s3);
+  border-radius: var(--r-control);
+  border: 1px solid var(--rule);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
+  cursor: pointer;
+  transition: background .12s var(--ease), border-color .12s var(--ease);
+  flex-shrink: 0;
+}
+.drawer-head button:hover,
+.drawer-head .dialog-close:hover {
+  background: var(--steel-200);
+  border-color: var(--steel-500);
+}
+.drawer-table {
+  flex: 1 1 auto;
+  margin: 0;
+  padding: 0 var(--s6) var(--s4);
+  overflow-x: auto;
+  overflow-y: auto;
+}
+.order-drawer table.data {
+  width: 100%;
+  min-width: 820px;
+  font-size: var(--fs-sm);
+  border-collapse: collapse;
+}
+.order-drawer table.data th {
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  z-index: 2;
+  box-shadow: 0 1px 0 var(--rule);
+  padding: var(--s3) var(--s2);
+  text-align: left;
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-xs);
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+.order-drawer table.data th.num,
+.order-drawer table.data td.num {
+  text-align: right;
+}
+.order-drawer table.data td {
+  padding: var(--s3) var(--s2);
+  border-bottom: 1px solid var(--rule-soft);
+  vertical-align: middle;
+  font-size: var(--fs-sm);
+}
+.order-drawer table.data tr:hover td {
+  background: var(--steel-100);
+}
+.order-drawer table.data td.late {
+  color: var(--alarm-high);
+  font-weight: var(--fw-bold);
+}
+#order-notes {
+  padding: var(--s3) var(--s6);
+  border-top: 1px solid var(--rule-soft);
+  background: var(--bg);
+  flex-shrink: 0;
+}
+#order-notes:empty {
+  display: none;
+}
+@media (max-width: 860px) {
+  .order-drawer {
+    width: calc(100vw - 24px);
+    max-width: calc(100vw - 24px);
+    max-height: calc(100dvh - 24px);
+  }
+  .drawer-inner {
+    max-height: calc(100dvh - 24px);
+  }
+  .drawer-head {
+    padding: var(--s3) var(--s4);
+  }
+  .drawer-table {
+    padding: 0 var(--s4) var(--s3);
+  }
+  #order-notes {
+    padding: var(--s2) var(--s4);
+  }
+}
+
 @media (max-width: 560px) {
   .breadcrumb-slot { min-height: 132px; }
   .breadcrumb { gap: 0 var(--s1); }

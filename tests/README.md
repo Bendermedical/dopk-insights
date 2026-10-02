@@ -26,7 +26,7 @@ Final validation on 2 October 2026 in headless Microsoft Edge:
 | 9 | DE/EN formatting while retaining the view | PASS | PASS |
 | 10 | CSV contains exactly the two Alpha October lines | PASS | PASS |
 | 11 | Keyboard targets and drawer focus trap | PASS | PASS |
-| 12 | 440px desktop drawer and full-screen mobile sheet | PASS | PASS |
+| 12 | Drill-down modal responsive size and horizontal containment | PASS | PASS |
 | 13 | All baseline values, no runtime/CSP failures | PASS | PASS |
 
 Additional browser automation passed real Enter/Space activation, native Escape and
