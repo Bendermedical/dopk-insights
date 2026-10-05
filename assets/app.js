@@ -1802,8 +1802,9 @@
     else if (action === "watch-all") { WATCH_ALL = true; applyView({}); }
     else if (action === "table-all") { TABLE_ALL = true; applyView({}); }
     else if (action === "dismiss-hint") { store.set("dopk.hint.v1", true); applyView({}); }
+    else if (action === "dismiss-notice") { showNotice("", ""); return; }
     // Rendering replaces controls: keep keyboard focus on the equivalent target.
-    if (action !== "order" && action !== "close-order" && action !== "scorecard" && action !== "close-scorecard" && action !== "sc-show-late" && !VIEW.order && !VIEW.sc) {
+    if (action !== "order" && action !== "close-order" && action !== "scorecard" && action !== "close-scorecard" && action !== "sc-show-late" && action !== "dismiss-notice" && !VIEW.order && !VIEW.sc) {
       const replacement = [...document.querySelectorAll("[data-action]")].find(el => el.dataset.action === action && el.dataset.value === value);
       (replacement || $("#filter")).focus({ preventScroll: true });
     }
@@ -1834,6 +1835,7 @@
   }
   function showNotice(msg, kind) {
     const n = $("#notice");
+    if (!n) return;
     n.querySelector("span").textContent = msg;
     n.dataset.kind = kind || "info";
     n.hidden = !msg;
@@ -1849,6 +1851,7 @@
     const ok = [], skipped = [];
     for (let i = 0; i < files.length; i++) {
       showNotice(tf("importBusy", i + 1, files.length), "info");
+      await new Promise(r => requestAnimationFrame(() => setTimeout(r, 20)));
       try {
         const aoa = await fileToAoa(files[i]);
         const data = parseRows(aoa, files[i].name);
