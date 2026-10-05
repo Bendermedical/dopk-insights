@@ -34,6 +34,19 @@
       coverThreshold: 0.5,         // a month counts as covered if scheduled ≥ 50% of the 6-month average
       onTimeTarget: { med: 95, high: 85 }, // on-time % below = watch / act now
       reliabilityTarget: { med: 90, high: 80 }
+    },
+    bookToBill: {
+      rollingDays: 28,        // 4-week rolling window for primary ratio
+      longRunDays: 91,        // 13-week window for long-run trend
+      historyWeeks: 12,       // number of ISO weeks shown in sheet chart
+      minSnapshotsPerWeek: 3, // weeks with fewer snapshots marked incomplete (reduced opacity)
+      minHistoryDays: 14,     // history days required before showing ratio and alarms
+      bigOrderShare: 0.30,    // single order share threshold for lumpiness note (> 30%)
+      levels: {               // alarm levels for rolling ratio
+        clear: 1.0,           // >= 1.00: order book growing or stable
+        low: 0.90,            // 0.90-0.99: slightly shrinking (info)
+        med: 0.75             // 0.75-0.89: watch; < 0.75: high (act now)
+      }
     }
   };
   const COLORS = { late: "var(--alarm-high)", flow: "var(--alarm-low)", undated: "var(--alarm-med)" };
@@ -89,7 +102,7 @@
       due7: v => `In den nächsten 7 Tagen werden ${v} fällig.`,
       due7none: hasLate => `In den nächsten 7 Tagen wird nichts ${hasLate ? "weiter " : ""}fällig.`,
       todayLine: (n, sv, o, iv) => `Heute: ${n ? pl(n, "Lieferschein", "Lieferscheine") + " über " + sv + " erstellt" : "keine Lieferscheine erstellt"}, ${o ? pl(o, "neuer Auftrag", "neue Aufträge") + " über " + iv + " erfasst" : "keine neuen Aufträge erfasst"}.`,
-      vOpen: "Offener Bestand", vLate: "Überfällig", vShip: "Heute versandt", vIn: "Neue Aufträge heute", vUnd: "Ohne Liefertermin",
+      vOpen: "Offener Bestand", vLate: "Überfällig", vShip: "Heute versandt", vIn: "Auftragseingang", vUnd: "Ohne Liefertermin",
       sOpen: (l, o) => `${pl(l, "Position", "Positionen")} in ${pl(o, "Auftrag", "Aufträgen")}`,
       sLate: (p, l) => `${p} des offenen Werts, ${pl(l, "Position", "Positionen")}`,
       sShip: (n, ot) => `${pl(n, "Lieferschein", "Lieferscheine")}, ${ot == null ? "keine datierten Positionen" : ot + " termingerecht"}`,
@@ -200,7 +213,35 @@
       scFamLate: "Überfällig",
       scFamOther: "Sonstige",
       plLines: n => pl(n, "Position", "Positionen"),
-      scMonthsVal: m => `${m} Monate`
+      scMonthsVal: m => `${m} Monate`,
+      scBtbRatio: (w, r) => `Abrufe vs. Lieferungen (${w} Wo.): ${r}`,
+      btbSince: d => `seit ${d}`,
+      btbSubLine: (w, r, arrow) => `Book-to-Bill ${w} Wo.: ${r}${arrow ? " " + arrow : ""}`,
+      btbTitle: "Book-to-Bill",
+      btbSubtitle: (w4, w13) => `4 Wochen: ${w4} · 13 Wochen: ${w13}`,
+      btbRatioLong: (w, r) => `${w} Wo.: ${r}`,
+      btbCoverSentence: (pctVal, changeText, note) => `In den letzten 4 Wochen deckte der Auftragseingang ${pctVal} % der Lieferungen. ${changeText}${note ? " " + note : ""}`,
+      btbShrinking: v => `Der Bestand schrumpft um rund ${v} pro Woche.`,
+      btbGrowing: v => `Der Bestand wächst um rund ${v} pro Woche.`,
+      btbStable: "Der Bestand bleibt stabil.",
+      btbUnderOneWeekNote: "(Verlauf unter einer Woche, auf 1 Woche normiert)",
+      btbChartTitle: "Auftragseingang und Lieferungen nach Kalenderwoche",
+      btbChartAria: (w4, w13) => `Book-to-Bill 4-Wochen-Verhältnis: ${w4}, 13-Wochen-Verhältnis: ${w13}`,
+      btbIntake: "Auftragseingang",
+      btbShipped: "Lieferungen",
+      btbInProgress: "laufend",
+      btbIncomplete: "lückenhaft",
+      btbTopOrdersTitle: "Größte Auftragseingänge im Zeitraum",
+      btbNoOrders: "Keine Auftragseingänge im Zeitraum.",
+      btbLumpiness: (order, cust, val) => `enthält Großauftrag ${order} (${cust}, ${val})`,
+      btbScopeNote: s => `für ${s}`,
+      btbFamUnavailable: "Nicht nach Produktfamilie verfügbar",
+      btbIntakeOnly: "nur Eingang",
+      btbUnavailable: (d, c) => `Verfügbar nach ${d} Tagen Verlauf (aktuell ${c})`,
+      verdictBtb: pctVal => `Der Auftragseingang deckt in den letzten 4 Wochen nur ${pctVal} % der Lieferungen.`,
+      csvBtbHead: ["Woche", "Auftragseingang", "Lieferungen", "Verhältnis", "Vollständigkeit"],
+      csvBtbPrefix: "auftragseingang-lieferungen",
+      csvBtbComplete: "vollständig"
     },
     en: {
       drillHint: "Tip: bars, customers and order numbers are clickable.",
@@ -248,7 +289,7 @@
       due7: v => `${v} falls due in the next 7 days.`,
       due7none: hasLate => `Nothing ${hasLate ? "else " : ""}falls due in the next 7 days.`,
       todayLine: (n, sv, o, iv) => `Today ${n ? pl(n, "delivery note", "delivery notes") + " went out worth " + sv : "no delivery notes went out"}, and ${o ? pl(o, "new order", "new orders") + " came in worth " + iv : "no new orders came in"}.`,
-      vOpen: "Open backlog", vLate: "Overdue", vShip: "Shipped today", vIn: "New orders today", vUnd: "No delivery date",
+      vOpen: "Open backlog", vLate: "Overdue", vShip: "Shipped today", vIn: "Order intake", vUnd: "No delivery date",
       sOpen: (l, o) => `${pl(l, "line", "lines")} in ${pl(o, "order", "orders")}`,
       sLate: (p, l) => `${p} of open, ${pl(l, "line", "lines")}`,
       sShip: (n, ot) => `${pl(n, "delivery note", "delivery notes")}, ${ot == null ? "no dated lines" : ot + " on time"}`,
@@ -359,7 +400,35 @@
       scFamLate: "Overdue",
       scFamOther: "Other",
       plLines: n => pl(n, "line", "lines"),
-      scMonthsVal: m => `${m} months`
+      scMonthsVal: m => `${m} months`,
+      scBtbRatio: (w, r) => `Call-offs vs. deliveries (${w} wk): ${r}`,
+      btbSince: d => `since ${d}`,
+      btbSubLine: (w, r, arrow) => `Book-to-bill ${w} wk: ${r}${arrow ? " " + arrow : ""}`,
+      btbTitle: "Book-to-Bill",
+      btbSubtitle: (w4, w13) => `4 weeks: ${w4} · 13 weeks: ${w13}`,
+      btbRatioLong: (w, r) => `${w} wk: ${r}`,
+      btbCoverSentence: (pctVal, changeText, note) => `Over the last 4 weeks, order intake covered ${pctVal}% of shipments. ${changeText}${note ? " " + note : ""}`,
+      btbShrinking: v => `The order book is shrinking by about ${v} per week.`,
+      btbGrowing: v => `The order book is growing by about ${v} per week.`,
+      btbStable: "The order book remains stable.",
+      btbUnderOneWeekNote: "(history under one week, normalized to 1 week)",
+      btbChartTitle: "Order intake and shipments by calendar week",
+      btbChartAria: (w4, w13) => `Book-to-bill 4-week ratio: ${w4}, 13-week ratio: ${w13}`,
+      btbIntake: "Order intake",
+      btbShipped: "Shipments",
+      btbInProgress: "in progress",
+      btbIncomplete: "incomplete",
+      btbTopOrdersTitle: "Largest order intakes in window",
+      btbNoOrders: "No new orders in window.",
+      btbLumpiness: (order, cust, val) => `includes large order ${order} (${cust}, ${val})`,
+      btbScopeNote: s => `for ${s}`,
+      btbFamUnavailable: "Not available by product family",
+      btbIntakeOnly: "intake only",
+      btbUnavailable: (d, c) => `Available after ${d} days of history (currently ${c})`,
+      verdictBtb: pctVal => `Order intake covered only ${pctVal}% of shipments over the last 4 weeks.`,
+      csvBtbHead: ["Week", "Intake", "Shipped", "Ratio", "Completeness"],
+      csvBtbPrefix: "book-to-bill",
+      csvBtbComplete: "complete"
     }
   };
 
@@ -414,6 +483,8 @@
     if (v == null || v === "") return null;
     if (v instanceof Date) return new Date(v.getFullYear(), v.getMonth(), v.getDate());
     if (typeof v === "number" && v > 20000 && v < 80000) { const d = new Date(Math.round((v - 25569) * DAY)); return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()); }
+    const isoM = String(v).match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (isoM) return new Date(+isoM[1], +isoM[2] - 1, +isoM[3]);
     const m = String(v).match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
     return m ? new Date(+m[3], +m[2] - 1, +m[1]) : null;
   }
@@ -536,6 +607,436 @@
     };
   }
 
+  // ------------------------------------------------------------- book-to-bill & deliveries
+  // Pure: delivers shipments between P and S according to RULES.bookToBill.
+  // A = today's LS: lines in S; B = un-shipped lines from P that disappeared or reduced in S.
+  function deliveredBetween(P, S) {
+    let A = 0, B = 0, estimated = false;
+    const byCust = {}, byFamily = {};
+
+    if (S.lines) {
+      S.lines.filter(l => l.shipped).forEach(l => {
+        A += l.val;
+        const cid = String(l.custId);
+        byCust[cid] = (byCust[cid] || 0) + l.val;
+        if (l.family) byFamily[l.family] = (byFamily[l.family] || 0) + l.val;
+      });
+    } else if (S.btb) {
+      A = S.btb.shippedA ?? (S.shippedVal || 0);
+    } else {
+      A = S.shippedVal || 0;
+    }
+
+    if (P) {
+      if (!P.shippedKeys) {
+        estimated = true;
+      } else {
+        const pShippedSet = new Set(P.shippedKeys);
+        if (S.lines) {
+          const currKeyMap = new Map();
+          S.lines.forEach(l => currKeyMap.set(l.key, Math.round(l.val)));
+          for (const [k, valArr] of Object.entries(P.keys || {})) {
+            if (pShippedSet.has(k)) continue;
+            const prevVal = valArr[1];
+            const cid = valArr[2] != null ? String(valArr[2]) : null;
+            const fam = valArr[3] != null ? String(valArr[3]) : null;
+            if (!currKeyMap.has(k)) {
+              B += prevVal;
+              if (cid) byCust[cid] = (byCust[cid] || 0) + prevVal;
+              if (fam) byFamily[fam] = (byFamily[fam] || 0) + prevVal;
+            } else {
+              const currVal = currKeyMap.get(k);
+              if (currVal < prevVal) {
+                const diff = prevVal - currVal;
+                B += diff;
+                if (cid) byCust[cid] = (byCust[cid] || 0) + diff;
+                if (fam) byFamily[fam] = (byFamily[fam] || 0) + diff;
+              }
+            }
+          }
+        } else if (S.keys) {
+          for (const [k, valArr] of Object.entries(P.keys || {})) {
+            if (pShippedSet.has(k)) continue;
+            const prevVal = valArr[1];
+            const cid = valArr[2] != null ? String(valArr[2]) : null;
+            const fam = valArr[3] != null ? String(valArr[3]) : null;
+            if (!(k in S.keys)) {
+              B += prevVal;
+              if (cid) byCust[cid] = (byCust[cid] || 0) + prevVal;
+              if (fam) byFamily[fam] = (byFamily[fam] || 0) + prevVal;
+            } else {
+              const currVal = S.keys[k][1];
+              if (currVal < prevVal) {
+                const diff = prevVal - currVal;
+                B += diff;
+                if (cid) byCust[cid] = (byCust[cid] || 0) + diff;
+                if (fam) byFamily[fam] = (byFamily[fam] || 0) + diff;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    if (S.btb && !S.lines) {
+      return {
+        shipped: S.btb.shipped,
+        shippedA: S.btb.shippedA,
+        shippedB: S.btb.shippedB,
+        estimated: !!S.btb.estimated,
+        byCust: Object.fromEntries(Object.entries(S.btb.bByCust || {}).map(([c, [, s]]) => [c, s])),
+        byFamily: Object.fromEntries(Object.entries(S.btb.byFamily || {}).map(([f, [, s]]) => [f, s])),
+        valueOf() { return this.shipped; }
+      };
+    }
+
+    return {
+      shipped: A + B,
+      shippedA: A,
+      shippedB: B,
+      estimated,
+      byCust,
+      byFamily,
+      valueOf() { return this.shipped; }
+    };
+  }
+
+  // Pure: computes order intake entered in (p, d] for snapshot S with date d and previous P with date p.
+  function intakeBetween(P, S) {
+    if (S.btb && !S.lines) {
+      return {
+        intake: S.btb.intake,
+        intakeOrders: S.btb.intakeOrders,
+        byCust: Object.fromEntries(Object.entries(S.btb.bByCust || {}).map(([c, [i]]) => [c, i])),
+        byFamily: Object.fromEntries(Object.entries(S.btb.byFamily || {}).map(([f, [i]]) => [f, i])),
+        orders: S.btb.orders || [],
+        valueOf() { return this.intake; }
+      };
+    }
+
+    const d = S.reportDate instanceof Date ? S.reportDate : parseDate(S.reportDate || S.date);
+    const p = P ? (P.reportDate instanceof Date ? P.reportDate : parseDate(P.reportDate || P.date)) : null;
+    const lines = S.lines || [];
+    const ordersMap = {};
+    const byCust = {}, byFamily = {};
+
+    lines.forEach(l => {
+      const od = l.date instanceof Date ? l.date : parseDate(l.date);
+      if (!od) return;
+      const inWindow = p ? (+od > +p && +od <= +d) : (+od === +d);
+      if (!inWindow) return;
+
+      const cid = String(l.custId);
+      byCust[cid] = (byCust[cid] || 0) + l.orig;
+      if (l.family) byFamily[l.family] = (byFamily[l.family] || 0) + l.orig;
+
+      if (!ordersMap[l.order]) {
+        ordersMap[l.order] = {
+          order: l.order,
+          cust: l.cust,
+          custId: cid,
+          date: l.date instanceof Date ? l.date : od,
+          val: 0,
+          family: l.family || null
+        };
+      }
+      ordersMap[l.order].val += l.orig;
+    });
+
+    const orders = Object.values(ordersMap).sort((a, b) => b.val - a.val);
+    const intake = sum(orders, o => o.val);
+    const intakeOrders = orders.length;
+
+    return {
+      intake,
+      intakeOrders,
+      byCust,
+      byFamily,
+      orders,
+      valueOf() { return this.intake; }
+    };
+  }
+
+  // Pure: computes book-to-bill ratios, weekly series, top orders, and lumpiness notes.
+  function computeBookToBill(history, rd, view = {}) {
+    const cfg = RULES.bookToBill || {};
+    const rollingDays = cfg.rollingDays ?? 28;
+    const longRunDays = cfg.longRunDays ?? 91;
+    const minSnapshotsPerWeek = cfg.minSnapshotsPerWeek ?? 3;
+    const minHistoryDays = cfg.minHistoryDays ?? 14;
+    const bigOrderShare = cfg.bigOrderShare ?? 0.30;
+    const levels = cfg.levels || { clear: 1.0, low: 0.90, med: 0.75 };
+
+    const snaps = history?.snaps || {};
+    const rdIso = iso(rd);
+    const snapDates = Object.keys(snaps).filter(d => d <= rdIso).sort();
+    const historyCount = snapDates.length;
+    const hasHistory = historyCount >= minHistoryDays;
+
+    const hasFamilyData = snapDates.some(d => !!snaps[d]?.btb?.byFamily);
+    const familyFilter = view.family || null;
+    const famUnavailable = !hasFamilyData;
+    const familyAvailable = hasFamilyData;
+
+    let topCustId = null;
+    if (view.customer === "__xtop") {
+      const custVal = {};
+      snapDates.forEach(d => {
+        const bByCust = snaps[d]?.btb?.bByCust || {};
+        for (const [c, [, s]] of Object.entries(bByCust)) {
+          custVal[c] = (custVal[c] || 0) + s;
+        }
+      });
+      topCustId = Object.entries(custVal).sort((a, b) => b[1] - a[1])[0]?.[0];
+    }
+    const customerFilter = view.customer && view.customer !== "__all" ? view.customer : null;
+    let targetCustId = customerFilter;
+    if (customerFilter && customerFilter !== "__xtop") {
+      const cClean = cleanName(customerFilter);
+      if (DATA?.lines) {
+        const matched = DATA.lines.find(l => l.cust === customerFilter || cleanName(l.cust) === cClean || String(l.custId) === customerFilter);
+        if (matched) targetCustId = String(matched.custId);
+      }
+      if (!targetCustId || targetCustId === customerFilter) {
+        for (const d of snapDates) {
+          const orders = snaps[d]?.btb?.orders || [];
+          const o = orders.find(x => x.cust === customerFilter || cleanName(x.cust) === cClean || String(x.custId) === customerFilter);
+          if (o && o.custId) { targetCustId = String(o.custId); break; }
+        }
+      }
+    }
+
+    const getSnapIntakeShipped = snap => {
+      if (!snap) return { intake: 0, shipped: 0, estimated: false };
+      const btb = snap.btb;
+      const estimated = !!btb?.estimated;
+      if (!btb) {
+        return { intake: snap.intakeVal || 0, shipped: snap.shippedVal || 0, estimated: true };
+      }
+      if (customerFilter === "__xtop") {
+        let iSum = 0, sSum = 0;
+        for (const [c, [iVal, sVal]] of Object.entries(btb.bByCust || {})) {
+          if (c !== topCustId) { iSum += iVal; sSum += sVal; }
+        }
+        return { intake: iSum, shipped: sSum, estimated };
+      }
+      if (customerFilter) {
+        const pair = btb.bByCust?.[targetCustId] || btb.bByCust?.[customerFilter] || [0, 0];
+        return { intake: pair[0] || 0, shipped: pair[1] || 0, estimated };
+      }
+      if (familyFilter && hasFamilyData) {
+        const pair = btb.byFamily?.[familyFilter] || [0, 0];
+        return { intake: pair[0] || 0, shipped: pair[1] || 0, estimated };
+      }
+      return { intake: btb.intake || 0, shipped: btb.shipped || 0, estimated };
+    };
+
+    const currentSnap = snaps[rdIso];
+    const currentIntake = currentSnap ? getSnapIntakeShipped(currentSnap).intake : (DATA ? intakeBetween(previous(history, rd)?.snap, DATA).intake : 0);
+
+    const winStart4w = iso(new Date(rd.getFullYear(), rd.getMonth(), rd.getDate() - rollingDays));
+    const dates4w = snapDates.filter(d => d > winStart4w && d <= rdIso);
+    let intake4w = 0, shipped4w = 0, estimated4w = false;
+    const orders4wMap = {};
+
+    dates4w.forEach(d => {
+      const snap = snaps[d];
+      const res = getSnapIntakeShipped(snap);
+      intake4w += res.intake;
+      shipped4w += res.shipped;
+      if (res.estimated) estimated4w = true;
+      (snap.btb?.orders || []).forEach(o => {
+        if (customerFilter === "__xtop" && String(o.custId) === String(topCustId)) return;
+        if (customerFilter && customerFilter !== "__xtop") {
+          if (String(o.custId) !== String(targetCustId) && o.cust !== customerFilter && cleanName(o.cust) !== cleanName(customerFilter)) return;
+        }
+        if (familyFilter && hasFamilyData && o.family !== familyFilter) return;
+        if (!orders4wMap[o.order]) {
+          orders4wMap[o.order] = { order: o.order, cust: o.cust, custId: o.custId, date: parseDate(o.date) || o.date, val: 0 };
+        }
+        orders4wMap[o.order].val += o.val;
+      });
+    });
+
+    const orders4w = Object.values(orders4wMap).sort((a, b) => b.val - a.val);
+
+    let ratio4w = null, ratio4wStatus = "normal", level4w = "clear";
+    if (shipped4w === 0 && intake4w > 0) {
+      ratio4wStatus = "intake_only";
+      level4w = "clear";
+    } else if (shipped4w === 0 && intake4w === 0) {
+      ratio4wStatus = "zero";
+      level4w = "none";
+    } else {
+      ratio4w = intake4w / shipped4w;
+      level4w = ratio4w >= levels.clear ? "clear" : ratio4w >= levels.low ? "low" : ratio4w >= levels.med ? "med" : "high";
+    }
+
+    const rd7Iso = iso(new Date(rd.getFullYear(), rd.getMonth(), rd.getDate() - 7));
+    const winStart4w7 = iso(new Date(rd.getFullYear(), rd.getMonth(), rd.getDate() - rollingDays - 7));
+    const dates4w7 = snapDates.filter(d => d > winStart4w7 && d <= rd7Iso);
+    let deltaArrow = "";
+    if (dates4w7.length > 0 && ratio4w != null) {
+      let i7 = 0, s7 = 0;
+      dates4w7.forEach(d => {
+        const res = getSnapIntakeShipped(snaps[d]);
+        i7 += res.intake; s7 += res.shipped;
+      });
+      if (s7 > 0) {
+        const r7 = i7 / s7;
+        const diff = ratio4w - r7;
+        if (diff >= 0.005) deltaArrow = "▲";
+        else if (diff <= -0.005) deltaArrow = "▼";
+      }
+    }
+
+    const winStart13w = iso(new Date(rd.getFullYear(), rd.getMonth(), rd.getDate() - longRunDays));
+    const dates13w = snapDates.filter(d => d > winStart13w && d <= rdIso);
+    let intake13w = 0, shipped13w = 0;
+    dates13w.forEach(d => {
+      const res = getSnapIntakeShipped(snaps[d]);
+      intake13w += res.intake; shipped13w += res.shipped;
+    });
+    let ratio13w = null, ratio13wStatus = "normal";
+    if (shipped13w === 0 && intake13w > 0) ratio13wStatus = "intake_only";
+    else if (shipped13w === 0 && intake13w === 0) ratio13wStatus = "zero";
+    else ratio13w = intake13w / shipped13w;
+
+    const oldestDate = dates4w.length > 0 ? (parseDate(dates4w[0]) || rd) : rd;
+    const daysInWindow = Math.max(1, Math.round((rd - oldestDate) / DAY));
+    const weeksInWindow = Math.max(1, daysInWindow / 7);
+    const weeklyChange = (intake4w - shipped4w) / weeksInWindow;
+
+    let lumpiness = null;
+    if (intake4w > 0 && orders4w.length > 0) {
+      const topO = orders4w[0];
+      if (topO.val / intake4w > bigOrderShare) {
+        lumpiness = { order: topO.order, cust: topO.cust, val: topO.val, share: topO.val / intake4w };
+      }
+    }
+
+    const weeks = [];
+    const currDay = (rd.getDay() + 6) % 7;
+    const mondayCurr = new Date(rd.getFullYear(), rd.getMonth(), rd.getDate() - currDay);
+
+    for (let w = cfg.historyWeeks - 1; w >= 0; w--) {
+      const mon = new Date(+mondayCurr - w * 7 * DAY);
+      const sun = new Date(+mon + 6 * DAY);
+      const monIso = iso(mon), sunIso = iso(sun);
+      const weekSnaps = snapDates.filter(d => d >= monIso && d <= sunIso);
+      const isInProgress = w === 0 || sun >= rd;
+      let wIntake = 0, wShipped = 0, wEstimated = false;
+      weekSnaps.forEach(d => {
+        const res = getSnapIntakeShipped(snaps[d]);
+        wIntake += res.intake; wShipped += res.shipped;
+        if (res.estimated) wEstimated = true;
+      });
+      const snapCount = weekSnaps.length;
+      const isIncomplete = snapCount < minSnapshotsPerWeek || wEstimated;
+
+      let wRatio = null, wStatus = "normal";
+      if (wShipped === 0 && wIntake > 0) wStatus = "intake_only";
+      else if (wShipped === 0 && wIntake === 0) wStatus = "zero";
+      else wRatio = wIntake / wShipped;
+
+      const dt = new Date(mon.getTime());
+      dt.setDate(dt.getDate() + 3);
+      const w1 = new Date(dt.getFullYear(), 0, 4);
+      const wNum = 1 + Math.round(((dt.getTime() - w1.getTime()) / DAY - 3 + (w1.getDay() + 6) % 7) / 7);
+      const label = (LANG === "de" ? "KW " : "Wk ") + wNum;
+
+      weeks.push({
+        label,
+        weekNum: wNum,
+        mon,
+        sun,
+        intake: wIntake,
+        shipped: wShipped,
+        ratio: wRatio,
+        status: wStatus,
+        isInProgress,
+        isIncomplete,
+        snapCount
+      });
+    }
+
+    const heroRatio = !hasHistory ? tf("btbUnavailable", minHistoryDays, historyCount)
+                    : ratio4wStatus === "intake_only" ? T("btbIntakeOnly")
+                    : ratio4wStatus === "zero" ? "–"
+                    : nf(ratio4w, 2);
+
+    const subRatio = !hasHistory ? tf("btbUnavailable", minHistoryDays, historyCount)
+                   : ratio13wStatus === "intake_only" ? T("btbIntakeOnly")
+                   : ratio13wStatus === "zero" ? "–"
+                   : nf(ratio13w, 2);
+
+    let sentence = "";
+    if (!hasHistory) {
+      sentence = tf("btbUnavailable", minHistoryDays, historyCount);
+    } else {
+      const pctVal = ratio4w != null ? Math.round(ratio4w * 100) : null;
+      let changeText = "";
+      if (weeklyChange < -10) {
+        changeText = tf("btbShrinking", eur(Math.abs(weeklyChange)));
+      } else if (weeklyChange > 10) {
+        changeText = tf("btbGrowing", eur(weeklyChange));
+      } else {
+        changeText = T("btbStable");
+      }
+      if (pctVal != null) {
+        sentence = tf("btbCoverSentence", pctVal, changeText, weeksInWindow < 1 ? T("btbUnderOneWeekNote") : "");
+      } else if (ratio4wStatus === "intake_only") {
+        sentence = T("btbIntakeOnly") + ". " + changeText;
+      } else {
+        sentence = "–. " + changeText;
+      }
+    }
+
+    return {
+      hasHistory,
+      historyCount,
+      minHistoryDays,
+      level: hasHistory ? level4w : "none",
+      ratio4w,
+      ratio4wStatus,
+      heroRatio,
+      ratio13w,
+      ratio13wStatus,
+      subRatio,
+      deltaArrow,
+      weeklyChange,
+      weeksInWindow,
+      sentence,
+      lumpiness,
+      bigOrder: lumpiness,
+      bigOrderShare: lumpiness ? lumpiness.share : 0,
+      topOrders: orders4w.slice(0, 5),
+      weeks,
+      familyAvailable,
+      famUnavailable,
+      orders: orders4w,
+      currentIntake,
+      intake4w,
+      shipped4w
+    };
+  }
+
+  function buildBtbCsv(btb, rd) {
+    const head = T("csvBtbHead");
+    const rows = (btb.weeks || []).map(w => {
+      const compLabel = w.isInProgress ? T("btbInProgress") : (w.isIncomplete ? T("btbIncomplete") : T("csvBtbComplete"));
+      const ratioStr = w.status === "intake_only" ? T("btbIntakeOnly") : (w.ratio != null ? nf(w.ratio, 2) : "–");
+      return [
+        w.label,
+        Math.round(w.intake),
+        Math.round(w.shipped),
+        ratioStr,
+        compLabel
+      ];
+    });
+    return "\ufeff" + [head, ...rows].map(r => r.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(";")).join("\r\n");
+  }
+
   function computeOutlook(lines, rd, filter, history) {
     let L = lines;
     const custTotals = {};
@@ -626,21 +1127,13 @@
           const prevSnap = snaps[prevDate];
           const currSnap = snaps[currDate];
           const prevKeys = prevSnap?.keys || {};
-          const currKeys = currSnap?.keys || {};
 
-          for (const [k, [dueIso, prevVal]] of Object.entries(prevKeys)) {
+          for (const [, [dueIso, prevVal]] of Object.entries(prevKeys)) {
             if (dueIso && dueIso <= currDate) {
               totalDue += prevVal;
             }
-            if (!(k in currKeys)) {
-              totalDelivered += prevVal;
-            } else {
-              const currVal = currKeys[k][1];
-              if (currVal < prevVal) {
-                totalDelivered += (prevVal - currVal);
-              }
-            }
           }
+          totalDelivered += deliveredBetween(prevSnap, currSnap).shipped;
         }
 
         if (totalDue > 0) {
@@ -662,32 +1155,44 @@
     const rdYear = rd.getFullYear(), rdMonth = rd.getMonth();
     const monthEnd = new Date(rdYear, rdMonth + 1, 0);
 
-    let monthDeliveredPrior = 0;
-    for (let i = 1; i < snapDates.length; i++) {
-      const prevDate = snapDates[i - 1];
+    let filterCustId = null;
+    if (filter && filter !== "__all" && filter !== "__xtop") {
+      const match = lines.find(l => l.cust === filter);
+      if (match) filterCustId = String(match.custId);
+    }
+    const custTotalsLanding = {};
+    if (filter === "__xtop") {
+      lines.filter(l => !l.shipped).forEach(l => custTotalsLanding[l.custId] = (custTotalsLanding[l.custId] || 0) + l.val);
+      const top3CustIds = Object.entries(custTotalsLanding).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([c]) => String(c));
+      filterCustId = top3CustIds;
+    }
+
+    let monthDelivered = 0;
+    for (let i = 0; i < snapDates.length; i++) {
       const currDate = snapDates[i];
       if (currDate > rdIso) continue;
       const cD = new Date(currDate + "T00:00:00");
       if (cD.getFullYear() !== rdYear || cD.getMonth() !== rdMonth) continue;
 
-      const prevSnap = snaps[prevDate];
       const currSnap = snaps[currDate];
-      const prevKeys = prevSnap?.keys || {};
-      const currKeys = currSnap?.keys || {};
+      const prevDate = i > 0 ? snapDates[i - 1] : null;
+      const prevSnap = prevDate ? snaps[prevDate] : null;
 
-      for (const [k, [, prevVal]] of Object.entries(prevKeys)) {
-        if (!(k in currKeys)) {
-          monthDeliveredPrior += prevVal;
-        } else {
-          const currVal = currKeys[k][1];
-          if (currVal < prevVal) monthDeliveredPrior += (prevVal - currVal);
+      const del = (currDate === rdIso && lines)
+        ? deliveredBetween(prevSnap, { lines, reportDate: rd })
+        : deliveredBetween(prevSnap, currSnap);
+
+      if (filter === "__all") {
+        monthDelivered += del.shipped;
+      } else if (Array.isArray(filterCustId)) {
+        for (const [c, s] of Object.entries(del.byCust || {})) {
+          if (!filterCustId.includes(c)) monthDelivered += s;
         }
+      } else if (filterCustId && del.byCust) {
+        monthDelivered += (del.byCust[filterCustId] || 0);
       }
     }
-
-    // Legacy snapshots have no customer identity. Filtered month-to-date
-    // shipments use today's known customer lines and are marked partial.
-    const shippedMonthToDate = (filter === "__all" ? monthDeliveredPrior : 0) + shippedTodayVal;
+    const shippedMonthToDate = monthDelivered;
 
     let firstWorkingDay = new Date(rdYear, rdMonth, 1);
     if (firstWorkingDay.getDay() === 0) firstWorkingDay.setDate(2);
@@ -768,9 +1273,15 @@
     const h = store.get(LS_HISTORY, { snaps: {} });
     const d = iso(data.reportDate);
     const keys = {};
-    data.lines.forEach(l => keys[l.key] = [l.due ? iso(l.due) : null, Math.round(l.val)]);
+    const hasFamily = data.lines.some(l => !!l.family);
+    data.lines.forEach(l => {
+      keys[l.key] = [l.due ? iso(l.due) : null, Math.round(l.val), String(l.custId), l.family || null];
+    });
 
-    const prevSnap = previous(h, data.reportDate)?.snap;
+    const shippedKeys = data.lines.filter(l => l.shipped).map(l => l.key);
+
+    const prev = previous(h, data.reportDate);
+    const prevSnap = prev ? { ...prev.snap, date: prev.date, reportDate: prev.date } : null;
     const prevKeys = prevSnap?.keys || {};
     const accounts = {};
     const keyIds = new Set(getKeyAccounts(data.lines).map(a => String(a.id)));
@@ -809,7 +1320,62 @@
       }
     });
 
-    h.snaps[d] = { openVal: m.openVal, lateVal: m.lateVal, shippedVal: m.shippedVal, intakeVal: m.intakeVal, undatedPct: m.undatedPct, keys, accounts };
+    const del = deliveredBetween(prevSnap, data);
+    const intk = intakeBetween(prevSnap, data);
+
+    const bByCust = {};
+    const allCustIds = new Set([...Object.keys(del.byCust || {}), ...Object.keys(intk.byCust || {})]);
+    allCustIds.forEach(cid => {
+      const iVal = intk.byCust?.[cid] || 0;
+      const sVal = del.byCust?.[cid] || 0;
+      if (iVal > 0 || sVal > 0) {
+        bByCust[cid] = [Math.round(iVal), Math.round(sVal)];
+      }
+    });
+
+    const btb = {
+      intake: Math.round(intk.intake),
+      intakeOrders: intk.intakeOrders,
+      shipped: Math.round(del.shipped),
+      shippedA: Math.round(del.shippedA),
+      shippedB: Math.round(del.shippedB),
+      bByCust,
+      orders: (intk.orders || []).map(o => ({
+        order: o.order,
+        cust: o.cust,
+        custId: o.custId,
+        date: o.date instanceof Date ? iso(o.date) : o.date,
+        val: Math.round(o.val),
+        family: o.family || null
+      }))
+    };
+    if (del.estimated) btb.estimated = true;
+    if (hasFamily) {
+      const byFamily = {};
+      const allFams = new Set([...Object.keys(del.byFamily || {}), ...Object.keys(intk.byFamily || {})]);
+      allFams.forEach(fam => {
+        const iVal = intk.byFamily?.[fam] || 0;
+        const sVal = del.byFamily?.[fam] || 0;
+        if (iVal > 0 || sVal > 0) {
+          byFamily[fam] = [Math.round(iVal), Math.round(sVal)];
+        }
+      });
+      btb.byFamily = byFamily;
+    }
+
+    h.snaps[d] = {
+      date: d,
+      reportDate: d,
+      openVal: m.openVal,
+      lateVal: m.lateVal,
+      shippedVal: m.shippedVal,
+      intakeVal: m.intakeVal,
+      undatedPct: m.undatedPct,
+      keys,
+      shippedKeys,
+      accounts,
+      btb
+    };
     const dates = Object.keys(h.snaps).sort();
     while (dates.length > RULES.historyDays) delete h.snaps[dates.shift()];
     while (!store.set(LS_HISTORY, h) && dates.length > 1) delete h.snaps[dates.shift()]; // storage full: drop oldest
@@ -831,12 +1397,13 @@
 
   // ------------------------------------------------------------- render
   let DATA = null;
-  let VIEW = { customer: null, period: null, order: null, sc: null };
+  let VIEW = { customer: null, period: null, order: null, sc: null, btb: false };
   let TABLE_ALL = false, WATCH_OPEN = null, WATCH_ALL = false;
   let FILTER_DATA = null, FILTER_LANG = null, STATIC_LANG = null;
   let OUTLOOK_DATA = null, OUTLOOK_CUSTOMER = null, OUTLOOK_LANG = null;
   let DRAWER_RETURN = null, DRAWER_OVERFLOW = "", HASH_LOADED = false;
   let SCORECARD_RETURN = null, SCORECARD_OVERFLOW = "";
+  let BTB_RETURN = null, BTB_OVERFLOW = "";
   const monthKey = d => iso(d).slice(0, 7);
   const daysBetween = (a, b) => Math.round((Date.UTC(a.getFullYear(), a.getMonth(), a.getDate()) - Date.UTC(b.getFullYear(), b.getMonth(), b.getDate())) / DAY);
   const periodName = p => p === "late" ? T("vLate") : p === "undated" ? T("vUnd") : monthName(+p.slice(5) - 1, +p.slice(0, 4), true);
@@ -869,7 +1436,7 @@
   }
 
   function validateView(v) {
-    if (!DATA) return { ...v };
+    if (!DATA) return { ...v, btb: !!v.btb };
     const { lines, reportDate: rd } = DATA;
     const customer = v.customer === "__xtop"
       ? (uniq(lines.filter(l => !l.shipped), l => l.cust) > 3 ? "__xtop" : null)
@@ -880,12 +1447,19 @@
     const order = lines.some(l => String(l.order) === String(v.order)) ? String(v.order) : null;
     const keyAccs = getKeyAccounts(lines);
     const sc = v.sc && (keyAccs.some(a => String(a.id) === String(v.sc)) || lines.some(l => String(l.custId) === String(v.sc))) ? String(v.sc) : null;
-    return { customer, period, order, sc };
+    const btb = !!v.btb;
+    return { customer, period, order, sc, btb };
   }
 
   function readHash() {
     const params = new URLSearchParams(location.hash.slice(1));
-    return { customer: params.get("c"), period: params.get("p"), order: params.get("o"), sc: params.get("sc") };
+    return {
+      customer: params.get("c"),
+      period: params.get("p"),
+      order: params.get("o"),
+      sc: params.get("sc"),
+      btb: params.get("btb") === "1" || params.get("btb") === "true"
+    };
   }
 
   function applyView(changes, navigation = "auto") {
@@ -893,16 +1467,18 @@
     VIEW = validateView({ ...VIEW, ...changes });
     const filterChanged = old.customer !== VIEW.customer || old.period !== VIEW.period;
     const scChanged = old.sc !== VIEW.sc;
+    const btbChanged = old.btb !== VIEW.btb;
     if (filterChanged) { TABLE_ALL = false; WATCH_OPEN = null; WATCH_ALL = false; }
     const params = new URLSearchParams();
     if (VIEW.customer) params.set("c", VIEW.customer);
     if (VIEW.period) params.set("p", VIEW.period);
     if (VIEW.order) params.set("o", VIEW.order);
     if (VIEW.sc) params.set("sc", VIEW.sc);
+    if (VIEW.btb) params.set("btb", "1");
     const hash = params.toString().replace(/\+/g, "%20");
     const url = location.pathname + location.search + (hash ? "#" + hash : "");
     if (navigation !== "pop") {
-      const isPush = navigation === "push" || (navigation === "auto" && (filterChanged || (scChanged && VIEW.sc && !old.sc)));
+      const isPush = navigation === "push" || (navigation === "auto" && (filterChanged || (scChanged && VIEW.sc && !old.sc) || (btbChanged && VIEW.btb && !old.btb)));
       window.history[isPush ? "pushState" : "replaceState"](null, "", url);
     }
     if (DATA) {
@@ -910,10 +1486,13 @@
       else $("#filter").value = VIEW.customer || "__all";
       const onlyDrawer = Object.keys(changes).length === 1 && "order" in changes;
       const onlyScorecard = Object.keys(changes).length === 1 && "sc" in changes;
+      const onlyBtb = Object.keys(changes).length === 1 && "btb" in changes;
       if (onlyDrawer) {
         renderOrderDrawer();
       } else if (onlyScorecard) {
         renderScorecardSheet();
+      } else if (onlyBtb) {
+        renderBtbSheet();
       } else {
         render();
       }
@@ -991,6 +1570,8 @@
     $("#snapshot").innerHTML = `${T("snapshot")} <strong>${fmtDate(rd)}</strong>`;
     const scope = VIEW.customer === "__xtop" ? tf("scopeOne", T("otherGroup")) : VIEW.customer ? tf("scopeOne", shortName(VIEW.customer)) : "";
 
+    const btbMain = computeBookToBill(hist, rd, VIEW);
+
     const topLate = m.lateByCust[0];
     const lateShare = m.lateVal && topLate ? topLate.late / m.lateVal * 100 : 0;
     const h1 = m.lateVal > 0 ? tf("h1Late", eur(m.openVal), scope, eur(m.lateVal)) : tf("h1Ok", eur(m.openVal), scope);
@@ -998,6 +1579,9 @@
     if (m.lateVal > 0 && topLate) s.push(lateShare > 99.5 ? tf("lateAll", topLate.short) : tf("lateShare", pct(lateShare, 0), topLate.short));
     s.push(m.in7Val > 0 ? tf("due7", eur(m.in7Val)) : tf("due7none", m.lateVal > 0));
     s.push(tf("todayLine", m.notes, eur(m.shippedVal), m.intakeOrders, eur(m.intakeVal)));
+    if (btbMain.hasHistory && (btbMain.level === "med" || btbMain.level === "high") && btbMain.ratio4w != null) {
+      s.push(tf("verdictBtb", pct(btbMain.ratio4w * 100, 0)));
+    }
     $("#verdict").innerHTML = `<h1>${esc(h1)}</h1><p>${esc(s.join(" "))}</p>` +
       (!store.get("dopk.hint.v1", false) ? `<div class="drill-hint no-print"><span>${T("drillHint")}</span><button type="button" class="text-action" data-action="dismiss-hint" aria-label="${T("dismiss")}">×</button></div>` : "");
     renderBreadcrumb();
@@ -1011,11 +1595,30 @@
         `<div class="vital-head"><span class="vital-label">${lbl}</span>${chipHTML(lvl)}</div>` +
         `<span class="vital-value">${value}</span><div class="vital-sub">${sub}</div>${extra}</${tag}>`;
     };
+
+    const prevD = prev?.date ? (parseDate(prev.date) || new Date(prev.date + "T00:00:00")) : null;
+    const daysSincePrev = prevD ? daysBetween(rd, prevD) : null;
+    const btbSubText = (daysSincePrev != null && daysSincePrev > 1) ? tf("btbSince", fmtDate(prevD)) : T("today");
+    const btbRatioStr = !btbMain.hasHistory
+      ? tf("btbUnavailable", btbMain.minHistoryDays, btbMain.historyCount)
+      : btbMain.ratio4wStatus === "intake_only"
+      ? T("btbIntakeOnly")
+      : btbMain.ratio4w != null
+      ? nf(btbMain.ratio4w, 2)
+      : "–";
+    const btbSecondLine = `<div class="vital-subline">${esc(tf("btbSubLine", 4, btbRatioStr))}${btbMain.deltaArrow ? ` ${btbMain.deltaArrow}` : ""}</div>`;
+
+    const intakeVital = `<button type="button" class="vital" data-kind="btb" data-level="${btbMain.level}" data-action="btb" aria-haspopup="dialog">` +
+      `<div class="vital-head"><span class="vital-label">${T("vIn")}</span>${chipHTML(btbMain.level)}</div>` +
+      `<span class="vital-value">${eur(btbMain.currentIntake)}</span>` +
+      `<div class="vital-sub">${btbSubText}</div>` +
+      `${btbSecondLine}</button>`;
+
     $("#vitals").innerHTML = [
       vit(T("vOpen"), "low", eur(m.openVal), `${tf("sOpen", m.openLines, m.openOrders)} ${deltaHTML(m.openVal, P?.openVal, false)}`, unfiltered ? spark(hist, "openVal") : "", "open"),
       vit(T("vLate"), lateLvl, eur(m.lateVal), `${tf("sLate", pct(m.latePct), m.late.length)} ${deltaHTML(m.lateVal, P?.lateVal, true)}`, "", "late"),
       vit(T("vShip"), otLvl, eur(m.shippedVal), tf("sShip", m.notes, m.onTimePct == null ? null : pct(m.onTimePct, 0)), "", "shipped"),
-      vit(T("vIn"), "low", eur(m.intakeVal), tf("sIn", m.intakeOrders, m.intakeCusts), "", "intake"),
+      intakeVital,
       vit(T("vUnd"), undLvl, pct(m.undatedPct, 0), tf("sUnd", eur(m.undatedVal), m.undated.length), "", "undated")
     ].join("");
     if (OUTLOOK_DATA !== DATA || OUTLOOK_CUSTOMER !== VIEW.customer || OUTLOOK_LANG !== LANG) {
@@ -1029,6 +1632,7 @@
     renderWatch(m, cmp, prev);
     renderScorecardSheet();
     renderOrderDrawer();
+    renderBtbSheet();
     $("#foot-file").textContent = `${DATA.fileName || "DOPK export"} · ${tf("linesRead", lines.length)}`;
     $("#app").hidden = false; $("#empty").hidden = true;
   }
@@ -1604,8 +2208,39 @@
     const relT = cfg.reliabilityTarget || { med: 90, high: 80 };
     const reliabilityLevel = reliabilityPct == null ? "none" : reliabilityPct < relT.high ? "high" : reliabilityPct < relT.med ? "med" : "clear";
 
-    // overall chip: worst available level
+    // book-to-bill for this account (4 weeks rolling)
+    const btbCfg = RULES.bookToBill || {};
+    const minBtbHistoryDays = btbCfg.minHistoryDays ?? 14;
+    const hasBtbHistory = historyCount >= minBtbHistoryDays;
+    let btbIntakeAcc = 0, btbShippedAcc = 0;
+    winDates.forEach(d => {
+      const pair = snaps[d]?.btb?.bByCust?.[idStr];
+      if (pair) {
+        btbIntakeAcc += pair[0] || 0;
+        btbShippedAcc += pair[1] || 0;
+      }
+    });
+
+    let btbRatio = null, btbRatioDisplay = "", btbLevel = "none";
+    if (!hasBtbHistory) {
+      btbRatioDisplay = tf("btbUnavailable", minBtbHistoryDays, historyCount);
+      btbLevel = "none";
+    } else if (btbShippedAcc === 0 && btbIntakeAcc > 0) {
+      btbRatioDisplay = T("btbIntakeOnly");
+      btbLevel = "clear";
+    } else if (btbShippedAcc === 0 && btbIntakeAcc === 0) {
+      btbRatioDisplay = "–";
+      btbLevel = "none";
+    } else {
+      btbRatio = btbIntakeAcc / btbShippedAcc;
+      btbRatioDisplay = nf(btbRatio, 2);
+      const btbLevels = btbCfg.levels || { clear: 1.0, low: 0.90, med: 0.75 };
+      btbLevel = btbRatio >= btbLevels.clear ? "clear" : btbRatio >= btbLevels.low ? "low" : btbRatio >= btbLevels.med ? "med" : "high";
+    }
+
+    // overall chip: worst available level (btbLevel participates once minHistoryDays is reached)
     const levels = [lateLevel, undatedLevel, coverLevel, onTimeLevel, reliabilityLevel];
+    if (hasBtbHistory && btbLevel !== "none") levels.push(btbLevel);
     const overallLevel = ["high", "med", "low"].find(x => levels.includes(x)) || "clear";
 
     // action list: largest late lines, then lines moved 2+ times, then close-out orders (max 5)
@@ -1640,6 +2275,8 @@
       lateVal, lateLines: lateLines.length, latePct, lateLevel,
       undatedVal, undatedLines: undatedLines.length, undatedPct, undatedLevel,
       coverMonth, coverMonths, coverLevel, sched30, sched90,
+      btbRatio, btbRatioDisplay, btbLevel,
+      btb4w: { ratio: btbRatio, display: btbRatioDisplay, level: btbLevel, intake: btbIntakeAcc, shipped: btbShippedAcc, intake4w: btbIntakeAcc, shipped4w: btbShippedAcc },
       minHistoryDays, historyCount, hasHistory,
       onTime: { available: onTimeAvailable, pct: onTimePct, linePct: onTimeLinePct, ships: shipLines, val: shipVal, level: onTimeLevel },
       reliability: { available: reliabilityAvailable, pct: reliabilityPct, moved: movedKeys.length, open: openLines.length, twice: movedTwice.length, level: reliabilityLevel },
@@ -1680,7 +2317,7 @@
       vital(T("vOpen"), "none", esc(eur(a.openVal)), `${esc(tf("sOpen", a.openLines, a.openOrders))} ${deltaHTML(a.openVal, a.prevOpen, false)}`) +
       vital(T("vLate"), a.lateLevel, esc(eur(a.lateVal)), `${esc(tf("scSubOverdue", pct(a.latePct), a.lateLines))} ${deltaHTML(a.lateVal, a.prevLate, true)}`) +
       vital(T("vUnd"), a.undatedLevel, esc(pct(a.undatedPct)), esc(tf("scSubUndated", eur(a.undatedVal), a.undatedLines))) +
-      vital(T("scCoverTitle"), a.coverLevel, esc(a.coverMonth ? tf("scMonthsVal", nf(a.coverMonths, 1)) : "0"), esc(list)) +
+      vital(T("scCoverTitle"), a.coverLevel, esc(a.coverMonth ? tf("scMonthsVal", nf(a.coverMonths, 1)) : "0"), esc(list) + (a.btbRatioDisplay ? `<div class="sc-btb-line" data-level="${a.btbLevel}">${esc(tf("scBtbRatio", 4, a.btbRatioDisplay))}</div>` : "")) +
       vital(T("scOnTimeTitle"), a.onTime.level, esc(a.onTime.available ? pct(a.onTime.pct, 0) : "–"),
         a.onTime.available ? esc(tf("scSubOnTime", a.onTime.ships, eurFull(a.onTime.val), pct(a.onTime.linePct, 0))) : unavailable) +
       vital(T("scReliabilityTitle"), a.reliability.level, esc(a.reliability.available ? pct(a.reliability.pct, 0) : "–"),
@@ -1775,6 +2412,204 @@
     }
   }
 
+  function renderBtb(btb) {
+    if (!btb || !$("#btb-sheet")) return;
+    const rd = DATA?.reportDate || new Date();
+    $("#btb-title").textContent = T("btbTitle");
+    $("#btb-chip").innerHTML = chipHTML(btb.level);
+    const scope = btb.customer ? (btb.customer === "__xtop" ? tf("scopeOne", T("otherGroup")) : tf("scopeOne", shortName(btb.customer))) : "";
+    $("#btb-subtitle").textContent = scope ? tf("btbScopeNote", scope) : "";
+
+    const ratio4wStr = !btb.hasHistory
+      ? tf("btbUnavailable", btb.minHistoryDays, btb.historyCount)
+      : btb.ratio4wStatus === "intake_only"
+      ? T("btbIntakeOnly")
+      : btb.ratio4w != null
+      ? nf(btb.ratio4w, 2)
+      : "–";
+
+    const ratio13wStr = !btb.hasHistory
+      ? tf("btbUnavailable", btb.minHistoryDays, btb.historyCount)
+      : btb.ratio13wStatus === "intake_only"
+      ? T("btbIntakeOnly")
+      : btb.ratio13w != null
+      ? nf(btb.ratio13w, 2)
+      : "–";
+
+    const hero = `
+      <div class="btb-hero" role="group" aria-label="${esc(T("btbTitle"))}">
+        <div class="btb-hero-stat">
+          <span class="btb-hero-label">${esc(tf("btbRatioLong", 4, ""))}</span>
+          <span class="btb-hero-val" data-level="${btb.level}">${esc(ratio4wStr)}</span>
+        </div>
+        <div class="btb-hero-stat">
+          <span class="btb-hero-label">${esc(tf("btbRatioLong", 13, ""))}</span>
+          <span class="btb-hero-val">${esc(ratio13wStr)}</span>
+        </div>
+      </div>
+    `;
+
+    let sentence = "";
+    if (!btb.hasHistory) {
+      sentence = tf("btbUnavailable", btb.minHistoryDays, btb.historyCount);
+    } else if (btb.ratio4wStatus === "intake_only") {
+      sentence = tf("btbCoverSentence", "–", tf("btbGrowing", eur(btb.weeklyChange)));
+    } else if (btb.ratio4w != null) {
+      const pctCover = Math.round(btb.ratio4w * 100);
+      const chgText = btb.weeklyChange < -1 ? tf("btbShrinking", eur(Math.abs(btb.weeklyChange))) : btb.weeklyChange > 1 ? tf("btbGrowing", eur(btb.weeklyChange)) : T("btbStable");
+      const noteText = btb.isUnderOneWeek ? T("btbUnderOneWeekNote") : "";
+      sentence = tf("btbCoverSentence", pctCover, chgText, noteText);
+    } else {
+      sentence = T("btbStable");
+    }
+
+    const narrative = `<p class="btb-narrative">${esc(sentence)}</p>`;
+    const lumpiness = btb.lumpiness
+      ? `<p class="btb-lump-note btb-lumpiness-note">${esc(tf("btbLumpiness", btb.lumpiness.order, btb.lumpiness.short || shortName(btb.lumpiness.cust), eur(btb.lumpiness.val)))}</p>`
+      : "";
+    const famNote = (btb.famUnavailable || !btb.familyAvailable)
+      ? `<p class="panel-note btb-fam-note">${esc(T("btbFamUnavailable"))}</p>`
+      : "";
+
+    // Chart SVG
+    const weeks = btb.weeks || [];
+    const svgW = 580, svgH = 160;
+    const padL = 16, padR = 16, padT = 24, padB = 34;
+    const uw = svgW - padL - padR;
+    const uh = svgH - padT - padB;
+    const yBase = padT + uh;
+    const count = Math.max(weeks.length, 1);
+    const step = uw / count;
+    const barW = Math.max(4, Math.min(14, Math.floor((step - 6) / 2)));
+    const maxVal = Math.max(1, ...weeks.map(w => Math.max(w.intake || 0, w.shipped || 0)));
+
+    const chartCols = weeks.map((w, i) => {
+      const xCenter = padL + (i + 0.5) * step;
+      const xIntake = xCenter - barW - 1;
+      const xShipped = xCenter + 1;
+      const hIntake = Math.round(((w.intake || 0) / maxVal) * uh);
+      const hShipped = Math.round(((w.shipped || 0) / maxVal) * uh);
+      const yIntake = yBase - hIntake;
+      const yShipped = yBase - hShipped;
+
+      const rText = !w.hasData
+        ? "–"
+        : w.ratioStatus === "intake_only"
+        ? "+"
+        : w.ratio != null
+        ? nf(w.ratio, 2)
+        : "–";
+
+      const opacity = w.isIncomplete ? ` opacity="0.45"` : "";
+      const inProgLabel = w.isInProgress ? `<text x="${xCenter}" y="${yBase + 24}" class="btb-axis-sub" text-anchor="middle">${esc(T("btbInProgress"))}</text>` : "";
+
+      return `
+        <g class="btb-week-col"${opacity}>
+          <text x="${xCenter}" y="${padT - 6}" class="btb-bar-label" text-anchor="middle">${esc(rText)}</text>
+          <rect x="${xIntake}" y="${yIntake}" width="${barW}" height="${hIntake}" fill="var(--graphite, #263238)" rx="1"/>
+          <rect x="${xShipped}" y="${yShipped}" width="${barW}" height="${hShipped}" fill="var(--alarm-low, #4a7c59)" rx="1"/>
+          <text x="${xCenter}" y="${yBase + 12}" class="btb-axis-label" text-anchor="middle">${esc(w.label)}</text>
+          ${inProgLabel}
+        </g>
+      `;
+    }).join("");
+
+    const chartAria = tf("btbChartAria", ratio4wStr, ratio13wStr);
+    const chart = `
+      <section class="btb-section" aria-labelledby="btb-h-chart">
+        <h3 id="btb-h-chart" class="sr-only">${esc(T("btbChartTitle"))}</h3>
+        <div class="btb-chart-wrap" role="img" aria-label="${esc(chartAria)}">
+          <svg class="btb-chart-svg" viewBox="0 0 ${svgW} ${svgH}" preserveAspectRatio="xMidYMid meet">
+            <line x1="${padL}" y1="${yBase}" x2="${svgW - padR}" y2="${yBase}" stroke="var(--ink-faint)" stroke-width="1"/>
+            ${chartCols}
+          </svg>
+          <div class="legend">
+            <span><i style="background:var(--graphite, #263238)"></i>${esc(T("btbIntake"))}</span>
+            <span><i style="background:var(--alarm-low, #4a7c59)"></i>${esc(T("btbShipped"))}</span>
+          </div>
+        </div>
+      </section>
+    `;
+
+    // Top 5 orders
+    let ordersHtml = "";
+    const topOrdersList = btb.topOrders || btb.orders || [];
+    if (topOrdersList.length > 0) {
+      ordersHtml = `
+        <section class="btb-section" aria-labelledby="btb-h-orders">
+          <h3 id="btb-h-orders">${esc(T("btbTopOrdersTitle"))}</h3>
+          <table class="data btb-orders-table">
+            <thead>
+              <tr>
+                <th>${esc(T("thOrder"))}</th>
+                <th>${esc(T("thCust"))}</th>
+                <th>${esc(T("orderDate"))}</th>
+                <th class="num">${esc(T("thVal"))}</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${topOrdersList.slice(0, 5).map(o => `
+                <tr>
+                  <td><button type="button" class="text-action order-link" data-action="order" data-value="${esc(o.order)}" aria-haspopup="dialog">${esc(o.order)}</button></td>
+                  <td class="clip" title="${esc(o.cust || o.short)}">${esc(o.short || o.cust)}</td>
+                  <td>${fmtDate(o.date)}</td>
+                  <td class="num font-bold">${esc(eurFull(o.val))}</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        </section>
+      `;
+    } else {
+      ordersHtml = `
+        <section class="btb-section" aria-labelledby="btb-h-orders">
+          <h3 id="btb-h-orders">${esc(T("btbTopOrdersTitle"))}</h3>
+          <p class="panel-note">${esc(T("btbNoOrders"))}</p>
+        </section>
+      `;
+    }
+
+    $("#btb-body").innerHTML = hero + narrative + lumpiness + famNote + chart + ordersHtml;
+  }
+
+  function renderBtbSheet() {
+    const dlg = $("#btb-sheet");
+    if (!dlg) return;
+    if (!VIEW.btb || !DATA) {
+      if (dlg.open) {
+        dlg.close(); document.body.style.overflow = BTB_OVERFLOW;
+        const origin = BTB_RETURN;
+        const target = origin?.isConnected ? origin : document.querySelector('[data-action="btb"]');
+        (target || $("#filter")).focus(); BTB_RETURN = null;
+      }
+      return;
+    }
+    const hist = store.get(LS_HISTORY, { snaps: {} });
+    renderBtb(computeBookToBill(hist, DATA.reportDate, VIEW));
+    if (!dlg.open) {
+      BTB_OVERFLOW = document.body.style.overflow;
+      dlg.showModal(); document.body.style.overflow = "hidden";
+      $("#btb-close").focus();
+    }
+  }
+
+  function exportBtbCsv() {
+    if (!DATA) return;
+    const hist = store.get(LS_HISTORY, { snaps: {} });
+    const btb = computeBookToBill(hist, DATA.reportDate, VIEW);
+    const csv = buildBtbCsv(btb, DATA.reportDate);
+    const prefix = T("csvBtbPrefix");
+    const filename = `${prefix}_${iso(DATA.reportDate)}.csv`;
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+
   function handleAction(e) {
     const target = e.target.closest?.("[data-action]");
     if (!target) return;
@@ -1788,7 +2623,7 @@
     else if (action === "period") applyView({ period: VIEW.period === value ? null : value });
     else if (action === "remove-customer") applyView({ customer: null });
     else if (action === "remove-period") applyView({ period: null });
-    else if (action === "reset") applyView({ customer: null, period: null, order: null });
+    else if (action === "reset") applyView({ customer: null, period: null, order: null, sc: null, btb: false });
     else if (action === "order") { DRAWER_RETURN = target; applyView({ order: value }); }
     else if (action === "close-order") applyView({ order: null });
     else if (action === "scorecard") {
@@ -1797,6 +2632,12 @@
       if (target.closest("#scorecard-switch")) [...document.querySelectorAll("#scorecard-switch [data-value]")].find(el => el.dataset.value === value)?.focus();
     }
     else if (action === "close-scorecard") applyView({ sc: null });
+    else if (action === "btb") {
+      if (!VIEW.btb) BTB_RETURN = target;
+      applyView({ btb: true });
+    }
+    else if (action === "close-btb") applyView({ btb: false });
+    else if (action === "export-btb") exportBtbCsv();
     else if (action === "sc-show-late") applyView({ customer: value, period: "late", sc: null });
     else if (action === "watch") { WATCH_OPEN = WATCH_OPEN === value ? null : value; WATCH_ALL = false; applyView({}); }
     else if (action === "watch-all") { WATCH_ALL = true; applyView({}); }
@@ -1804,7 +2645,7 @@
     else if (action === "dismiss-hint") { store.set("dopk.hint.v1", true); applyView({}); }
     else if (action === "dismiss-notice") { showNotice("", ""); return; }
     // Rendering replaces controls: keep keyboard focus on the equivalent target.
-    if (action !== "order" && action !== "close-order" && action !== "scorecard" && action !== "close-scorecard" && action !== "sc-show-late" && action !== "dismiss-notice" && !VIEW.order && !VIEW.sc) {
+    if (action !== "order" && action !== "close-order" && action !== "scorecard" && action !== "close-scorecard" && action !== "btb" && action !== "close-btb" && action !== "export-btb" && action !== "sc-show-late" && action !== "dismiss-notice" && !VIEW.order && !VIEW.sc && !VIEW.btb) {
       const replacement = [...document.querySelectorAll("[data-action]")].find(el => el.dataset.action === action && el.dataset.value === value);
       (replacement || $("#filter")).focus({ preventScroll: true });
     }
@@ -1874,11 +2715,13 @@
     showNotice(tf("importDone", snaps.length, fmtDate(snaps[0].data.reportDate), fmtDate(latest.data.reportDate)) + (skipped.length ? tf("importSkipped", skipped.join("; ")) : ""), skipped.length ? "warn" : "ok");
   }
 
-  // Shared by the order drawer and the scorecard sheet: Esc and backdrop click close through VIEW, Tab stays inside.
+  // Shared by the order drawer, scorecard sheet and btb sheet: Esc and backdrop click close through VIEW, Tab stays inside.
   function wireDialog(dlg, closeChange) {
+    if (!dlg) return;
     dlg.addEventListener("cancel", e => { e.preventDefault(); applyView(closeChange); });
     dlg.addEventListener("click", e => { if (e.target === dlg) { const r = dlg.getBoundingClientRect(); if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) applyView(closeChange); } });
     dlg.addEventListener("keydown", e => {
+      if (e.key === "Escape") { e.preventDefault(); applyView(closeChange); return; }
       if (e.key !== "Tab") return;
       const focusable = [...dlg.querySelectorAll('button, [tabindex="0"]')].filter(el => !el.hidden && !el.disabled);
       const first = focusable[0], last = focusable[focusable.length - 1];
@@ -1893,6 +2736,7 @@
     window.addEventListener("hashchange", () => { if (DATA) applyView(readHash(), "pop"); });
     wireDialog($("#order-drawer"), { order: null });
     wireDialog($("#scorecard-sheet"), { sc: null });
+    wireDialog($("#btb-sheet"), { btb: false });
     document.querySelectorAll(".lang-switch button").forEach(b => b.addEventListener("click", () => setLang(b.dataset.lang)));
     const input = $("#file");
     document.querySelectorAll("[data-upload]").forEach(b => b.addEventListener("click", () => input.click()));
@@ -1950,9 +2794,19 @@
     document.addEventListener("dragover", e => e.preventDefault());
     document.addEventListener("drop", e => { e.preventDefault(); depth = 0; dz.classList.remove("is-over"); readFiles(e.dataTransfer.files); });
 
+    window.DOPK_API = {
+      deliveredBetween,
+      intakeBetween,
+      computeBookToBill,
+      buildBtbCsv,
+      computeAccount,
+      RULES
+    };
+
     if (window.DOPK_FIXTURE) {
       window.DOPK_TEST = {
         load: rows => loadAoa(rows, "DOPK_09_09.xlsx", false), applyView, compute, setLang, buildViewCsv, RULES, computeAccount,
+        deliveredBetween, intakeBetween, computeBookToBill, buildBtbCsv,
         clearHistory: () => TEST_STORAGE.delete(LS_HISTORY),
         importArchive: aois => commitArchive(aois.map((aoa, i) => ({ aoa, data: parseRows(aoa, "DOPK.xlsx"), name: "DOPK_" + i + ".xlsx", mod: i })), []),
         get history() { return store.get(LS_HISTORY, { snaps: {} }); },

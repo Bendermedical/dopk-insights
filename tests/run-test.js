@@ -1,14 +1,22 @@
 const { spawn } = require("child_process");
 const http = require("http");
+const fs = require("fs");
+const path = require("path");
+const os = require("os");
 
 const edgePath = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
-const port = 9222;
+const port = 9300 + Math.floor(Math.random() * 500);
+const testArg = process.argv[2] || "scorecard-test.html";
+const testFile = testArg.replace(/^tests[/\\]/, "");
+const testUrl = `http://localhost:8080/tests/${testFile}`;
+const tempProfile = path.join(os.tmpdir(), "edge-cdp-" + Date.now());
 
 const proc = spawn(edgePath, [
   "--headless=new",
   "--disable-gpu",
+  `--user-data-dir=${tempProfile}`,
   `--remote-debugging-port=${port}`,
-  "http://localhost:8080/tests/scorecard-test.html"
+  testUrl
 ]);
 
 function getJSON(url) {
@@ -23,20 +31,22 @@ function getJSON(url) {
 
 async function main() {
   let wsUrl = null;
+  const matchStr = testFile.replace(/\.html$/, "");
   for (let i = 0; i < 40; i++) {
     try {
       await new Promise(r => setTimeout(r, 250));
       const targets = await getJSON(`http://127.0.0.1:${port}/json`);
-      const page = targets.find(t => t.type === "page" && t.url.includes("scorecard-test"));
+      const page = targets.find(t => t.type === "page" && t.url.includes(matchStr));
       if (page && page.webSocketDebuggerUrl) {
         wsUrl = page.webSocketDebuggerUrl;
+        console.log(`Connected to page target: ${page.url}`);
         break;
       }
     } catch (e) {}
   }
 
   if (!wsUrl) {
-    throw new Error("Could not find CDP target");
+    throw new Error("Could not find CDP target for " + matchStr);
   }
 
   const ws = new WebSocket(wsUrl);
@@ -64,33 +74,46 @@ async function main() {
     }
   };
 
-  await new Promise((resolve, reject) => {
-    ws.onopen = resolve;
-    ws.onerror = reject;
-  });
+  if (ws.readyState !== 1) {
+    await new Promise((resolve, reject) => {
+      ws.addEventListener("open", resolve, { once: true });
+      ws.addEventListener("error", reject, { once: true });
+    });
+  }
 
+  console.log("WebSocket open! Enabling Runtime...");
   await send("Runtime.enable");
+  console.log("Runtime enabled! Starting test poll...");
 
   // Poll for completion or timeout after 25s
   const start = Date.now();
   let done = false;
   while (Date.now() - start < 25000) {
     const res = await send("Runtime.evaluate", {
-      expression: "JSON.stringify({ done: !!window.DOPK_TEST_DONE, results: window.DOPK_TEST_RESULTS || [], title: document.title, errors: window.DOPK_TEST_ERRORS || [] })",
+      expression: "JSON.stringify({ done: !!window.DOPK_TEST_DONE, results: (window.DOPK_TEST_RESULTS || []).length, title: document.title, errors: window.DOPK_TEST_ERRORS || [] })",
       returnByValue: true
     });
-    if (res && res.result && res.result.value) {
-      const state = JSON.parse(res.result.value);
+    const val = res?.result?.value;
+    if (val) {
+      const state = JSON.parse(val);
+      if (!done && state.results > 0) {
+        console.log(`[Progress] results count: ${state.results}, done: ${state.done}, errors: ${state.errors?.length || 0}`);
+      }
       if (state.done) {
         done = true;
+        const fullRes = await send("Runtime.evaluate", {
+          expression: "JSON.stringify({ results: window.DOPK_TEST_RESULTS || [], title: document.title, errors: window.DOPK_TEST_ERRORS || [] })",
+          returnByValue: true
+        });
+        const fullState = JSON.parse(fullRes.result.value);
         console.log("\n================ TEST SUMMARY ================");
-        console.log("Document Title:", state.title);
-        console.log(`Total tests executed: ${state.results.length}`);
-        state.results.forEach(r => {
+        console.log("Document Title:", fullState.title);
+        console.log(`Total tests executed: ${fullState.results.length}`);
+        fullState.results.forEach(r => {
           console.log(`Test ${r.id}: ${r.pass ? "PASS" : "FAIL"} - ${r.title}${r.detail ? " (" + r.detail + ")" : ""}`);
         });
-        if (state.errors.length) {
-          console.log("\nErrors collected:", state.errors);
+        if (fullState.errors.length) {
+          console.log("\nErrors collected:", fullState.errors);
         }
         break;
       }
