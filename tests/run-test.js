@@ -5,19 +5,23 @@ const path = require("path");
 const os = require("os");
 
 const edgePath = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
-const port = 9300 + Math.floor(Math.random() * 500);
 const testArg = process.argv[2] || "scorecard-test.html";
 const testFile = testArg.replace(/^tests[/\\]/, "");
-const testUrl = `http://localhost:8080/tests/${testFile}`;
 const tempProfile = path.join(os.tmpdir(), "edge-cdp-" + Date.now());
 
-const proc = spawn(edgePath, [
-  "--headless=new",
-  "--disable-gpu",
-  `--user-data-dir=${tempProfile}`,
-  `--remote-debugging-port=${port}`,
-  testUrl
-]);
+const server = http.createServer((req, res) => {
+  const safePath = path.normalize(decodeURIComponent(req.url.split("?")[0])).replace(/^(\.\.[\/\\])+/, "");
+  const filePath = path.join(__dirname, "..", safePath);
+  fs.readFile(filePath, (err, data) => {
+    if (err) { res.writeHead(404); res.end(); return; }
+    const ext = path.extname(filePath);
+    const mime = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json" }[ext] || "text/plain";
+    res.writeHead(200, { "Content-Type": mime });
+    res.end(data);
+  });
+});
+
+let proc = null;
 
 function getJSON(url) {
   return new Promise((resolve, reject) => {
@@ -30,12 +34,25 @@ function getJSON(url) {
 }
 
 async function main() {
+  await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
+  const serverPort = server.address().port;
+  const cdpPort = 9300 + Math.floor(Math.random() * 500);
+  const testUrl = `http://127.0.0.1:${serverPort}/tests/${testFile}`;
+
+  proc = spawn(edgePath, [
+    "--headless=new",
+    "--disable-gpu",
+    `--user-data-dir=${tempProfile}`,
+    `--remote-debugging-port=${cdpPort}`,
+    testUrl
+  ]);
+
   let wsUrl = null;
   const matchStr = testFile.replace(/\.html$/, "");
   for (let i = 0; i < 40; i++) {
     try {
       await new Promise(r => setTimeout(r, 250));
-      const targets = await getJSON(`http://127.0.0.1:${port}/json`);
+      const targets = await getJSON(`http://127.0.0.1:${cdpPort}/json`);
       const page = targets.find(t => t.type === "page" && t.url.includes(matchStr));
       if (page && page.webSocketDebuggerUrl) {
         wsUrl = page.webSocketDebuggerUrl;
@@ -129,6 +146,7 @@ async function main() {
 }
 
 main().catch(console.error).finally(() => {
-  proc.kill();
-  process.exit(0);
+  if (proc) proc.kill();
+  server.close(() => process.exit(0));
+  setTimeout(() => process.exit(0), 1000);
 });
