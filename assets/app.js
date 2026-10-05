@@ -24,6 +24,16 @@
       rateMin: 0.5,                        // clamp minimum realisation rate
       rateMax: 1.2,                        // clamp maximum realisation rate
       monthlyTarget: null                  // optional monthly revenue target in EUR (null if not set)
+    },
+    keyAccount: {
+      accounts: [{ id: "10359", label: "Andreas Fahl" }],  // matched on custId (as string), never on the name
+      fallbackTopCustomer: true,   // if no configured id exists in the file, use the customer with the highest open value
+      minHistoryDays: 10,          // snapshots needed before history-based figures are shown
+      rollingDays: 28,             // window for history-based figures
+      coverMinMonths: { med: 6, high: 3 },  // schedule cover below this = watch / act now
+      coverThreshold: 0.5,         // a month counts as covered if scheduled ≥ 50% of the 6-month average
+      onTimeTarget: { med: 95, high: 85 }, // on-time % below = watch / act now
+      reliabilityTarget: { med: 90, high: 80 }
     }
   };
   const COLORS = { late: "var(--alarm-high)", flow: "var(--alarm-low)", undated: "var(--alarm-med)" };
@@ -149,7 +159,48 @@
       outlookFilterNote: "Erwartungswert nur ohne Kundenfilter verfügbar",
       outlookHistoryShortNote: d => `Erwartungswert nach ${d} Tagen Verlauf verfügbar`,
       outlookPartialNote: d => `Monatsversand unvollständig (erfasst ab ${d})`,
-      outlookMismatchNote: n => `${pl(n, "Position", "Positionen")} mit Rechenabweichung enthalten (Wert verwendet)`
+      outlookMismatchNote: n => `${pl(n, "Position", "Positionen")} mit Rechenabweichung enthalten (Wert verwendet)`,
+      scScorecard: "Scorecard ›",
+      scOpenScorecard: "Scorecard öffnen",
+      scClose: "Scorecard schließen",
+      scSwitch: "Key Account wechseln",
+      scSubtitle: (id, dt, p) => `Kunde ${id} · Stand ${dt} · ${p} des offenen Bestands`,
+      scFallbackNote: "Größter Kunde nach offenem Wert (kein konfigurierter Key Account in der Datei)",
+      scFilterNote: "Die Scorecard zeigt immer den gesamten Kunden. Aktive Filter werden ignoriert.",
+      scVerdictLate: (n, o, l) => `Für ${n} sind ${o} offen, davon ${l} überfällig.`,
+      scVerdictClean: (n, o) => `Für ${n} sind ${o} offen, nichts davon ist überfällig.`,
+      scVerdictCover: mo => `Die geplanten Lieferungen reichen bis ${mo}.`,
+      scVerdictNoCover: "Es sind keine terminierten Lieferungen geplant.",
+      scVitals: "Kennzahlen des Key Accounts",
+      scSubOverdue: (p, n) => `${p} · ${pl(n, "Position", "Positionen")}`,
+      scSubUndated: (v, n) => `${v} in ${pl(n, "Position", "Positionen")}`,
+      scCoverTitle: "Reichweite des Lieferplans",
+      scCoverSub: (mo, m) => `bis ${mo} (${m} Monate)`,
+      scCoverSubNone: "kein terminierter Lieferplan",
+      scOnTimeTitle: "Liefertermintreue",
+      scSubOnTime: (n, v, r) => `${pl(n, "Lieferung", "Lieferungen")} · ${v} · ${r} der Positionen pünktlich`,
+      scReliabilityTitle: "Zuverlässigkeit der Liefertermine",
+      scSubReliability: (moved, open, twice) => `${moved} von ${pl(open, "Position", "Positionen")} nach hinten verschoben · ${pl(twice, "Position", "Positionen")} ≥ 2× verschoben`,
+      scHistAvail: (d, c) => `Verfügbar nach ${d} Tagen Verlauf (aktuell ${c})`,
+      scSchedule: "Lieferplan",
+      scSched3090: (v30, v90) => `Geplant nächste 30 Tage: ${v30} · 90 Tage: ${v90}`,
+      scActions: "Für das nächste Gespräch",
+      scNoActions: "Keine Positionen, die angesprochen werden müssen.",
+      scShowLate: "Alle überfälligen Positionen anzeigen",
+      scDaysLate: n => `${n} Tage überfällig`,
+      scCloseOutBadge: q => `${q} % geliefert`,
+      scCloseOutDesc: "Abschlusskandidat (Restwert des Auftrags)",
+      scMovedBadge: n => `${n}× nach hinten verschoben`,
+      scTrend: "Verlauf",
+      scTrendOpen: "Offener Bestand",
+      scTrendLate: "Überfälliger Wert",
+      scFamilies: "Produktfamilien",
+      scFamily: "Familie",
+      scFamOpen: "Offen",
+      scFamLate: "Überfällig",
+      scFamOther: "Sonstige",
+      plLines: n => pl(n, "Position", "Positionen"),
+      scMonthsVal: m => `${m} Monate`
     },
     en: {
       drillHint: "Tip: bars, customers and order numbers are clickable.",
@@ -267,7 +318,48 @@
       outlookFilterNote: "Expected value available without customer filter only",
       outlookHistoryShortNote: d => `Expected value available after ${d} days of history`,
       outlookPartialNote: d => `Month-to-date shipments partial (tracked from ${d})`,
-      outlookMismatchNote: n => `${pl(n, "line", "lines")} with calculation discrepancy included (value used)`
+      outlookMismatchNote: n => `${pl(n, "line", "lines")} with calculation discrepancy included (value used)`,
+      scScorecard: "Scorecard ›",
+      scOpenScorecard: "Open scorecard",
+      scClose: "Close scorecard",
+      scSwitch: "Switch key account",
+      scSubtitle: (id, dt, p) => `Customer ${id} · As of ${dt} · ${p} of open backlog`,
+      scFallbackNote: "Top customer by open value (no configured key account in the file)",
+      scFilterNote: "The scorecard always shows the whole account. Active filters are ignored.",
+      scVerdictLate: (n, o, l) => `${o} is open for ${n}, of which ${l} is late.`,
+      scVerdictClean: (n, o) => `${o} is open for ${n}, none of it late.`,
+      scVerdictCover: mo => `Scheduled deliveries cover until ${mo}.`,
+      scVerdictNoCover: "No dated deliveries are scheduled.",
+      scVitals: "Key account figures",
+      scSubOverdue: (p, n) => `${p} · ${pl(n, "line", "lines")}`,
+      scSubUndated: (v, n) => `${v} in ${pl(n, "line", "lines")}`,
+      scCoverTitle: "Schedule cover",
+      scCoverSub: (mo, m) => `until ${mo} (${m} months)`,
+      scCoverSubNone: "no dated schedule",
+      scOnTimeTitle: "On-time delivery",
+      scSubOnTime: (n, v, r) => `${pl(n, "shipment", "shipments")} · ${v} · ${r} of lines on time`,
+      scReliabilityTitle: "Delivery date reliability",
+      scSubReliability: (moved, open, twice) => `${moved} of ${pl(open, "line", "lines")} moved later · ${pl(twice, "line", "lines")} moved 2 or more times`,
+      scHistAvail: (d, c) => `Available after ${d} days of history (currently ${c})`,
+      scSchedule: "Delivery schedule",
+      scSched3090: (v30, v90) => `Scheduled next 30 days: ${v30} · 90 days: ${v90}`,
+      scActions: "For the next call",
+      scNoActions: "Nothing needs to be raised.",
+      scShowLate: "Show all late lines",
+      scDaysLate: n => `${n} days late`,
+      scCloseOutBadge: q => `${q}% delivered`,
+      scCloseOutDesc: "Close-out candidate (open value of the order)",
+      scMovedBadge: n => `moved later ${n}×`,
+      scTrend: "Trend",
+      scTrendOpen: "Open backlog",
+      scTrendLate: "Overdue value",
+      scFamilies: "Product families",
+      scFamily: "Family",
+      scFamOpen: "Open",
+      scFamLate: "Overdue",
+      scFamOther: "Other",
+      plLines: n => pl(n, "line", "lines"),
+      scMonthsVal: m => `${m} months`
     }
   };
 
@@ -677,7 +769,47 @@
     const d = iso(data.reportDate);
     const keys = {};
     data.lines.forEach(l => keys[l.key] = [l.due ? iso(l.due) : null, Math.round(l.val)]);
-    h.snaps[d] = { openVal: m.openVal, lateVal: m.lateVal, shippedVal: m.shippedVal, intakeVal: m.intakeVal, undatedPct: m.undatedPct, keys };
+
+    const prevSnap = previous(h, data.reportDate)?.snap;
+    const prevKeys = prevSnap?.keys || {};
+    const accounts = {};
+    const keyIds = new Set(getKeyAccounts(data.lines).map(a => String(a.id)));
+
+    data.lines.forEach(l => {
+      const cid = String(l.custId);
+      if (!keyIds.has(cid)) return;
+      if (!accounts[cid]) {
+        accounts[cid] = {
+          open: 0, late: 0, undatedVal: 0, openLines: 0,
+          shipVal: 0, shipOnTimeVal: 0, shipLines: 0, shipOnTimeLines: 0,
+          pushedKeys: []
+        };
+      }
+      const acc = accounts[cid];
+      if (l.shipped) {
+        acc.shipVal += l.val;
+        acc.shipLines += 1;
+        const onTime = !l.due || l.due >= data.reportDate;
+        if (onTime) {
+          acc.shipOnTimeVal += l.val;
+          acc.shipOnTimeLines += 1;
+        }
+      } else {
+        acc.open += l.val;
+        acc.openLines += 1;
+        if (!l.due) {
+          acc.undatedVal += l.val;
+        } else if (l.due < data.reportDate) {
+          acc.late += l.val;
+        }
+        const p = prevKeys[l.key];
+        if (p && p[0] && l.due && iso(l.due) > p[0]) {
+          acc.pushedKeys.push(l.key);
+        }
+      }
+    });
+
+    h.snaps[d] = { openVal: m.openVal, lateVal: m.lateVal, shippedVal: m.shippedVal, intakeVal: m.intakeVal, undatedPct: m.undatedPct, keys, accounts };
     const dates = Object.keys(h.snaps).sort();
     while (dates.length > RULES.historyDays) delete h.snaps[dates.shift()];
     while (!store.set(LS_HISTORY, h) && dates.length > 1) delete h.snaps[dates.shift()]; // storage full: drop oldest
@@ -699,11 +831,12 @@
 
   // ------------------------------------------------------------- render
   let DATA = null;
-  let VIEW = { customer: null, period: null, order: null };
+  let VIEW = { customer: null, period: null, order: null, sc: null };
   let TABLE_ALL = false, WATCH_OPEN = null, WATCH_ALL = false;
   let FILTER_DATA = null, FILTER_LANG = null, STATIC_LANG = null;
   let OUTLOOK_DATA = null, OUTLOOK_CUSTOMER = null, OUTLOOK_LANG = null;
   let DRAWER_RETURN = null, DRAWER_OVERFLOW = "", HASH_LOADED = false;
+  let SCORECARD_RETURN = null, SCORECARD_OVERFLOW = "";
   const monthKey = d => iso(d).slice(0, 7);
   const daysBetween = (a, b) => Math.round((Date.UTC(a.getFullYear(), a.getMonth(), a.getDate()) - Date.UTC(b.getFullYear(), b.getMonth(), b.getDate())) / DAY);
   const periodName = p => p === "late" ? T("vLate") : p === "undated" ? T("vUnd") : monthName(+p.slice(5) - 1, +p.slice(0, 4), true);
@@ -713,6 +846,26 @@
     if (p === "late") return !!l.due && l.due < rd;
     if (p === "undated") return !l.due;
     return !!l.due && l.due >= rd && monthKey(l.due) === p;
+  }
+
+  function getKeyAccounts(lines) {
+    if (!lines || !lines.length) return [];
+    const cfg = RULES.keyAccount || {};
+    const configured = (cfg.accounts || []).filter(acc => lines.some(l => String(l.custId) === String(acc.id)));
+    if (configured.length > 0) return configured.map(a => ({ ...a, isFallback: false }));
+    if (cfg.fallbackTopCustomer) {
+      const custTotals = {}, custMap = {};
+      lines.filter(l => !l.shipped).forEach(l => {
+        const cid = String(l.custId);
+        custTotals[cid] = (custTotals[cid] || 0) + l.val;
+        if (!custMap[cid]) custMap[cid] = l.short || l.cust;
+      });
+      const topEntry = Object.entries(custTotals).sort((a, b) => b[1] - a[1])[0];
+      if (topEntry) {
+        return [{ id: topEntry[0], label: custMap[topEntry[0]], isFallback: true }];
+      }
+    }
+    return [];
   }
 
   function validateView(v) {
@@ -725,30 +878,45 @@
     const validMonth = /^\d{4}-(0[1-9]|1[0-2])$/.test(v.period) && v.period >= monthKey(rd) && v.period <= monthKey(last);
     const period = v.period === "late" || v.period === "undated" || validMonth ? v.period : null;
     const order = lines.some(l => String(l.order) === String(v.order)) ? String(v.order) : null;
-    return { customer, period, order };
+    const keyAccs = getKeyAccounts(lines);
+    const sc = v.sc && (keyAccs.some(a => String(a.id) === String(v.sc)) || lines.some(l => String(l.custId) === String(v.sc))) ? String(v.sc) : null;
+    return { customer, period, order, sc };
   }
 
   function readHash() {
     const params = new URLSearchParams(location.hash.slice(1));
-    return { customer: params.get("c"), period: params.get("p"), order: params.get("o") };
+    return { customer: params.get("c"), period: params.get("p"), order: params.get("o"), sc: params.get("sc") };
   }
 
   function applyView(changes, navigation = "auto") {
     const old = VIEW;
     VIEW = validateView({ ...VIEW, ...changes });
     const filterChanged = old.customer !== VIEW.customer || old.period !== VIEW.period;
+    const scChanged = old.sc !== VIEW.sc;
     if (filterChanged) { TABLE_ALL = false; WATCH_OPEN = null; WATCH_ALL = false; }
     const params = new URLSearchParams();
     if (VIEW.customer) params.set("c", VIEW.customer);
     if (VIEW.period) params.set("p", VIEW.period);
     if (VIEW.order) params.set("o", VIEW.order);
+    if (VIEW.sc) params.set("sc", VIEW.sc);
     const hash = params.toString().replace(/\+/g, "%20");
     const url = location.pathname + location.search + (hash ? "#" + hash : "");
-    if (navigation !== "pop") window.history[navigation === "auto" && filterChanged ? "pushState" : "replaceState"](null, "", url);
+    if (navigation !== "pop") {
+      const isPush = navigation === "push" || (navigation === "auto" && (filterChanged || (scChanged && VIEW.sc && !old.sc)));
+      window.history[isPush ? "pushState" : "replaceState"](null, "", url);
+    }
     if (DATA) {
       if (FILTER_DATA !== DATA || FILTER_LANG !== LANG) fillFilter();
       else $("#filter").value = VIEW.customer || "__all";
-      render(Object.keys(changes).length === 1 && "order" in changes);
+      const onlyDrawer = Object.keys(changes).length === 1 && "order" in changes;
+      const onlyScorecard = Object.keys(changes).length === 1 && "sc" in changes;
+      if (onlyDrawer) {
+        renderOrderDrawer();
+      } else if (onlyScorecard) {
+        renderScorecardSheet();
+      } else {
+        render();
+      }
     }
   }
 
@@ -762,11 +930,22 @@
     const active = VIEW.customer || VIEW.period;
     const bar = $("#breadcrumb");
     bar.hidden = !active;
-    bar.innerHTML = active ? `<span>${T("allCustomers")}</span>` +
+    if (!active) { bar.innerHTML = ""; return; }
+    let scBtn = "";
+    if (VIEW.customer && VIEW.customer !== "__xtop" && DATA?.lines) {
+      const line = DATA.lines.find(l => l.cust === VIEW.customer);
+      const custId = line ? String(line.custId) : null;
+      const keyAccs = getKeyAccounts(DATA.lines);
+      if (custId && keyAccs.some(a => String(a.id) === custId)) {
+        scBtn = `<button type="button" class="crumb-sc" data-action="scorecard" data-value="${esc(custId)}">${T("scOpenScorecard")}</button>`;
+      }
+    }
+    bar.innerHTML = `<span>${T("allCustomers")}</span>` +
       (VIEW.customer ? `<span aria-hidden="true">›</span><span class="crumb">${esc(VIEW.customer === "__xtop" ? T("otherGroup") : shortName(VIEW.customer))}<button type="button" class="text-action crumb-remove" data-action="remove-customer" aria-label="${esc(T("removeFilter") + ": " + (VIEW.customer === "__xtop" ? T("otherGroup") : VIEW.customer))}">×</button></span>` : "") +
       (VIEW.period ? `<span aria-hidden="true">›</span><span class="crumb">${esc(periodName(VIEW.period))}<button type="button" class="text-action crumb-remove" data-action="remove-period" aria-label="${esc(T("removeFilter") + ": " + periodName(VIEW.period))}">×</button></span>` : "") +
       `<button type="button" class="text-action reset-view" data-action="reset">${T("resetView")}</button>` +
-      (VIEW.period ? `<span class="period-note">${T("periodNote")}</span>` : "") : "";
+      (VIEW.period ? `<span class="period-note">${T("periodNote")}</span>` : "") +
+      scBtn;
   }
 
 
@@ -848,6 +1027,7 @@
     renderShare(VIEW.customer ? compute(lines, rd, VIEW, { ignore: "customer" }) : m);
     renderLate(m, rd);
     renderWatch(m, cmp, prev);
+    renderScorecardSheet();
     renderOrderDrawer();
     $("#foot-file").textContent = `${DATA.fileName || "DOPK export"} · ${tf("linesRead", lines.length)}`;
     $("#app").hidden = false; $("#empty").hidden = true;
@@ -942,50 +1122,70 @@
       `</div>`;
   }
 
-  function renderHorizon(m) {
+  function renderHorizon(m, targetSelector = "#horizon", options = {}) {
+    const compact = !!options.compact;
+    const targetEl = $(targetSelector);
+    if (!targetEl) return;
     const cols = [{ label: T("colLate"), full: T("colLateFull"), val: m.lateVal, n: m.late.length, kind: "late", value: "late" },
       ...m.months.map(x => ({ label: monthName(x.m, x.y, x.yearTag ? "short" : false), full: monthName(x.m, x.y, true), val: x.val, n: x.n, kind: "flow", value: `${x.y}-${String(x.m + 1).padStart(2, "0")}` })),
       { label: T("colUnd"), full: T("colUndFull"), val: m.undatedVal, n: m.undated.length, kind: "undated", value: "undated" }];
-    const W = 820, H = 280, top = 26, bottom = 34, gap = 6;
+    const W = compact ? 680 : 820, H = compact ? 160 : 280, top = compact ? 18 : 26, bottom = compact ? 26 : 34, gap = compact ? 4 : 6;
     const cw = (W - gap * (cols.length + 1)) / cols.length;
     const max = Math.max(1, ...cols.map(c => c.val));
     const y = v => top + (H - top - bottom) * (1 - v / max);
-    let svg = `<svg viewBox="0 0 ${W} ${H}" role="group" aria-label="${esc(T("chartLabel"))}"><defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="var(--alarm-med-tint)"/><line x1="0" y1="0" x2="0" y2="6" stroke="var(--alarm-med)" stroke-width="3"/></pattern></defs>`;
+    let svg = `<svg viewBox="0 0 ${W} ${H}" role="group" aria-label="${esc(T("chartLabel"))}"><defs><pattern id="${compact ? "sc-hatch" : "hatch"}" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="var(--alarm-med-tint)"/><line x1="0" y1="0" x2="0" y2="6" stroke="var(--alarm-med)" stroke-width="3"/></pattern></defs>`;
     [0.5, 1].forEach(f => { svg += `<line x1="0" x2="${W}" y1="${y(max * f)}" y2="${y(max * f)}" stroke="var(--rule-soft)"/>`; });
-    if (m.avg6) svg += `<line x1="${gap + cw + gap}" x2="${W - cw - gap * 2}" y1="${y(m.avg6)}" y2="${y(m.avg6)}" stroke="var(--ink-muted)" stroke-dasharray="3 4"/><text x="${W - cw - gap * 2}" y="${y(m.avg6) - 6}" text-anchor="end" font-size="11" fill="var(--ink-muted)">${esc(tf("avg6", eur(m.avg6)))}</text>`;
+    if (m.avg6) svg += `<line x1="${gap + cw + gap}" x2="${W - cw - gap * 2}" y1="${y(m.avg6)}" y2="${y(m.avg6)}" stroke="var(--ink-muted)" stroke-dasharray="3 4"/><text x="${W - cw - gap * 2}" y="${y(m.avg6) - (compact ? 4 : 6)}" text-anchor="end" font-size="${compact ? "10" : "11"}" fill="var(--ink-muted)">${esc(tf("avg6", eur(m.avg6)))}</text>`;
     cols.forEach((c, i) => {
-      const x = gap + i * (cw + gap), yy = y(c.val), fill = c.kind === "late" ? COLORS.late : c.kind === "undated" ? "url(#hatch)" : COLORS.flow;
-      const dim = c.kind === "flow" && m.dropIdx >= 0 && i - 1 >= m.dropIdx;
-      svg += `<g class="col" role="button" tabindex="0" data-action="period" data-value="${c.value}" aria-pressed="${VIEW.period === c.value}" aria-label="${esc(tf("tip", c.full, eurFull(c.val), c.n))}">`;
+      const x = gap + i * (cw + gap), yy = y(c.val), fill = c.kind === "late" ? COLORS.late : c.kind === "undated" ? `url(#${compact ? "sc-hatch" : "hatch"})` : COLORS.flow;
+      const dim = !compact && c.kind === "flow" && m.dropIdx >= 0 && i - 1 >= m.dropIdx;
+      if (compact) {
+        svg += `<g class="col" aria-label="${esc(tf("tip", c.full, eurFull(c.val), c.n))}">`;
+      } else {
+        svg += `<g class="col" role="button" tabindex="0" data-action="period" data-value="${c.value}" aria-pressed="${VIEW.period === c.value}" aria-label="${esc(tf("tip", c.full, eurFull(c.val), c.n))}">`;
+      }
       svg += `<rect class="bar-hit" x="${x}" y="0" width="${cw}" height="${H}" fill="transparent"/>`;
-      svg += `<rect class="bar-fill" x="${x}" y="${yy}" width="${cw}" height="${Math.max(0, H - bottom - yy)}" fill="${fill}" opacity="${VIEW.period && VIEW.period !== c.value ? 0.35 : dim ? 0.45 : 1}"/>`;
-      if (c.val > 0) svg += `<text x="${x + cw / 2}" y="${yy - 6}" text-anchor="middle" font-size="12" font-weight="700" fill="var(--ink)">${esc(eurShort(c.val))}</text>`;
-      svg += `<text x="${x + cw / 2}" y="${H - bottom + 18}" text-anchor="middle" font-size="12" fill="${c.kind === "late" ? "#9E1F2D" : "var(--ink-muted)"}" font-weight="${c.kind === "flow" ? 400 : 700}">${esc(c.label)}</text></g>`;
-      if (i === 0) svg += `<line x1="${x + cw + gap / 2}" x2="${x + cw + gap / 2}" y1="${top - 10}" y2="${H - bottom + 4}" stroke="var(--graphite)" stroke-width="1.5"/><text x="${x + cw + gap / 2 + 4}" y="${top - 12}" font-size="11" font-weight="700" fill="var(--ink)">${T("today")}</text>`;
+      svg += `<rect class="bar-fill" x="${x}" y="${yy}" width="${cw}" height="${Math.max(0, H - bottom - yy)}" fill="${fill}" opacity="${!compact && VIEW.period && VIEW.period !== c.value ? 0.35 : dim ? 0.45 : 1}"/>`;
+      if (c.val > 0) svg += `<text x="${x + cw / 2}" y="${yy - (compact ? 4 : 6)}" text-anchor="middle" font-size="${compact ? "10" : "12"}" font-weight="700" fill="var(--ink)">${esc(eurShort(c.val))}</text>`;
+      svg += `<text x="${x + cw / 2}" y="${H - bottom + (compact ? 14 : 18)}" text-anchor="middle" font-size="${compact ? "10" : "12"}" fill="${c.kind === "late" ? "#9E1F2D" : "var(--ink-muted)"}" font-weight="${c.kind === "flow" ? 400 : 700}">${esc(c.label)}</text></g>`;
+      if (i === 0) svg += `<line x1="${x + cw + gap / 2}" x2="${x + cw + gap / 2}" y1="${top - (compact ? 6 : 10)}" y2="${H - bottom + 4}" stroke="var(--graphite)" stroke-width="1.5"/><text x="${x + cw + gap / 2 + 4}" y="${top - (compact ? 8 : 12)}" font-size="${compact ? "10" : "11"}" font-weight="700" fill="var(--ink)">${T("today")}</text>`;
     });
     svg += `<line x1="0" x2="${W}" y1="${H - bottom}" y2="${H - bottom}" stroke="var(--graphite)"/></svg>`;
-    $("#horizon").innerHTML = svg;
-    const drop = m.dropIdx >= 0 ? m.months[m.dropIdx] : null;
-    $("#horizon-note").textContent = drop ? tf("dropNote", monthName(drop.m, drop.y, true)) : T("noDropNote");
+    targetEl.innerHTML = svg;
+    if (!compact) {
+      const drop = m.dropIdx >= 0 ? m.months[m.dropIdx] : null;
+      $("#horizon-note").textContent = drop ? tf("dropNote", monthName(drop.m, drop.y, true)) : T("noDropNote");
+    }
   }
 
   function renderShare(m) {
     const totals = {};
     DATA.lines.filter(l => !l.shipped).forEach(l => {
-      if (!totals[l.cust]) totals[l.cust] = { name: l.cust, short: l.short, val: 0, lines: 0, late: 0 };
+      if (!totals[l.cust]) totals[l.cust] = { name: l.cust, short: l.short, custId: l.custId, val: 0, lines: 0, late: 0 };
       totals[l.cust].val += l.val;
     });
     const base = Object.values(totals).sort((a, b) => b.val - a.val);
     const contextual = base.map(c => m.custs.find(x => x.name === c.name) || { ...c, val: 0, lines: 0, late: 0 });
     const top = contextual.slice(0, 3), rest = contextual.slice(3);
-    const seg = top.map((c, i) => ({ value: c.name, name: c.name, short: c.short, val: c.val, color: SHARE_COLORS[i] }));
+    const seg = top.map((c, i) => ({ value: c.name, name: c.name, short: c.short, custId: c.custId, val: c.val, color: SHARE_COLORS[i] }));
     const selectedOther = rest.find(c => c.name === VIEW.customer);
-    if (selectedOther) seg.push({ value: selectedOther.name, name: selectedOther.name, short: selectedOther.short, val: selectedOther.val, color: SHARE_COLORS[3] });
+    if (selectedOther) seg.push({ value: selectedOther.name, name: selectedOther.name, short: selectedOther.short, custId: selectedOther.custId, val: selectedOther.val, color: SHARE_COLORS[3] });
     const grouped = rest.filter(c => c !== selectedOther);
     if (grouped.length) seg.push({ value: "__xtop", name: tf("others", grouped.length), short: tf("others", grouped.length), val: sum(grouped, c => c.val), color: SHARE_COLORS[3] });
     const Tot = m.openVal || 1;
     $("#share-bar").innerHTML = seg.map(s => `<div role="button" tabindex="0" data-action="customer" data-value="${esc(s.value)}" aria-pressed="${VIEW.customer === s.value}" aria-label="${esc(s.name)}: ${pct(s.val / Tot * 100)}" style="width:${s.val / Tot * 100}%;background:${s.color};opacity:${VIEW.customer && VIEW.customer !== s.value ? 0.35 : 1}"></div>`).join("");
-    $("#share-list").innerHTML = seg.map(s => `<li role="button" tabindex="0" data-action="customer" data-value="${esc(s.value)}" aria-pressed="${VIEW.customer === s.value}"><i style="background:${s.color}"></i><span class="name" title="${esc(s.name)}">${esc(s.short)}</span><span class="pct">${pct(s.val / Tot * 100)}</span><span class="eur">${eur(s.val)}</span></li>`).join("");
+    const keyAccs = getKeyAccounts(DATA.lines);
+    $("#share-list").innerHTML = seg.map(s => {
+      let scBtn = "";
+      if (s.value !== "__xtop") {
+        const line = DATA.lines.find(l => l.cust === s.value);
+        const cid = line ? String(line.custId) : (s.custId ? String(s.custId) : null);
+        if (cid && keyAccs.some(a => String(a.id) === cid)) {
+          scBtn = `<button type="button" class="sc-btn" data-action="scorecard" data-value="${esc(cid)}" aria-label="${esc(T("scScorecard"))}">${esc(T("scScorecard"))}</button>`;
+        }
+      }
+      return `<li role="button" tabindex="0" data-action="customer" data-value="${esc(s.value)}" aria-pressed="${VIEW.customer === s.value}"><i style="background:${s.color}"></i><span class="name" title="${esc(s.name)}">${esc(s.short)}</span><span class="pct">${pct(s.val / Tot * 100)}</span><span class="eur">${eur(s.val)}</span>${scBtn}</li>`;
+    }).join("");
     const lvl = m.hhi > 2500 ? "high" : m.hhi > 1500 ? "med" : "clear";
     const txt = m.hhi > 2500 ? T("hhiHigh") : m.hhi > 1500 ? T("hhiMed") : T("hhiLow");
     $("#share-stats").innerHTML = `<div><b>${m.custs.length}</b>${T("custsWith")}</div><div><b>${nf(Math.round(m.hhi))}</b>${T("hhi")} <span class="chip chip--${lvl}">${txt}</span></div>`;
@@ -1317,6 +1517,228 @@
   }
 
 
+  // ------------------------------------------------------------- key account scorecard
+  // Pure: returns plain data for one account. All history figures are read from stored snapshots.
+  function computeAccount(lines, rd, accountId, history) {
+    const idStr = String(accountId), cfg = RULES.keyAccount || {};
+    const keyAccs = getKeyAccounts(lines);
+    const configuredAcc = keyAccs.find(a => String(a.id) === idStr);
+    const accountLines = lines.filter(l => String(l.custId) === idStr);
+    const openLines = accountLines.filter(l => !l.shipped);
+    const first = accountLines[0] || {};
+    const accShort = first.short || first.cust || idStr;
+
+    const totalOpenVal = sum(lines.filter(l => !l.shipped), l => l.val);
+    const openVal = sum(openLines, l => l.val);
+    const openSharePct = totalOpenVal > 0 ? openVal / totalOpenVal * 100 : 0;
+
+    const lateLines = openLines.filter(l => l.due && l.due < rd).sort((a, b) => b.val - a.val);
+    const lateVal = sum(lateLines, l => l.val);
+    const latePct = openVal > 0 ? lateVal / openVal * 100 : 0;
+    const lateLevel = level(latePct, RULES.overduePct);
+
+    const undatedLines = openLines.filter(l => !l.due);
+    const undatedVal = sum(undatedLines, l => l.val);
+    const undatedPct = openVal > 0 ? undatedVal / openVal * 100 : 0;
+    const undatedLevel = level(undatedPct, RULES.undatedPct);
+
+    // day-over-day, from the previous stored snapshot that has this account
+    const snaps = history?.snaps || {};
+    const rdIso = iso(rd);
+    const prevDate = Object.keys(snaps).filter(d => d < rdIso && snaps[d]?.accounts?.[idStr]).sort().pop();
+    const prevAcc = prevDate ? snaps[prevDate].accounts[idStr] : null;
+
+    // schedule cover: last month (from rd's month to the last due month) holding >= threshold x avg of the next 6 full months
+    const monthVal = (y, m) => sum(openLines.filter(l => l.due && l.due >= rd && l.due >= new Date(y, m, 1) && l.due < new Date(y, m + 1, 1)), l => l.val);
+    const six = [];
+    for (let i = 1; i <= 6; i++) six.push(monthVal(rd.getFullYear(), rd.getMonth() + i));
+    const avg6 = sum(six) / 6, threshold = (cfg.coverThreshold ?? 0.5) * avg6;
+    const lastDue = openLines.reduce((d, l) => l.due && l.due > d ? l.due : d, rd);
+    let coverMonth = null;
+    for (let d = new Date(rd.getFullYear(), rd.getMonth(), 1); d <= lastDue; d = new Date(d.getFullYear(), d.getMonth() + 1, 1)) {
+      const v = monthVal(d.getFullYear(), d.getMonth());
+      if (v > 0 && v >= threshold) coverMonth = { m: d.getMonth(), y: d.getFullYear() };
+    }
+    let coverMonths = 0;
+    if (coverMonth) coverMonths = Math.round(daysBetween(new Date(coverMonth.y, coverMonth.m + 1, 0), rd) / 30.44 * 10) / 10;
+    const coverMin = cfg.coverMinMonths || { med: 6, high: 3 };
+    const coverLevel = coverMonths < coverMin.high ? "high" : coverMonths < coverMin.med ? "med" : "clear";
+
+    // scheduled value in [rd+1, rd+30] and [rd+1, rd+90]: the outlook's own windows
+    let sched30, sched90;
+    if (typeof computeOutlook === "function" && RULES.outlook) {
+      const o = computeOutlook(accountLines, rd, "__all", { snaps: {} });
+      sched30 = o.d30.sched; sched90 = o.d90.sched;
+    } else {
+      const upTo = n => sum(openLines.filter(l => l.due && l.due > rd && l.due <= new Date(+rd + n * DAY)), l => l.val);
+      sched30 = upTo(30); sched90 = upTo(90);
+    }
+
+    // history-based figures: only snapshots that carry this account count
+    const minHistoryDays = cfg.minHistoryDays ?? 10, rollingDays = cfg.rollingDays ?? 28;
+    const accDates = Object.keys(snaps).filter(d => d <= rdIso && snaps[d]?.accounts?.[idStr]).sort();
+    const historyCount = accDates.length, hasHistory = historyCount >= minHistoryDays;
+    const winStart = iso(new Date(rd.getFullYear(), rd.getMonth(), rd.getDate() - rollingDays));
+    const winDates = accDates.filter(d => d >= winStart);
+
+    let shipLines = 0, shipVal = 0, shipOnTimeLines = 0, shipOnTimeVal = 0;
+    const pushedCount = {};
+    winDates.forEach(d => {
+      const s = snaps[d].accounts[idStr];
+      shipLines += s.shipLines || 0; shipVal += s.shipVal || 0;
+      shipOnTimeLines += s.shipOnTimeLines || 0; shipOnTimeVal += s.shipOnTimeVal || 0;
+      new Set(s.pushedKeys || []).forEach(k => { pushedCount[k] = (pushedCount[k] || 0) + 1; });
+    });
+
+    const onTimeAvailable = hasHistory && shipLines > 0;
+    const onTimePct = onTimeAvailable ? (shipVal > 0 ? shipOnTimeVal / shipVal * 100 : shipOnTimeLines / shipLines * 100) : null;
+    const onTimeLinePct = onTimeAvailable ? shipOnTimeLines / shipLines * 100 : null;
+    const onTimeT = cfg.onTimeTarget || { med: 95, high: 85 };
+    const onTimeLevel = onTimePct == null ? "none" : onTimePct < onTimeT.high ? "high" : onTimePct < onTimeT.med ? "med" : "clear";
+
+    const openKeys = new Set(openLines.map(l => l.key));
+    const movedKeys = Object.keys(pushedCount).filter(k => openKeys.has(k));
+    const movedTwice = openLines.filter(l => (pushedCount[l.key] || 0) >= 2).sort((a, b) => b.val - a.val);
+    const reliabilityAvailable = hasHistory && historyCount >= 2 && openLines.length > 0;
+    const reliabilityPct = reliabilityAvailable ? (1 - movedKeys.length / openLines.length) * 100 : null;
+    const relT = cfg.reliabilityTarget || { med: 90, high: 80 };
+    const reliabilityLevel = reliabilityPct == null ? "none" : reliabilityPct < relT.high ? "high" : reliabilityPct < relT.med ? "med" : "clear";
+
+    // overall chip: worst available level
+    const levels = [lateLevel, undatedLevel, coverLevel, onTimeLevel, reliabilityLevel];
+    const overallLevel = ["high", "med", "low"].find(x => levels.includes(x)) || "clear";
+
+    // action list: largest late lines, then lines moved 2+ times, then close-out orders (max 5)
+    const actions = lateLines.map(l => ({ kind: "late", order: l.order, art: l.art, desc: l.desc, days: daysBetween(rd, l.due), val: l.val }));
+    const lateKeys = new Set(lateLines.map(l => l.key));
+    movedTwice.filter(l => !lateKeys.has(l.key)).forEach(l => actions.push({ kind: "moved", order: l.order, art: l.art, desc: l.desc, count: pushedCount[l.key], val: l.val }));
+    const orderQuote = {};
+    accountLines.forEach(l => { if (l.quote != null && !(l.order in orderQuote)) orderQuote[l.order] = l.quote; });
+    Object.entries(orderQuote).filter(([, q]) => q >= RULES.closeOutQuote && q < 100)
+      .map(([o, q]) => ({ kind: "close", order: o, quote: q, val: sum(openLines.filter(l => String(l.order) === o), l => l.val) }))
+      .filter(x => x.val > 0).sort((a, b) => b.val - a.val).forEach(x => actions.push(x));
+
+    // product families: only when >= 50% of the open value is assigned to a real family
+    let families = null;
+    if (openVal > 0 && sum(openLines.filter(l => l.family && l.family !== "__other"), l => l.val) / openVal >= 0.5) {
+      const map = {};
+      openLines.forEach(l => {
+        const f = l.family || "__other";
+        const e = map[f] || (map[f] = { name: f, open: 0, late: 0 });
+        e.open += l.val;
+        if (l.due && l.due < rd) e.late += l.val;
+      });
+      families = Object.values(map).sort((a, b) => b.open - a.open);
+    }
+
+    return {
+      account: { id: idStr, label: configuredAcc?.label || accShort, short: accShort, cust: first.cust || "", isFallback: !!configuredAcc?.isFallback },
+      accounts: keyAccs.map(a => ({ id: String(a.id), label: a.label || a.id })),
+      reportDate: rd,
+      openVal, openLines: openLines.length, openOrders: uniq(openLines, l => l.order), openSharePct,
+      prevOpen: prevAcc ? prevAcc.open : null, prevLate: prevAcc ? prevAcc.late : null,
+      lateVal, lateLines: lateLines.length, latePct, lateLevel,
+      undatedVal, undatedLines: undatedLines.length, undatedPct, undatedLevel,
+      coverMonth, coverMonths, coverLevel, sched30, sched90,
+      minHistoryDays, historyCount, hasHistory,
+      onTime: { available: onTimeAvailable, pct: onTimePct, linePct: onTimeLinePct, ships: shipLines, val: shipVal, level: onTimeLevel },
+      reliability: { available: reliabilityAvailable, pct: reliabilityPct, moved: movedKeys.length, open: openLines.length, twice: movedTwice.length, level: reliabilityLevel },
+      overallLevel, actions: actions.slice(0, 5), families,
+      horizon: compute(accountLines, rd, {}),
+      trend: accDates.length >= 2 ? { open: accDates.map(d => snaps[d].accounts[idStr].open), late: accDates.map(d => snaps[d].accounts[idStr].late) } : null
+    };
+  }
+
+  function sparkSeries(pts) {
+    const mx = Math.max(...pts), mn = Math.min(...pts), w = 120, ht = 26;
+    const path = pts.map((v, i) => `${(i / (pts.length - 1) * w).toFixed(1)},${(ht - (mx === mn ? ht / 2 : (v - mn) / (mx - mn) * ht)).toFixed(1)}`).join(" ");
+    return `<svg class="sc-sparkline" viewBox="0 -1 ${w} ${ht + 2}" preserveAspectRatio="none" aria-hidden="true"><polyline points="${path}" fill="none" stroke="var(--ink-muted)" stroke-width="1.5" vector-effect="non-scaling-stroke"/></svg>`;
+  }
+
+  // Fills the sheet header, switch and body for one account (data from computeAccount).
+  function renderScorecard(a, filterActive) {
+    const vital = (label, lvl, value, sub) =>
+      `<div class="vital" data-level="${lvl}"><div class="vital-head"><span class="vital-label">${esc(label)}</span>${lvl === "none" ? "" : chipHTML(lvl)}</div>` +
+      `<span class="vital-value">${value}</span><div class="vital-sub">${sub}</div></div>`;
+    const unavailable = `<span class="vital-muted">${esc(tf("scHistAvail", a.minHistoryDays, a.historyCount))}</span>`;
+    const list = a.coverMonth ? tf("scCoverSub", monthName(a.coverMonth.m, a.coverMonth.y, true), nf(a.coverMonths, 1)) : T("scCoverSubNone");
+
+    $("#scorecard-title").textContent = a.account.label;
+    $("#scorecard-chip").innerHTML = chipHTML(a.overallLevel);
+    $("#scorecard-subtitle").innerHTML = esc(tf("scSubtitle", a.account.id, fmtDate(a.reportDate), pct(a.openSharePct, 1))) +
+      (a.account.isFallback ? ` <span class="sc-filter-note">${esc(T("scFallbackNote"))}</span>` : "");
+
+    $("#scorecard-switch").innerHTML = a.accounts.length > 1
+      ? `<div class="lang-switch" role="group" aria-label="${esc(T("scSwitch"))}">` +
+        a.accounts.map(x => `<button type="button" data-action="scorecard" data-value="${esc(x.id)}" aria-pressed="${x.id === a.account.id}">${esc(x.label)}</button>`).join("") + `</div>`
+      : "";
+
+    const verdict = (a.lateVal > 0 ? tf("scVerdictLate", a.account.label, eur(a.openVal), eur(a.lateVal)) : tf("scVerdictClean", a.account.label, eur(a.openVal))) + " " +
+      (a.coverMonth ? tf("scVerdictCover", monthName(a.coverMonth.m, a.coverMonth.y, true)) : T("scVerdictNoCover"));
+
+    const vitals = `<div class="sc-vitals" role="group" aria-label="${esc(T("scVitals"))}">` +
+      vital(T("vOpen"), "none", esc(eur(a.openVal)), `${esc(tf("sOpen", a.openLines, a.openOrders))} ${deltaHTML(a.openVal, a.prevOpen, false)}`) +
+      vital(T("vLate"), a.lateLevel, esc(eur(a.lateVal)), `${esc(tf("scSubOverdue", pct(a.latePct), a.lateLines))} ${deltaHTML(a.lateVal, a.prevLate, true)}`) +
+      vital(T("vUnd"), a.undatedLevel, esc(pct(a.undatedPct)), esc(tf("scSubUndated", eur(a.undatedVal), a.undatedLines))) +
+      vital(T("scCoverTitle"), a.coverLevel, esc(a.coverMonth ? tf("scMonthsVal", nf(a.coverMonths, 1)) : "0"), esc(list)) +
+      vital(T("scOnTimeTitle"), a.onTime.level, esc(a.onTime.available ? pct(a.onTime.pct, 0) : "–"),
+        a.onTime.available ? esc(tf("scSubOnTime", a.onTime.ships, eurFull(a.onTime.val), pct(a.onTime.linePct, 0))) : unavailable) +
+      vital(T("scReliabilityTitle"), a.reliability.level, esc(a.reliability.available ? pct(a.reliability.pct, 0) : "–"),
+        a.reliability.available ? esc(tf("scSubReliability", a.reliability.moved, a.reliability.open, a.reliability.twice)) : unavailable) +
+      `</div>`;
+
+    const legend = `<div class="legend"><span><i style="background:var(--alarm-high)"></i>${esc(T("legLate"))}</span><span><i style="background:var(--alarm-low)"></i>${esc(T("legFlow"))}</span>` +
+      `<span><i style="background:repeating-linear-gradient(45deg,var(--alarm-med) 0 2px,var(--alarm-med-tint) 2px 5px)"></i>${esc(T("legUndated"))}</span></div>`;
+    const schedule = `<section class="sc-section" aria-labelledby="sc-h-schedule"><h3 id="sc-h-schedule">${esc(T("scSchedule"))}</h3>` +
+      `<div id="sc-horizon" class="horizon sc-horizon"></div>${legend}<p class="sc-sched-note">${esc(tf("scSched3090", eur(a.sched30), eur(a.sched90)))}</p></section>`;
+
+    const actionRows = a.actions.map(x => {
+      const text = x.kind === "close" ? T("scCloseOutDesc") : [x.art, x.desc].filter(Boolean).join(" · ");
+      const reason = x.kind === "late" ? tf("scDaysLate", x.days) : x.kind === "moved" ? tf("scMovedBadge", x.count) : tf("scCloseOutBadge", x.quote);
+      return `<li class="sc-action-item"><button type="button" class="text-action order-link" data-action="order" data-value="${esc(x.order)}" aria-haspopup="dialog">${esc(x.order)}</button>` +
+        `<span class="clip" title="${esc(text)}">${esc(text)}</span><span class="reason${x.kind === "close" ? "" : " late"}">${esc(reason)}</span><span class="eur">${esc(eurFull(x.val))}</span></li>`;
+    }).join("");
+    const actions = `<section class="sc-section" aria-labelledby="sc-h-actions"><h3 id="sc-h-actions">${esc(T("scActions"))}</h3>` +
+      (a.actions.length ? `<ul class="sc-action-list">${actionRows}</ul>` : `<p class="panel-note">${esc(T("scNoActions"))}</p>`) +
+      (a.lateLines ? `<div class="sc-action-foot"><button type="button" class="text-action sc-show-late-btn" data-action="sc-show-late" data-value="${esc(a.account.cust)}">${esc(T("scShowLate"))}</button></div>` : "") + `</section>`;
+
+    const families = a.families
+      ? `<section class="sc-section" aria-labelledby="sc-h-fam"><h3 id="sc-h-fam">${esc(T("scFamilies"))}</h3><table class="data sc-fam-table"><thead><tr><th>${esc(T("scFamily"))}</th><th class="num">${esc(T("scFamOpen"))}</th><th class="num">${esc(T("scFamLate"))}</th></tr></thead><tbody>` +
+        a.families.map(f => `<tr><td>${esc(f.name === "__other" ? T("scFamOther") : f.name)}</td><td class="num">${esc(eurFull(f.open))}</td><td class="num">${esc(eurFull(f.late))}</td></tr>`).join("") + `</tbody></table></section>`
+      : "";
+
+    const trend = a.trend
+      ? `<section class="sc-section" aria-labelledby="sc-h-trend"><h3 id="sc-h-trend">${esc(T("scTrend"))}</h3><div class="sc-trend-grid">` +
+        [["scTrendOpen", a.trend.open], ["scTrendLate", a.trend.late]].map(([k, pts]) =>
+          `<div class="sc-trend-card"><span class="label">${esc(T(k))}</span><div class="val">${esc(eur(pts[pts.length - 1]))}</div>${sparkSeries(pts)}</div>`).join("") + `</div></section>`
+      : "";
+
+    $("#scorecard-body").innerHTML = (filterActive ? `<p class="sc-filter-note">${esc(T("scFilterNote"))}</p>` : "") +
+      `<p class="sc-verdict-text">${esc(verdict)}</p>` + vitals + schedule + actions + families + trend;
+    renderHorizon(a.horizon, "#sc-horizon", { compact: true });
+  }
+
+  function renderScorecardSheet() {
+    const dlg = $("#scorecard-sheet");
+    if (!dlg) return;
+    if (!VIEW.sc || !DATA) {
+      if (dlg.open) {
+        dlg.close(); document.body.style.overflow = SCORECARD_OVERFLOW;
+        const origin = SCORECARD_RETURN;
+        const target = origin?.isConnected ? origin : [...document.querySelectorAll('[data-action="scorecard"]')].find(el => el.dataset.value === origin?.dataset.value);
+        (target || $("#filter")).focus(); SCORECARD_RETURN = null;
+      }
+      return;
+    }
+    const hist = store.get(LS_HISTORY, { snaps: {} });
+    renderScorecard(computeAccount(DATA.lines, DATA.reportDate, VIEW.sc, hist), !!(VIEW.customer || VIEW.period || VIEW.family));
+    if (!dlg.open) {
+      SCORECARD_OVERFLOW = document.body.style.overflow;
+      dlg.showModal(); document.body.style.overflow = "hidden";
+      $("#scorecard-close").focus();
+    }
+  }
+
   function renderOrderDrawer() {
     const dlg = $("#order-drawer");
     if (!VIEW.order) {
@@ -1369,12 +1791,19 @@
     else if (action === "reset") applyView({ customer: null, period: null, order: null });
     else if (action === "order") { DRAWER_RETURN = target; applyView({ order: value }); }
     else if (action === "close-order") applyView({ order: null });
+    else if (action === "scorecard") {
+      if (!VIEW.sc) SCORECARD_RETURN = target;
+      applyView({ sc: value });
+      if (target.closest("#scorecard-switch")) [...document.querySelectorAll("#scorecard-switch [data-value]")].find(el => el.dataset.value === value)?.focus();
+    }
+    else if (action === "close-scorecard") applyView({ sc: null });
+    else if (action === "sc-show-late") applyView({ customer: value, period: "late", sc: null });
     else if (action === "watch") { WATCH_OPEN = WATCH_OPEN === value ? null : value; WATCH_ALL = false; applyView({}); }
     else if (action === "watch-all") { WATCH_ALL = true; applyView({}); }
     else if (action === "table-all") { TABLE_ALL = true; applyView({}); }
     else if (action === "dismiss-hint") { store.set("dopk.hint.v1", true); applyView({}); }
     // Rendering replaces controls: keep keyboard focus on the equivalent target.
-    if (action !== "order" && action !== "close-order" && !VIEW.order) {
+    if (action !== "order" && action !== "close-order" && action !== "scorecard" && action !== "close-scorecard" && action !== "sc-show-late" && !VIEW.order && !VIEW.sc) {
       const replacement = [...document.querySelectorAll("[data-action]")].find(el => el.dataset.action === action && el.dataset.value === value);
       (replacement || $("#filter")).focus({ preventScroll: true });
     }
@@ -1426,6 +1855,9 @@
         ok.push({ aoa, data, name: files[i].name, mod: files[i].lastModified });
       } catch (e) { skipped.push(`${files[i].name} (${e.message})`); }
     }
+    commitArchive(ok, skipped);
+  }
+  function commitArchive(ok, skipped) {
     // one snapshot per report date; newest file wins
     const byDate = {};
     ok.forEach(f => { const k = iso(f.data.reportDate); if (byDate[k]) { skipped.push(`${(byDate[k].mod > f.mod ? f : byDate[k]).name} (${T("dupDate")})`); if (byDate[k].mod > f.mod) return; } byDate[k] = f; });
@@ -1439,21 +1871,25 @@
     showNotice(tf("importDone", snaps.length, fmtDate(snaps[0].data.reportDate), fmtDate(latest.data.reportDate)) + (skipped.length ? tf("importSkipped", skipped.join("; ")) : ""), skipped.length ? "warn" : "ok");
   }
 
+  // Shared by the order drawer and the scorecard sheet: Esc and backdrop click close through VIEW, Tab stays inside.
+  function wireDialog(dlg, closeChange) {
+    dlg.addEventListener("cancel", e => { e.preventDefault(); applyView(closeChange); });
+    dlg.addEventListener("click", e => { if (e.target === dlg) { const r = dlg.getBoundingClientRect(); if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) applyView(closeChange); } });
+    dlg.addEventListener("keydown", e => {
+      if (e.key !== "Tab") return;
+      const focusable = [...dlg.querySelectorAll('button, [tabindex="0"]')].filter(el => !el.hidden && !el.disabled);
+      const first = focusable[0], last = focusable[focusable.length - 1];
+      if ((e.shiftKey && document.activeElement === first) || (!e.shiftKey && document.activeElement === last)) { e.preventDefault(); (e.shiftKey ? last : first).focus(); }
+    });
+  }
   function init() {
     applyStatic();
     $(".wrap").addEventListener("click", handleAction);
     $(".wrap").addEventListener("keydown", handleAction);
     window.addEventListener("popstate", () => { if (DATA) applyView(readHash(), "pop"); });
     window.addEventListener("hashchange", () => { if (DATA) applyView(readHash(), "pop"); });
-    const drawer = $("#order-drawer");
-    drawer.addEventListener("cancel", e => { e.preventDefault(); applyView({ order: null }); });
-    drawer.addEventListener("click", e => { if (e.target === drawer) { const r = drawer.getBoundingClientRect(); if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) applyView({ order: null }); } });
-    drawer.addEventListener("keydown", e => {
-      if (e.key !== "Tab") return;
-      const focusable = [...drawer.querySelectorAll('button, [tabindex="0"]')].filter(el => !el.hidden && !el.disabled);
-      const first = focusable[0], last = focusable[focusable.length - 1];
-      if ((e.shiftKey && document.activeElement === first) || (!e.shiftKey && document.activeElement === last)) { e.preventDefault(); (e.shiftKey ? last : first).focus(); }
-    });
+    wireDialog($("#order-drawer"), { order: null });
+    wireDialog($("#scorecard-sheet"), { sc: null });
     document.querySelectorAll(".lang-switch button").forEach(b => b.addEventListener("click", () => setLang(b.dataset.lang)));
     const input = $("#file");
     document.querySelectorAll("[data-upload]").forEach(b => b.addEventListener("click", () => input.click()));
@@ -1513,7 +1949,10 @@
 
     if (window.DOPK_FIXTURE) {
       window.DOPK_TEST = {
-        load: rows => loadAoa(rows, "DOPK_09_09.xlsx", false), applyView, compute, setLang, buildViewCsv,
+        load: rows => loadAoa(rows, "DOPK_09_09.xlsx", false), applyView, compute, setLang, buildViewCsv, RULES, computeAccount,
+        clearHistory: () => TEST_STORAGE.delete(LS_HISTORY),
+        importArchive: aois => commitArchive(aois.map((aoa, i) => ({ aoa, data: parseRows(aoa, "DOPK.xlsx"), name: "DOPK_" + i + ".xlsx", mod: i })), []),
+        get history() { return store.get(LS_HISTORY, { snaps: {} }); },
         get view() { return { ...VIEW }; }, get data() { return DATA; }, get metrics() { return compute(DATA.lines, DATA.reportDate, VIEW); }
       };
       loadAoa(window.DOPK_FIXTURE, "DOPK_09_09.xlsx", false);
