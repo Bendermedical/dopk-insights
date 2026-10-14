@@ -11,7 +11,7 @@ body {
 .sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
 
 /* ---- Top bar ---------------------------------------------------------- */
-.topbar { display:flex; align-items:center; gap: var(--s4); padding: var(--s4) 0; border-bottom: 1px solid var(--rule); flex-wrap: wrap; }
+.topbar { display:flex; align-items:center; gap: var(--s4); padding: var(--s4) 0; border-bottom: var(--rule-section); flex-wrap: wrap; }
 .mark { display:flex; align-items:center; gap: var(--s3); font-weight: var(--fw-heavy); font-size: var(--fs-lg); letter-spacing: -0.01em; }
 .mark svg { flex: none; }
 .mark small { font-weight: var(--fw-regular); font-size: var(--fs-sm); color: var(--ink-muted); letter-spacing: 0; }
@@ -49,7 +49,7 @@ body {
 .verdict p { margin: var(--s4) 0 0; font-size: var(--fs-lg); line-height: var(--lh-snug); color: var(--ink-muted); max-width: 62ch; }
 
 /* ---- Vitals: KPI readouts with alarm-priority bars -------------------- */
-.vitals { display:grid; grid-template-columns: repeat(5, minmax(0,1fr)); border-top: 2px solid var(--graphite); border-bottom: 1px solid var(--rule); }
+.vitals { display:grid; grid-template-columns: repeat(5, minmax(0,1fr)); border-top: 2px solid var(--graphite); border-bottom: var(--rule-section); }
 .vital { position:relative; padding: var(--s4) var(--s4) var(--s5) calc(var(--s4) + 6px); border-right: 1px solid var(--rule-soft); min-width: 0; }
 .vital:last-child { border-right: 0; }
 .vital::before { content:""; position:absolute; left: 0; top: var(--s4); bottom: var(--s5); width: 4px; background: var(--steel-300); border-radius: 2px; }
@@ -87,15 +87,15 @@ button.vital:hover .vital-action, button.vital:focus-visible .vital-action { col
 .chip--clear { background: var(--clear-tint);      color: #1F5E3E; }
 
 /* ---- Panels: square, divided by rules, never floating cards ----------- */
-.grid { display:grid; grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr); gap: 0; border-bottom: 1px solid var(--rule); }
+.grid { display:grid; grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr); gap: 0; border-bottom: var(--rule-section); }
 .panel { padding: var(--s6) var(--s5) var(--s6) 0; min-width: 0; }
-.grid > .panel + .panel { padding-left: var(--s5); padding-right: 0; border-left: 1px solid var(--rule); }
+.grid > .panel + .panel { padding-left: var(--s5); padding-right: 0; border-left: var(--rule-section); }
 .panel h2 { margin: 0; font-size: var(--fs-lg); font-weight: var(--fw-bold); letter-spacing: -0.01em; line-height: var(--lh-snug); }
 .panel-head { display:flex; justify-content: space-between; align-items: flex-start; gap: var(--s4); margin-bottom: var(--s5); flex-wrap: wrap; }
 .panel-note { margin: var(--s1) 0 0; font-size: var(--fs-sm); color: var(--ink-muted); max-width: 60ch; }
 
 /* ---- Revenue outlook -------------------------------------------------- */
-.panel.outlook { padding: var(--s6) 0; border-bottom: 1px solid var(--rule); }
+.panel.outlook { padding: var(--s6) 0; border-bottom: var(--rule-section); }
 .outlook-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 1.35fr); gap: 0; border-top: 1px solid var(--rule-soft); border-bottom: 1px solid var(--rule-soft); }
 .outlook-card { position: relative; padding: var(--s4) var(--s4) var(--s4) calc(var(--s4) + 6px); border-right: 1px solid var(--rule-soft); min-width: 0; display: flex; flex-direction: column; }
 .outlook-card:last-child { border-right: 0; }
@@ -321,7 +321,7 @@ table.data tbody tr:hover { background: var(--steel-200); }
 @media (max-width: 860px) {
   .grid { grid-template-columns: 1fr; }
   .panel, .grid > .panel + .panel { padding: var(--s5) 0; border-left: 0; }
-  .grid > .panel + .panel { border-top: 1px solid var(--rule); }
+  .grid > .panel + .panel { border-top: var(--rule-section); }
   .outlook-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .outlook-card:nth-child(2) { border-right: 0; }
   .outlook-card:nth-child(n+3) { border-top: 1px solid var(--rule-soft); }

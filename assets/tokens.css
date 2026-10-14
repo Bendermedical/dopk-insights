@@ -33,6 +33,7 @@
   --ink-faint: var(--steel-500);
   --rule:      var(--steel-300);
   --rule-soft: var(--steel-200);
+  --rule-section: 2px solid var(--steel-500);  /* dividers between dashboard sections */
   --focus:     var(--alarm-low);
 
   /* Type: one family, legibility-first (Braille Institute design) */
