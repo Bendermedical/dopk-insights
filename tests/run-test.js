@@ -1,4 +1,4 @@
-const { spawn } = require("child_process");
+const { spawn, spawnSync } = require("child_process");
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
@@ -57,6 +57,12 @@ async function main() {
     "--headless=new",
     "--disable-gpu",
     `--window-size=${width},900`,
+    // keep requestAnimationFrame and timers running even if Edge considers the tab hidden
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-background-timer-throttling",
+    "--disable-backgrounding-occluded-windows",
+    "--disable-renderer-backgrounding",
     `--user-data-dir=${tempProfile}`,
     `--remote-debugging-port=${cdpPort}`,
     testUrl
@@ -115,6 +121,7 @@ async function main() {
 
   console.log("WebSocket open! Enabling Runtime...");
   await send("Runtime.enable");
+  try { await send("Page.bringToFront"); } catch (e) {}
   console.log("Runtime enabled! Starting test poll...");
 
   // Poll for completion or timeout
@@ -157,6 +164,10 @@ async function main() {
   }
 
   if (!done) {
+    try {
+      const diag = await send("Runtime.evaluate", { expression: "JSON.stringify({ ready: document.readyState, hidden: document.hidden, results: (window.DOPK_TEST_RESULTS || []).length, errors: window.DOPK_TEST_ERRORS || [] })", returnByValue: true });
+      console.error("Page state at timeout:", diag?.result?.value);
+    } catch (e) {}
     console.error(`Test execution timed out after ${timeoutMs / 1000} seconds!`);
     failed = failed || 1;
   }
@@ -164,8 +175,19 @@ async function main() {
   ws.close();
 }
 
+// Edge starts many child processes; end the whole tree and remove the throwaway profile.
+function stopEdge() {
+  if (proc && proc.pid) {
+    if (process.platform === "win32") spawnSync("taskkill", ["/pid", String(proc.pid), "/T", "/F"], { stdio: "ignore" });
+    else proc.kill("SIGKILL");
+  }
+  for (let i = 0; i < 5; i++) {
+    try { fs.rmSync(tempProfile, { recursive: true, force: true }); break; } catch (e) { spawnSync(process.execPath, ["-e", "setTimeout(()=>{},300)"]); }
+  }
+}
+
 main().catch(e => { console.error(e); failed = failed || 1; }).finally(() => {
-  if (proc) proc.kill();
+  stopEdge();
   const code = failed ? 1 : 0;
   server.close(() => process.exit(code));
   setTimeout(() => process.exit(code), 1000);
