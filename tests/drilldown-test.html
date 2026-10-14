@@ -21,7 +21,7 @@
     <span class="snapshot-date" id="snapshot">Keine Datei geladen</span>
     <label class="sr-only" for="filter" data-i18n="customer">Kunde</label>
     <select class="select no-print" id="filter"><option value="__all">Alle Kunden</option></select>
-    <div class="lang-switch no-print" role="group" aria-label="Sprache / Language">
+    <div class="lang-switch segmented no-print" role="group" aria-label="Sprache / Language">
       <button type="button" data-lang="de" aria-pressed="true" lang="de" title="Deutsch">DE</button>
       <button type="button" data-lang="en" aria-pressed="false" lang="en" title="English">EN</button>
     </div>
@@ -65,11 +65,14 @@
           <span><i style="background:repeating-linear-gradient(45deg,var(--alarm-med) 0 2px,var(--alarm-med-tint) 2px 5px)"></i><span data-i18n="legUndated">Ohne Liefertermin</span></span>
         </div>
       </section>
-      <section class="panel">
-        <div class="panel-head"><div><h2 data-i18n="shareTitle">Von wem der Bestand abhängt</h2><p class="panel-note" data-i18n="shareNote">Anteil am offenen Wert je Kunde.</p></div></div>
-        <div class="share-bar" id="share-bar"></div>
-        <ul class="share-list" id="share-list"></ul>
-        <div class="stat-line" id="share-stats"></div>
+      <section class="panel" aria-labelledby="share-title">
+        <div class="panel-head"><div><h2 id="share-title">Von wem der Bestand abhängt</h2><p class="panel-note" id="share-note">Anteil am offenen Wert je Kunde.</p></div><div id="share-tabs" class="no-print"></div></div>
+        <div id="share-cust">
+          <div class="share-bar" id="share-bar"></div>
+          <ul class="share-list" id="share-list"></ul>
+          <div class="stat-line" id="share-stats"></div>
+        </div>
+        <div id="share-fam" hidden></div>
       </section>
     </div>
 

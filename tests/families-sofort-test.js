@@ -54,6 +54,26 @@ document.addEventListener("DOMContentLoaded", async function () {
       assert(api.data.lines.find(l => l.art === "A100").family === "Laryvox" && api.data.lines.find(l => l.art === "E101").family === "__other", "Lines assigned once on load");
     });
 
+    await test(2, "Families tab: values, quantities, overdue, total €12,597.50, no Sonstige, no warning", async () => {
+      api.setLang("en"); reset();
+      click(byValue('#share-tabs [data-action="share-tab"]', "fam")); await paint();
+      assert(!$("#share-fam").hidden && $("#share-cust").hidden && text("#share-title") === "Where the backlog sits", "Families tab active");
+      const rows = $$("#fam-list li");
+      const got = rows.map(li => [li.dataset.value, li.querySelector(".eur").textContent, li.querySelector(".qty").textContent, li.querySelector(".fam-late").textContent]);
+      const want = [["Laryvox", "€6,100", "260 pcs", "25% overdue"], ["Duracuff Pro", "€3,000", "50 pcs", "67% overdue"], ["BMV Cuff", "€1,500", "1.5 pcs", "–"],
+        ["Humidotrach", "€1,000", "500 pcs", "–"], ["BMV Kompressen", "€998", "300 pcs", "–"], ["BMV Sonstiges", "€0", "5 pcs", "–"]];
+      assert(JSON.stringify(got) === JSON.stringify(want), `Rows ${JSON.stringify(got)}`);
+      assert(near(api.metrics.openVal, 12597.5), "Total €12,597.50");
+      assert(rows[3].querySelector(".seg-imm").style.width !== "0%", "Humidotrach bar is Sofortbedarf (hatched)");
+      assert(rows[0].querySelector(".seg-late").style.width !== "0%" && rows[0].querySelector(".seg-flow").style.width !== "0%", "Laryvox bar overdue + scheduled");
+      assert(!$("#fam-list li[data-value='__other']") && !$("#share-fam .fam-warn"), "No Sonstige row, no unassigned warning");
+      assert(text("#share-fam .fam-qty-note") === "Quantities in order units", "Quantity note");
+      assert(JSON.parse(sessionStorage.getItem("dopk.test.dopk.sharetab.v1")) === "fam", "Tab choice stored in dopk.sharetab.v1");
+      api.setLang("de");
+      assert(text("#share-title") === "Wo der Bestand liegt" && $("#fam-list li .qty").textContent === "260 Stk", "German tab and quantity");
+      assert(text("#share-fam .fam-qty-note") === "Mengen in Auftragseinheiten", "German quantity note");
+    });
+
     await test(6, "Unassigned export on day 1 lists E101 (HME Filter, 1 line, €300, 30)", async () => {
       const u = api.buildUnassignedCsv();
       assert(u.name === "nicht_zugeordnet_2026-09-09.csv", `File name ${u.name}`);
@@ -67,6 +87,8 @@ document.addEventListener("DOMContentLoaded", async function () {
       reset(); click($('[data-action="families-remove"]')); await paint();
       assert(api.families === null && api.data.lines.every(l => l.family === "__other"), "All lines Sonstige");
       assert($("#foot-families").hidden, "Footer status hidden");
+      assert(text("#share-fam .fam-empty").startsWith("Noch keine Produktfamilien zugeordnet. Zuordnungsdatei laden") && $('#share-fam .fam-empty [data-action="families-load"]'), "Empty-state line with load button");
+      assert(text("#share-fam .fam-warn").startsWith("100 % des Werts keiner Familie zugeordnet"), `Warning: ${text("#share-fam .fam-warn")}`);
     });
     reloadInto("removed"); return;
   }

@@ -177,7 +177,7 @@
       outlookBarAria: (m, l, s, e) => `Monatsergebnis ${m}: ${l}, davon ${s} versandt und ${e} noch erwartet.`,
       outlookUndatedNote: (v, n) => `Nicht enthalten: ${v} ohne Liefertermin (${pl(n, "Position", "Positionen")})`,
       outlookCalibratedNote: (r, d) => `Realisierungsquote: ${r} (Basis: letzte ${d} Tage)`,
-      outlookFilterNote: "Erwartungswert nur ohne Kundenfilter verfügbar",
+      outlookFilterNote: "Erwartungswert nur ohne Kunden- oder Produktfilter verfügbar",
       outlookHistoryShortNote: d => `Erwartungswert nach ${d} Tagen Verlauf verfügbar`,
       outlookPartialNote: d => `Monatsversand unvollständig (erfasst ab ${d})`,
       outlookMismatchNote: n => `${pl(n, "Position", "Positionen")} mit Rechenabweichung enthalten (Wert verwendet)`,
@@ -261,7 +261,23 @@
       famErrEmpty: "Die Zuordnungsdatei enthält keine Artikel mit Produktfamilie.",
       famErrRead: "Die Zuordnungsdatei konnte nicht gelesen werden. Bitte eine CSV- oder Excel-Datei verwenden.",
       famStorageFull: "Die Zuordnung ist zu groß für den Browserspeicher. Sie gilt nur, bis diese Seite geschlossen wird.",
-      famOther: "Sonstige"
+      famOther: "Sonstige",
+      tabCustomers: "Kunden", tabFamilies: "Produktfamilien", shareTabsLabel: "Bestand gliedern nach",
+      famTitle: "Wo der Bestand liegt", famNote: "Offener Wert und offene Menge je Produktfamilie.",
+      famMore: n => `${n} weitere`, famQtyNote: "Mengen in Auftragseinheiten",
+      famEmpty: "Noch keine Produktfamilien zugeordnet.", famEmptyLoad: "Zuordnungsdatei laden",
+      famWarn: p => `${p} des Werts keiner Familie zugeordnet`, famWarnExport: "Liste exportieren",
+      qty: v => `${v} Stk`, famLatePct: p => `${p} überfällig`,
+      famRowAria: (f, v, q, p) => `${f}: ${v}, ${q}, ${p} überfällig`,
+      variantLabel: "Variante", variantAll: "Alle", variantPdt: "PDT", variantNoPdt: "ohne PDT",
+      sizeName: s => `Gr. ${s}`, noModel: "ohne Modell", noSize: "ohne Größe",
+      modelsTitle: f => `Modelle in ${f}`, sizesTitle: m => `Größen von ${m}`, sizeLinesTitle: (m, s) => `Positionen ${m} · ${s}`,
+      thModel: "Modell", thSize: "Größe", thLines: "Positionen", thOpenQty: "Offene Menge", thLateVal: "Überfällig", thImmVal: "Sofortbedarf",
+      thLateQty: "Überfällig (Menge)", thImmQty: "Sofortbedarf (Menge)", thRestQty: "Restmenge", sofortShort: "Sofort",
+      phaseOutChip: s => s ? `Auslauf → ${s}` : "Auslauf", outChip: "Raus",
+      wPhaseOut: (n, v) => `${pl(n, "offene Position", "offene Positionen")} auf Auslauf-/Raus-Artikeln (${v})`,
+      wPhaseOutBody: "Offener Kundenbedarf auf auslaufenden Artikeln. Nachfolger anbieten oder Restmengen sichern.",
+      csvFamHead: ["Produktfamilie", "Modell", "Größe"]
     },
     en: {
       drillHint: "Tip: bars, customers and order numbers are clickable.",
@@ -376,7 +392,7 @@
       outlookBarAria: (m, l, s, e) => `Month landing ${m}: ${l}, of which ${s} shipped and ${e} still expected.`,
       outlookUndatedNote: (v, n) => `Not included: ${v} without delivery date (${pl(n, "line", "lines")})`,
       outlookCalibratedNote: (r, d) => `Realisation rate: ${r} (based on last ${d} days)`,
-      outlookFilterNote: "Expected value available without customer filter only",
+      outlookFilterNote: "Expected value available without customer or product filter only",
       outlookHistoryShortNote: d => `Expected value available after ${d} days of history`,
       outlookPartialNote: d => `Month-to-date shipments partial (tracked from ${d})`,
       outlookMismatchNote: n => `${pl(n, "line", "lines")} with calculation discrepancy included (value used)`,
@@ -460,7 +476,23 @@
       famErrEmpty: "The mapping file contains no articles with a product family.",
       famErrRead: "The mapping file couldn't be read. Use a CSV or Excel file.",
       famStorageFull: "The mapping is too large for browser storage. It applies only until this page is closed.",
-      famOther: "Other"
+      famOther: "Other",
+      tabCustomers: "Customers", tabFamilies: "Product families", shareTabsLabel: "Break down the backlog by",
+      famTitle: "Where the backlog sits", famNote: "Open value and open quantity by product family.",
+      famMore: n => `${n} more`, famQtyNote: "Quantities in order units",
+      famEmpty: "No product families assigned yet.", famEmptyLoad: "Load mapping file",
+      famWarn: p => `${p} of the value not assigned to a family`, famWarnExport: "Export list",
+      qty: v => `${v} pcs`, famLatePct: p => `${p} overdue`,
+      famRowAria: (f, v, q, p) => `${f}: ${v}, ${q}, ${p} overdue`,
+      variantLabel: "Variant", variantAll: "All", variantPdt: "PDT", variantNoPdt: "without PDT",
+      sizeName: s => `Size ${s}`, noModel: "no model", noSize: "no size",
+      modelsTitle: f => `Models in ${f}`, sizesTitle: m => `Sizes of ${m}`, sizeLinesTitle: (m, s) => `Lines ${m} · ${s}`,
+      thModel: "Model", thSize: "Size", thLines: "Lines", thOpenQty: "Open qty", thLateVal: "Overdue", thImmVal: "Immediate demand",
+      thLateQty: "Overdue qty", thImmQty: "Immediate qty", thRestQty: "Remaining qty", sofortShort: "ASAP",
+      phaseOutChip: s => s ? `Phase-out → ${s}` : "Phase-out", outChip: "Discontinued",
+      wPhaseOut: (n, v) => `${pl(n, "open line", "open lines")} on phase-out or discontinued articles (${v})`,
+      wPhaseOutBody: "Open customer demand on articles being phased out. Offer the successor or secure the remaining stock.",
+      csvFamHead: ["Product family", "Model", "Size"]
     }
   };
 
@@ -499,6 +531,11 @@
   const eurShort = v => LANG === "de" ? eur(v).replace(" €", "").replace("T€", "T").replace(" Mio.", " Mio") : eur(v).replace("€", "");
   const eurFull = v => LANG === "de" ? nf(v) + " €" : "€" + nf(v);
   const eurUnit = v => LANG === "de" ? nf(v, 2) + " €" : "€" + v.toFixed(2);
+  const QTY_FORMATS = new Map();
+  const fmtQty = v => {
+    if (!QTY_FORMATS.has(LANG)) QTY_FORMATS.set(LANG, new Intl.NumberFormat(LOC(), { maximumFractionDigits: 2 }));
+    return tf("qty", QTY_FORMATS.get(LANG).format(v));
+  };
   const pct = (v, d = 1) => (LANG === "de" ? nf(isFinite(v) ? v : 0, d) + " %" : (isFinite(v) ? v.toFixed(d) : "0") + "%");
   const fmtDate = d => {
     if (!d) return "–";
@@ -626,9 +663,14 @@
   }
 
   // ------------------------------------------------------------- metrics
+  // options.ignore: "customer", "period", "family" (with model and size), "variant", "lateMonth" or a list of them.
   function compute(all, rd, view = {}, options = {}) {
-    const customer = options.ignore === "customer" ? null : view.customer;
-    const period = options.ignore === "period" ? null : view.period;
+    const ign = [].concat(options.ignore || []);
+    const customer = ign.includes("customer") ? null : view.customer;
+    const period = ign.includes("period") ? null : view.period;
+    const ignFam = ign.includes("family");
+    const product = { family: ignFam ? null : view.family, model: ignFam ? null : view.model, size: ignFam ? null : view.size, variant: ign.includes("variant") ? null : view.variant };
+    const lateMonth = ign.includes("lateMonth") ? null : view.lateMonth;
     let L = all;
     const custTotals = {};
     all.filter(l => !l.shipped).forEach(l => custTotals[l.cust] = (custTotals[l.cust] || 0) + l.val);
@@ -636,8 +678,9 @@
     const topThree = Object.entries(custTotals).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([c]) => c);
     if (customer === "__xtop") L = all.filter(l => !topThree.includes(l.cust));
     else if (customer) L = all.filter(l => l.cust === customer);
+    if (product.family || product.variant) L = L.filter(l => matchesProduct(l, product));
     const customerLines = L;
-    if (period) L = L.filter(l => !l.shipped && matchesPeriod(l, rd, period));
+    if (period) L = L.filter(l => !l.shipped && matchesPeriod(l, rd, period, lateMonth));
 
     const open = L.filter(l => !l.shipped), shipped = customerLines.filter(l => l.shipped);
     const openVal = sum(open, l => l.val);
@@ -1127,7 +1170,8 @@
     return "\ufeff" + [head, ...rows].map(r => r.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(";")).join("\r\n");
   }
 
-  function computeOutlook(lines, rd, filter, history) {
+  // product: { family, model, size, variant } when the lines were pre-filtered by product, else null.
+  function computeOutlook(lines, rd, filter, history, product = null) {
     let L = lines;
     const custTotals = {};
     lines.filter(l => !l.shipped).forEach(l => custTotals[l.cust] = (custTotals[l.cust] || 0) + l.val);
@@ -1193,7 +1237,7 @@
     const snapDates = Object.keys(snaps).sort();
     const rdIso = iso(rd);
 
-    if (filter !== "__all") {
+    if (filter !== "__all" || product) {
       calibReason = "filter";
     } else if (snapDates.length < 2) {
       calibReason = "too_short";
@@ -1272,7 +1316,10 @@
         ? deliveredBetween(prevSnap, { lines, reportDate: rd })
         : deliveredBetween(prevSnap, currSnap);
 
-      if (filter === "__all") {
+      if (product) {
+        // only a whole family can be traced through history (byFamily); narrower filters use today's lines
+        if (filter === "__all" && product.family && !product.model && !product.size && !product.variant) monthDelivered += del.byFamily?.[product.family] || 0;
+      } else if (filter === "__all") {
         monthDelivered += del.shipped;
       } else if (Array.isArray(filterCustId)) {
         for (const [c, s] of Object.entries(del.byCust || {})) {
@@ -1282,7 +1329,8 @@
         monthDelivered += (del.byCust[filterCustId] || 0);
       }
     }
-    const shippedMonthToDate = monthDelivered;
+    const famOnly = product && filter === "__all" && product.family && !product.model && !product.size && !product.variant;
+    const shippedMonthToDate = product && !famOnly ? shippedTodayVal : monthDelivered;
 
     let firstWorkingDay = new Date(rdYear, rdMonth, 1);
     if (firstWorkingDay.getDay() === 0) firstWorkingDay.setDate(2);
@@ -1299,7 +1347,7 @@
       partialMonth = true;
       partialFromDate = monthSnaps.length ? new Date(monthSnaps[0] + "T00:00:00") : rd;
     }
-    if (filter !== "__all") { partialMonth = true; partialFromDate = rd; }
+    if (filter !== "__all" || product) { partialMonth = true; partialFromDate = rd; }
 
     const schedMonth = sum(open.filter(l => l.due && l.due >= d1 && l.due <= monthEnd), l => l.val);
     const daysRem = Math.max(0, Math.round((monthEnd - rd) / DAY));
@@ -1508,10 +1556,12 @@
 
   // ------------------------------------------------------------- render
   let DATA = null;
-  let VIEW = { customer: null, period: null, order: null, sc: null, btb: false };
+  let VIEW = { customer: null, period: null, order: null, sc: null, btb: false, family: null, model: null, size: null, variant: null, lateMonth: null, chg: false };
+  // Panel toggles: customer/family tab, late list/matrix, matrix unit, Sofortbedarf grouping.
+  let SHARE_TAB = "cust", LATE_TAB = "list", MATRIX_UNIT = "eur", UND_GROUP = "fam", FAM_ALL = false;
   let TABLE_ALL = false, WATCH_OPEN = null, WATCH_ALL = false;
   let FILTER_DATA = null, FILTER_LANG = null, STATIC_LANG = null;
-  let OUTLOOK_DATA = null, OUTLOOK_CUSTOMER = null, OUTLOOK_LANG = null;
+  let OUTLOOK_DATA = null, OUTLOOK_KEY = null, OUTLOOK_LANG = null;
   let DRAWER_RETURN = null, DRAWER_OVERFLOW = "", HASH_LOADED = false;
   let SCORECARD_RETURN = null, SCORECARD_OVERFLOW = "";
   let BTB_RETURN = null, BTB_OVERFLOW = "";
@@ -1520,11 +1570,23 @@
   const periodName = p => p === "late" ? T("vLate") : p === "undated" ? T("vUnd") : monthName(+p.slice(5) - 1, +p.slice(0, 4), true);
   const orderButton = l => `<button type="button" class="text-action order-link" data-action="order" data-value="${l.order}" aria-haspopup="dialog">${l.order}</button>`;
 
-  function matchesPeriod(l, rd, p) {
-    if (p === "late") return !!l.due && l.due < rd;
+  function matchesPeriod(l, rd, p, lateMonth) {
+    if (p === "late") return !!l.due && l.due < rd && (!lateMonth || monthKey(l.due) === lateMonth);
     if (p === "undated") return !l.due;
     return !!l.due && l.due >= rd && monthKey(l.due) === p;
   }
+
+  const isPdt = l => /PDT/i.test(l.variant || "");
+  const famKey = l => l.family || OTHER, modelKey = l => l.model || NONE, sizeKey = l => l.size || NONE;
+  function matchesProduct(l, v) {
+    if (v.family && famKey(l) !== v.family) return false;
+    if (v.model && modelKey(l) !== v.model) return false;
+    if (v.size && sizeKey(l) !== v.size) return false;
+    if (v.variant === "pdt" && !isPdt(l)) return false;
+    if (v.variant === "nopdt" && isPdt(l)) return false;
+    return true;
+  }
+  const hasPdtVariants = lines => lines.some(l => l.family !== OTHER && isPdt(l));
 
   function getKeyAccounts(lines) {
     if (!lines || !lines.length) return [];
@@ -1547,7 +1609,7 @@
   }
 
   function validateView(v) {
-    if (!DATA) return { ...v, btb: !!v.btb };
+    if (!DATA) return { ...v, btb: !!v.btb, chg: !!v.chg };
     const { lines, reportDate: rd } = DATA;
     const customer = v.customer === "__xtop"
       ? (uniq(lines.filter(l => !l.shipped), l => l.cust) > 3 ? "__xtop" : null)
@@ -1559,7 +1621,13 @@
     const keyAccs = getKeyAccounts(lines);
     const sc = v.sc && (keyAccs.some(a => String(a.id) === String(v.sc)) || lines.some(l => String(l.custId) === String(v.sc))) ? String(v.sc) : null;
     const btb = !!v.btb;
-    return { customer, period, order, sc, btb };
+    const family = v.family && lines.some(l => famKey(l) === v.family) ? v.family : null;
+    const model = family && v.model && lines.some(l => famKey(l) === family && modelKey(l) === v.model) ? v.model : null;
+    const size = model && v.size && lines.some(l => famKey(l) === family && modelKey(l) === model && sizeKey(l) === v.size) ? v.size : null;
+    const variant = (v.variant === "pdt" || v.variant === "nopdt") && hasPdtVariants(lines) ? v.variant : null;
+    const lateMonth = period === "late" && /^\d{4}-(0[1-9]|1[0-2])$/.test(v.lateMonth || "") ? v.lateMonth : null;
+    const chg = !!v.chg;
+    return { customer, period, order, sc, btb, family, model, size, variant, lateMonth, chg };
   }
 
   function readHash() {
@@ -1569,14 +1637,16 @@
       period: params.get("p"),
       order: params.get("o"),
       sc: params.get("sc"),
-      btb: params.get("btb") === "1" || params.get("btb") === "true"
+      btb: params.get("btb") === "1" || params.get("btb") === "true",
+      family: params.get("f"), model: params.get("m"), size: params.get("s"), variant: params.get("v"),
+      lateMonth: params.get("lm"), chg: params.get("chg") === "1"
     };
   }
 
   function applyView(changes, navigation = "auto") {
     const old = VIEW;
     VIEW = validateView({ ...VIEW, ...changes });
-    const filterChanged = old.customer !== VIEW.customer || old.period !== VIEW.period;
+    const filterChanged = ["customer", "period", "family", "model", "size", "variant", "lateMonth"].some(k => old[k] !== VIEW[k]);
     const scChanged = old.sc !== VIEW.sc;
     const btbChanged = old.btb !== VIEW.btb;
     if (filterChanged) { TABLE_ALL = false; WATCH_OPEN = null; WATCH_ALL = false; }
@@ -1586,6 +1656,12 @@
     if (VIEW.order) params.set("o", VIEW.order);
     if (VIEW.sc) params.set("sc", VIEW.sc);
     if (VIEW.btb) params.set("btb", "1");
+    if (VIEW.family) params.set("f", VIEW.family);
+    if (VIEW.model) params.set("m", VIEW.model);
+    if (VIEW.size) params.set("s", VIEW.size);
+    if (VIEW.variant) params.set("v", VIEW.variant);
+    if (VIEW.lateMonth) params.set("lm", VIEW.lateMonth);
+    if (VIEW.chg) params.set("chg", "1");
     const hash = params.toString().replace(/\+/g, "%20");
     const url = location.pathname + location.search + (hash ? "#" + hash : "");
     if (navigation !== "pop") {
@@ -1616,8 +1692,20 @@
     applyView({ ...next, order: next.order }, "replace");
   }
 
+  const modelName = m => m === NONE ? T("noModel") : m;
+  const sizeName = s => s === NONE ? T("noSize") : tf("sizeName", s);
+  const variantName = v => v === "pdt" ? T("variantPdt") : T("variantNoPdt");
+  const monthLabel = k => monthName(+k.slice(5) - 1, +k.slice(0, 4), true);
+  // " für Alpha Medizintechnik (Laryvox)" / " for Laryvox · PDT"
+  function scopeText() {
+    const cust = VIEW.customer === "__xtop" ? T("otherGroup") : VIEW.customer ? shortName(VIEW.customer) : "";
+    const prod = [VIEW.family && famName(VIEW.family), VIEW.model && modelName(VIEW.model), VIEW.size && sizeName(VIEW.size), VIEW.variant && variantName(VIEW.variant)].filter(Boolean).join(" · ");
+    if (cust && prod) return tf("scopeOne", `${cust} (${prod})`);
+    return cust || prod ? tf("scopeOne", cust || prod) : "";
+  }
+
   function renderBreadcrumb() {
-    const active = VIEW.customer || VIEW.period;
+    const active = VIEW.customer || VIEW.period || VIEW.family || VIEW.variant;
     const bar = $("#breadcrumb");
     bar.hidden = !active;
     if (!active) { bar.innerHTML = ""; return; }
@@ -1630,9 +1718,15 @@
         scBtn = `<button type="button" class="crumb-sc" data-action="scorecard" data-value="${esc(custId)}">${T("scOpenScorecard")}</button>`;
       }
     }
+    const crumb = (label, action, full = label) => `<span aria-hidden="true">›</span><span class="crumb">${esc(label)}<button type="button" class="text-action crumb-remove" data-action="${action}" aria-label="${esc(T("removeFilter") + ": " + full)}">×</button></span>`;
     bar.innerHTML = `<span>${T("allCustomers")}</span>` +
-      (VIEW.customer ? `<span aria-hidden="true">›</span><span class="crumb">${esc(VIEW.customer === "__xtop" ? T("otherGroup") : shortName(VIEW.customer))}<button type="button" class="text-action crumb-remove" data-action="remove-customer" aria-label="${esc(T("removeFilter") + ": " + (VIEW.customer === "__xtop" ? T("otherGroup") : VIEW.customer))}">×</button></span>` : "") +
-      (VIEW.period ? `<span aria-hidden="true">›</span><span class="crumb">${esc(periodName(VIEW.period))}<button type="button" class="text-action crumb-remove" data-action="remove-period" aria-label="${esc(T("removeFilter") + ": " + periodName(VIEW.period))}">×</button></span>` : "") +
+      (VIEW.customer ? crumb(VIEW.customer === "__xtop" ? T("otherGroup") : shortName(VIEW.customer), "remove-customer", VIEW.customer === "__xtop" ? T("otherGroup") : VIEW.customer) : "") +
+      (VIEW.family ? crumb(famName(VIEW.family), "remove-family") : "") +
+      (VIEW.model ? crumb(modelName(VIEW.model), "remove-model") : "") +
+      (VIEW.size ? crumb(sizeName(VIEW.size), "remove-size") : "") +
+      (VIEW.variant ? crumb(variantName(VIEW.variant), "remove-variant") : "") +
+      (VIEW.period ? crumb(periodName(VIEW.period), "remove-period") : "") +
+      (VIEW.lateMonth ? crumb(monthLabel(VIEW.lateMonth), "remove-latemonth") : "") +
       `<button type="button" class="text-action reset-view" data-action="reset">${T("resetView")}</button>` +
       (VIEW.period ? `<span class="period-note">${T("periodNote")}</span>` : "") +
       scBtn;
@@ -1672,14 +1766,14 @@
     applyStatic();
     const { lines, reportDate: rd } = DATA;
     const m = compute(lines, rd, VIEW);
-    const unfiltered = !VIEW.customer && !VIEW.period;
+    const unfiltered = !VIEW.customer && !VIEW.period && !VIEW.family && !VIEW.variant;
     const hist = store.get(LS_HISTORY, { snaps: {} });
     const prev = unfiltered ? previous(hist, rd) : null;
     const P = prev?.snap;
     const cmp = unfiltered ? compare(prev, lines) : null;
 
     $("#snapshot").innerHTML = `${T("snapshot")} <strong>${fmtDate(rd)}</strong>`;
-    const scope = VIEW.customer === "__xtop" ? tf("scopeOne", T("otherGroup")) : VIEW.customer ? tf("scopeOne", shortName(VIEW.customer)) : "";
+    const scope = scopeText();
 
     const btbMain = computeBookToBill(hist, rd, VIEW);
 
@@ -1732,13 +1826,16 @@
       intakeVital,
       vit(T("vUnd"), undLvl, pct(m.undatedPct, 0), tf("sUnd", eur(m.undatedVal), m.undated.length), "", "undated")
     ].join("");
-    if (OUTLOOK_DATA !== DATA || OUTLOOK_CUSTOMER !== VIEW.customer || OUTLOOK_LANG !== LANG) {
-      renderOutlook(computeOutlook(lines, rd, VIEW.customer || "__all", hist), rd);
-      OUTLOOK_DATA = DATA; OUTLOOK_CUSTOMER = VIEW.customer; OUTLOOK_LANG = LANG;
+    const outlookKey = [VIEW.customer, VIEW.family, VIEW.model, VIEW.size, VIEW.variant].join("|");
+    if (OUTLOOK_DATA !== DATA || OUTLOOK_KEY !== outlookKey || OUTLOOK_LANG !== LANG) {
+      const product = { family: VIEW.family, model: VIEW.model, size: VIEW.size, variant: VIEW.variant };
+      const productOn = !!(VIEW.family || VIEW.variant);
+      renderOutlook(computeOutlook(productOn ? lines.filter(l => matchesProduct(l, product)) : lines, rd, VIEW.customer || "__all", hist, productOn ? product : null), rd);
+      OUTLOOK_DATA = DATA; OUTLOOK_KEY = outlookKey; OUTLOOK_LANG = LANG;
     }
 
     renderHorizon(VIEW.period ? compute(lines, rd, VIEW, { ignore: "period" }) : m);
-    renderShare(VIEW.customer ? compute(lines, rd, VIEW, { ignore: "customer" }) : m);
+    renderSharePanel(VIEW.customer ? compute(lines, rd, VIEW, { ignore: "customer" }) : m, VIEW.family ? compute(lines, rd, VIEW, { ignore: "family" }) : m);
     renderLate(m, rd);
     renderWatch(m, cmp, prev);
     renderScorecardSheet();
@@ -1872,6 +1969,71 @@
       const drop = m.dropIdx >= 0 ? m.months[m.dropIdx] : null;
       $("#horizon-note").textContent = drop ? tf("dropNote", monthName(drop.m, drop.y, true)) : T("noDropNote");
     }
+  }
+
+  // Groups lines by keyFn: value, open quantity, overdue and Sofortbedarf parts, orders and oldest order date.
+  function aggregate(lines, keyFn, rd) {
+    const map = new Map();
+    lines.forEach(l => {
+      const k = keyFn(l);
+      let e = map.get(k);
+      if (!e) map.set(k, e = { key: k, val: 0, qty: 0, lines: 0, orders: new Set(), late: 0, lateQty: 0, imm: 0, immQty: 0, oldest: null, list: [] });
+      e.val += l.val; e.qty += l.rest; e.lines++; e.orders.add(l.order); e.list.push(l);
+      if (!l.due) { e.imm += l.val; e.immQty += l.rest; }
+      else if (l.due < rd) { e.late += l.val; e.lateQty += l.rest; }
+      if (l.date && (!e.oldest || l.date < e.oldest)) e.oldest = l.date;
+    });
+    return [...map.values()];
+  }
+  const byValueOtherLast = (a, b) => ((a.key === OTHER) - (b.key === OTHER)) || b.val - a.val;
+  const segmented = (label, action, options, current, extraClass = "") =>
+    `<div class="segmented${extraClass ? " " + extraClass : ""}" role="group" aria-label="${esc(label)}">` +
+    options.map(([v, t]) => `<button type="button" data-action="${action}" data-value="${esc(v)}" aria-pressed="${current === v}">${esc(t)}</button>`).join("") + `</div>`;
+  // One muted line when "Sonstige" holds more than RULES.families.otherWarnPct of the open value.
+  function otherWarnHTML(open) {
+    const total = sum(open, l => l.val), other = sum(open.filter(l => famKey(l) === OTHER), l => l.val);
+    const p = total > 0 ? other / total * 100 : 0;
+    return p > (RULES.families?.otherWarnPct ?? 15)
+      ? `<p class="panel-note fam-warn">${esc(tf("famWarn", pct(p, 0)))} · <button type="button" class="text-action link-action" data-action="families-export">${esc(T("famWarnExport"))}</button></p>`
+      : "";
+  }
+  const famEmptyHTML = () => `<p class="panel-note fam-empty">${esc(T("famEmpty"))} <button type="button" class="text-action link-action" data-action="families-load">${esc(T("famEmptyLoad"))}</button></p>`;
+
+  function renderSharePanel(mCust, mFam) {
+    const fam = SHARE_TAB === "fam";
+    $("#share-title").textContent = fam ? T("famTitle") : T("shareTitle");
+    $("#share-note").textContent = fam ? T("famNote") : T("shareNote");
+    $("#share-tabs").innerHTML = segmented(T("shareTabsLabel"), "share-tab", [["cust", T("tabCustomers")], ["fam", T("tabFamilies")]], SHARE_TAB);
+    $("#share-cust").hidden = fam;
+    $("#share-fam").hidden = !fam;
+    if (fam) renderFamilies(mFam); else renderShare(mCust);
+  }
+
+  // Families tab: ignores the family filter itself (cross-filter), honours customer, period and variant.
+  function renderFamilies(m) {
+    const rd = DATA.reportDate;
+    const variantCtl = hasPdtVariants(DATA.lines)
+      ? `<div class="fam-tools">${segmented(T("variantLabel"), "variant", [["", T("variantAll")], ["pdt", T("variantPdt")], ["nopdt", T("variantNoPdt")]], VIEW.variant || "")}</div>` : "";
+    if (!FAMILIES) { $("#share-fam").innerHTML = variantCtl + famEmptyHTML() + otherWarnHTML(m.open); return; }
+    const all = aggregate(m.open, famKey, rd).filter(e => e.val > 0 || e.qty > 0).sort(byValueOtherLast);
+    const max = RULES.families?.maxRows ?? 8;
+    let shown = FAM_ALL ? all : all.slice(0, max);
+    const sel = all.find(e => e.key === VIEW.family);
+    if (sel && !shown.includes(sel)) shown = [...shown, sel];
+    const top = Math.max(1, ...all.map(e => e.val));
+    const row = e => {
+      const w = v => (e.val > 0 ? v / top * 100 : 0).toFixed(2);
+      const flow = Math.max(0, e.val - e.late - e.imm);
+      const latePct = e.val > 0 && e.late > 0 ? pct(e.late / e.val * 100, 0) : "–";
+      return `<li role="button" tabindex="0" data-action="family" data-value="${esc(e.key)}" aria-pressed="${VIEW.family === e.key}" aria-label="${esc(tf("famRowAria", famName(e.key), eurFull(e.val), fmtQty(e.qty), latePct))}"` +
+        `${VIEW.family && VIEW.family !== e.key ? ' class="is-dim"' : ""}>` +
+        `<span class="name" title="${esc(famName(e.key))}">${esc(famName(e.key))}</span>` +
+        `<span class="fam-bar" aria-hidden="true"><i class="seg-late" style="width:${w(e.late)}%"></i><i class="seg-flow" style="width:${w(flow)}%"></i><i class="seg-imm" style="width:${w(e.imm)}%"></i></span>` +
+        `<span class="eur">${esc(eurFull(e.val))}</span><span class="qty">${esc(fmtQty(e.qty))}</span><span class="fam-late">${esc(latePct === "–" ? "–" : tf("famLatePct", latePct))}</span></li>`;
+    };
+    const more = all.length > shown.length ? `<button type="button" class="text-action" data-action="fam-all">${esc(tf("famMore", all.length - shown.length))}</button>` : "";
+    $("#share-fam").innerHTML = variantCtl + `<ul class="fam-list" id="fam-list">${shown.map(row).join("")}</ul>${more}` +
+      `<p class="panel-note fam-qty-note">${esc(T("famQtyNote"))}</p>` + otherWarnHTML(m.open);
   }
 
   function renderShare(m) {
@@ -2418,7 +2580,7 @@
       (a.account.isFallback ? ` <span class="sc-filter-note">${esc(T("scFallbackNote"))}</span>` : "");
 
     $("#scorecard-switch").innerHTML = a.accounts.length > 1
-      ? `<div class="lang-switch" role="group" aria-label="${esc(T("scSwitch"))}">` +
+      ? `<div class="segmented" role="group" aria-label="${esc(T("scSwitch"))}">` +
         a.accounts.map(x => `<button type="button" data-action="scorecard" data-value="${esc(x.id)}" aria-pressed="${x.id === a.account.id}">${esc(x.label)}</button>`).join("") + `</div>`
       : "";
 
@@ -2735,7 +2897,7 @@
     else if (action === "period") applyView({ period: VIEW.period === value ? null : value });
     else if (action === "remove-customer") applyView({ customer: null });
     else if (action === "remove-period") applyView({ period: null });
-    else if (action === "reset") applyView({ customer: null, period: null, order: null, sc: null, btb: false });
+    else if (action === "reset") applyView({ customer: null, period: null, order: null, sc: null, btb: false, family: null, model: null, size: null, variant: null, lateMonth: null, chg: false });
     else if (action === "order") { DRAWER_RETURN = target; applyView({ order: value }); }
     else if (action === "close-order") applyView({ order: null });
     else if (action === "scorecard") {
@@ -2756,6 +2918,15 @@
     else if (action === "table-all") { TABLE_ALL = true; applyView({}); }
     else if (action === "dismiss-hint") { store.set("dopk.hint.v1", true); applyView({}); }
     else if (action === "dismiss-notice") { showNotice("", ""); return; }
+    else if (action === "share-tab") { SHARE_TAB = value === "fam" ? "fam" : "cust"; store.set(LS_SHARETAB, SHARE_TAB); applyView({}); }
+    else if (action === "family") { applyView({ family: VIEW.family === value ? null : value, model: null, size: null }); }
+    else if (action === "fam-all") { FAM_ALL = true; applyView({}); }
+    else if (action === "variant") applyView({ variant: value || null });
+    else if (action === "remove-family") applyView({ family: null, model: null, size: null });
+    else if (action === "remove-model") applyView({ model: null, size: null });
+    else if (action === "remove-size") applyView({ size: null });
+    else if (action === "remove-variant") applyView({ variant: null });
+    else if (action === "remove-latemonth") applyView({ lateMonth: null });
     else if (action === "families-load") { $("#families-file")?.click(); return; }
     else if (action === "families-remove") { setFamilies(null); showNotice("", ""); return; }
     else if (action === "families-export") { if (DATA) { const u = buildUnassignedCsv(); downloadCsv(u.csv, u.name); } return; }
@@ -2933,6 +3104,7 @@
       famInput.addEventListener("change", e => { loadFamiliesFile(e.target.files[0]); famInput.value = ""; });
     }
     FAMILIES = store.get(LS_FAMILIES, null);
+    SHARE_TAB = store.get(LS_SHARETAB, "cust") === "fam" ? "fam" : "cust";
     renderFamiliesFoot();
     $("#filter").addEventListener("change", e => applyView({ customer: e.target.value === "__all" ? null : e.target.value }));
     $("#export-late").addEventListener("click", exportLate);
