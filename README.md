@@ -50,6 +50,27 @@ From the second day on you will see ▲▼ changes, a backlog trend line, comple
 and lines whose delivery date moved later. Click the "Seit …" item in the watchlist to open
 **Neu seit letztem Stand** (see below).
 
+## Ask the dashboard (search field)
+
+Type a question into the field under the top bar and press Enter. The dashboard opens the matching
+view and answers in one sentence with its own figures, for example:
+
+| Question | Opens | Answer (shortened) |
+| --- | --- | --- |
+| überfällig Laryvox | overdue lines of the family | "Überfällig (Laryvox): 1,5 T€ in 1 Position …, ältester Verzug 25 Tage." |
+| und Duracuff Pro? | same question for another family | follow-ups start with "und" / "and" |
+| Sofortbedarf Fahl / Sofortbedarf nach Kunde | Sofortbedarf view | value, quantity, average waiting days, oldest order |
+| überfällig nach Monat | overdue matrix | overdue value, lines, oldest delay |
+| fällig im Oktober | that delivery month | value and lines due |
+| Auftrag 1001 | order drawer | open value, lines, overdue, delivered % |
+| größte Produktfamilie / größter Kunde | families or customers tab | share of the open value |
+| was ist neu · Book-to-Bill · Scorecard · Umsatz · Auslauf · PDT · Hilfe | changes sheet, book-to-bill, scorecard, outlook, watchlist, PDT filter, examples | |
+
+It recognises customer names, product families, models, sizes ("A1-XX Gr. 01"), PDT, month names and
+order or customer numbers, in German or English, with or without umlauts. Questions it doesn't
+understand get example questions taken from the loaded file. The answer closes when you change the
+view yourself. It is a fixed set of question types (no AI) and nothing leaves the browser.
+
 ## Sofortbedarf (lines without a delivery date)
 
 A line without a delivery date is **not missing data**. It means: produce and deliver as soon as

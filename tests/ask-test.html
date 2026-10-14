@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Search field acceptance tests: DOPK Insight</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%231F2629'/%3E%3Crect x='7' y='18' width='4' height='7' fill='%23CF2E3E'/%3E%3Crect x='14' y='10' width='4' height='15' fill='%2311879A'/%3E%3Crect x='21' y='14' width='4' height='11' fill='%23E9A800'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../assets/tokens.css">
+<link rel="stylesheet" href="../assets/components.css">
+</head>
+<body>
+<div class="wrap">
+  <section><h1>Search field (phase 1): acceptance tests</h1><ol id="test-results" aria-live="polite"></ol></section>
+  <header class="topbar">
+    <div class="mark">
+      <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" fill="#1F2629"/><rect x="7" y="18" width="4" height="7" fill="#CF2E3E"/><rect x="14" y="10" width="4" height="15" fill="#11879A"/><rect x="21" y="14" width="4" height="11" fill="#E9A800"/></svg>
+      <span>DOPK Insight <small data-i18n="tagline">Täglicher Auftragsbestand</small></span>
+    </div>
+    <span class="spacer"></span>
+    <span class="snapshot-date" id="snapshot">Keine Datei geladen</span>
+    <label class="sr-only" for="view-select" data-i18n="viewLabel">Ansicht</label>
+    <select class="select no-print" id="view-select"><option value="">Ansicht …</option></select>
+    <label class="sr-only" for="filter" data-i18n="customer">Kunde</label>
+    <select class="select no-print" id="filter"><option value="__all">Alle Kunden</option></select>
+    <div class="lang-switch segmented no-print" role="group" aria-label="Sprache / Language">
+      <button type="button" data-lang="de" aria-pressed="true" lang="de" title="Deutsch">DE</button>
+      <button type="button" data-lang="en" aria-pressed="false" lang="en" title="English">EN</button>
+    </div>
+    <button class="btn no-print" type="button" data-upload data-i18n="upload">Tagesdatei hochladen</button>
+    <input type="file" id="file" accept=".xlsx,.xls,.csv" hidden>
+    <input type="file" id="archive" accept=".xlsx,.xls,.csv" multiple hidden>
+    <input type="file" id="families-file" accept=".csv,.txt,.xlsx,.xls" hidden>
+    <form class="ask no-print" id="ask-form" role="search">
+      <label class="sr-only" for="ask-input" data-i18n="askLabel">Frage an das Dashboard</label>
+      <input type="search" id="ask-input" autocomplete="off" enterkeyhint="search" data-i18n-placeholder="askPlaceholder" placeholder="Frage stellen, z. B. „überfällig nach Monat“">
+    </form>
+  </header>
+
+  <div class="breadcrumb-slot"><nav id="breadcrumb" class="breadcrumb" data-i18n-label="filterScope" aria-label="Filterauswahl" hidden></nav></div>
+
+  <div class="banner ask-answer no-print" id="ask-answer" data-kind="info" role="status" aria-live="polite" hidden></div>
+
+  <section class="dropzone" id="empty">
+    <h1 data-i18n="dropTitle">Ziehen Sie den heutigen DOPK-Export hierher, um den Auftragsbestand zu lesen.</h1>
+    <p data-i18n="dropBody">Verwenden Sie die .xlsx-Datei der offenen Aufträge aus dem ERP.</p>
+    <button class="btn" type="button" data-upload data-i18n="choose">Datei auswählen</button>
+    <button class="btn btn--quiet" type="button" data-archive data-i18n="importArchive">Archiv importieren</button>
+    <div class="notice" id="error" role="alert" hidden></div>
+  </section>
+
+  <div class="banner no-print" id="notice" role="status" hidden><span></span><button type="button" class="btn btn--quiet" data-action="dismiss-notice" data-i18n="dismiss">Schließen</button></div>
+
+  <main id="app" hidden>
+    <section class="verdict" id="verdict" aria-live="polite"></section>
+
+    <section class="vitals" id="vitals" data-i18n-label="keyFigures" aria-label="Kennzahlen"></section>
+
+    <section class="panel outlook" id="outlook" aria-labelledby="outlook-title"></section>
+
+    <div class="grid">
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <h2 data-i18n="horizonTitle">Auftragshorizont</h2>
+            <p class="panel-note" id="horizon-note"></p>
+          </div>
+        </div>
+        <div class="horizon" id="horizon"></div>
+        <div class="legend">
+          <span><i style="background:var(--alarm-high)"></i><span data-i18n="legLate">Überfällig</span></span>
+          <span><i style="background:repeating-linear-gradient(45deg,var(--alarm-med) 0 2px,var(--alarm-med-tint) 2px 5px)"></i><span data-i18n="legUndated">Sofortbedarf</span></span>
+          <span><i style="background:var(--alarm-low)"></i><span data-i18n="legFlow">Geplant</span></span>
+        </div>
+      </section>
+      <section class="panel" aria-labelledby="share-title">
+        <div class="panel-head"><div><h2 id="share-title">Von wem der Bestand abhängt</h2><p class="panel-note" id="share-note">Anteil am offenen Wert je Kunde.</p></div><div id="share-tabs" class="no-print"></div></div>
+        <div id="share-cust">
+          <div class="share-bar" id="share-bar"></div>
+          <ul class="share-list" id="share-list"></ul>
+          <div class="stat-line" id="share-stats"></div>
+        </div>
+        <div id="share-fam" hidden></div>
+      </section>
+    </div>
+
+    <div class="grid">
+      <section class="panel">
+        <div class="panel-head">
+          <div><h2 id="late-title" data-i18n="lateTitle">Überfällige Positionen nachfassen</h2><p class="panel-note" id="late-count"></p></div>
+          <div class="late-actions no-print"><div id="late-tools" class="late-tools"></div><button class="btn btn--quiet" type="button" id="export-late" data-i18n="exportLate">Überfälligkeitsliste exportieren</button></div>
+        </div>
+        <div id="late-matrix" class="matrix-wrap" hidden></div>
+        <div class="table-scroll" id="late-table">
+          <table class="data">
+            <thead id="late-head"><tr><th>Auftrag</th><th>Kunde</th><th>Artikel</th><th class="num">Fällig</th><th id="late-days" class="num">Verzug</th><th class="num">Offener Wert</th></tr></thead>
+            <tbody id="late-body"></tbody>
+          </table>
+        </div>
+        <div id="late-more" class="no-print"></div>
+      </section>
+      <section class="panel">
+        <div class="panel-head"><div><h2 data-i18n="watchTitle">Beobachtungsliste</h2><p class="panel-note" data-i18n="watchNote">Veränderungen, Abschlusschancen und zu korrigierende Daten.</p></div></div>
+        <ul class="watch" id="watch"></ul>
+      </section>
+    </div>
+  </main>
+
+  <dialog id="order-drawer" class="order-drawer" role="dialog" aria-modal="true" aria-labelledby="order-title">
+    <div class="drawer-inner">
+      <header class="drawer-head">
+        <div>
+          <h2 id="order-title"></h2>
+          <p id="order-summary" class="panel-note"></p>
+        </div>
+        <button type="button" class="dialog-close" id="order-close" data-action="close-order" aria-label="Schließen" data-i18n-label="closeDialog">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </header>
+      <div class="drawer-table table-scroll" tabindex="0" data-i18n-label="orderDrawer"><table id="order-lines" class="data"></table></div>
+      <div id="order-notes"></div>
+    </div>
+  </dialog>
+
+  <dialog id="scorecard-sheet" class="scorecard-sheet" role="dialog" aria-modal="true" aria-labelledby="scorecard-title">
+    <div class="sheet-inner">
+      <header class="sheet-head">
+        <div>
+          <div class="sc-head-top">
+            <h2 id="scorecard-title" class="sc-title"></h2>
+            <div id="scorecard-switch" class="sc-switch-slot no-print"></div>
+          </div>
+          <p id="scorecard-subtitle" class="panel-note"></p>
+        </div>
+        <div class="sc-head-actions">
+          <div id="scorecard-chip" class="sc-chip-slot"></div>
+          <button type="button" class="dialog-close sc-close" id="scorecard-close" data-action="close-scorecard" aria-label="Schließen" data-i18n-label="closeDialog">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+      </header>
+      <div class="sheet-body" id="scorecard-body" role="region" tabindex="0" data-i18n-label="scVitals"></div>
+    </div>
+  </dialog>
+
+  <dialog id="btb-sheet" class="scorecard-sheet btb-sheet" role="dialog" aria-modal="true" aria-labelledby="btb-title">
+    <div class="sheet-inner">
+      <header class="sheet-head">
+        <div>
+          <div class="sc-head-top">
+            <h2 id="btb-title" class="sc-title" data-i18n="btbTitle">Book-to-Bill</h2>
+            <div id="btb-ratios" class="btb-head-ratios"></div>
+          </div>
+          <p id="btb-subtitle" class="panel-note"></p>
+        </div>
+        <div class="sc-head-actions">
+          <div id="btb-chip" class="sc-chip-slot"></div>
+          <button type="button" class="btn btn--quiet no-print" id="btb-export" data-action="export-btb" data-i18n="exportCsv">Als CSV exportieren</button>
+          <button type="button" class="dialog-close sc-close" id="btb-close" data-action="close-btb" aria-label="Schließen" data-i18n-label="closeDialog">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+      </header>
+      <div class="sheet-body" id="btb-body" role="region" tabindex="0" data-i18n-label="btbTitle"></div>
+    </div>
+  </dialog>
+
+  <dialog id="view-dialog" class="view-dialog" aria-labelledby="view-dialog-title">
+    <form id="view-form" method="dialog">
+      <h2 id="view-dialog-title" data-i18n="vwDialogTitle">Aktuelle Ansicht speichern</h2>
+      <label for="view-name" data-i18n="vwName">Name der Ansicht</label>
+      <input type="text" id="view-name" class="search-input" maxlength="60" required autocomplete="off">
+      <div class="view-dialog-actions">
+        <button type="button" class="btn btn--quiet" id="view-cancel" data-i18n="vwCancel">Abbrechen</button>
+        <button type="submit" class="btn" data-i18n="vwSaveBtn">Speichern</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="changes-sheet" class="scorecard-sheet changes-sheet" role="dialog" aria-modal="true" aria-labelledby="changes-title">
+    <div class="sheet-inner">
+      <header class="sheet-head">
+        <div>
+          <div class="sc-head-top"><h2 id="changes-title" class="sc-title"></h2></div>
+        </div>
+        <div class="sc-head-actions">
+          <button type="button" class="btn btn--quiet no-print" id="changes-export" data-action="export-changes" data-i18n="exportCsv">Als CSV exportieren</button>
+          <button type="button" class="dialog-close sc-close" id="changes-close" data-action="close-changes" aria-label="Schließen" data-i18n-label="closeDialog">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+      </header>
+      <div class="sheet-body" id="changes-body" role="region" tabindex="0" aria-labelledby="changes-title"></div>
+    </div>
+  </dialog>
+
+  <dialog id="detail-modal" class="detail-dialog" closedby="any" aria-labelledby="modal-title">
+    <div class="dialog-inner">
+      <header class="dialog-head">
+        <div class="dialog-titles">
+          <h2 id="modal-title" class="dialog-title"></h2>
+          <div id="modal-subtitle" class="dialog-subtitle"></div>
+        </div>
+        <div class="dialog-actions no-print">
+          <button type="button" class="btn btn--quiet" id="modal-export" data-i18n="exportCsv">Als CSV exportieren</button>
+          <button type="button" class="dialog-close" id="modal-close" aria-label="Schließen" data-i18n-label="closeDialog">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+      </header>
+      <div class="dialog-toolbar no-print">
+        <input type="search" id="modal-search" class="search-input" data-i18n-placeholder="modalSearchPlaceholder" placeholder="In Tabelle suchen …">
+        <span id="modal-filter-count" class="dialog-filter-count"></span>
+      </div>
+      <div class="dialog-body table-scroll">
+        <table class="data data--modal">
+          <thead>
+            <tr>
+              <th data-sort="order" data-i18n="thOrder">Auftrag</th>
+              <th data-sort="date" data-i18n="thDate">Datum</th>
+              <th data-sort="cust" data-i18n="thCust">Kunde</th>
+              <th data-sort="art" data-i18n="thArt">Artikel</th>
+              <th data-sort="desc" data-i18n="thDesc">Bezeichnung</th>
+              <th class="num" data-sort="qty" data-i18n="thQty">Menge</th>
+              <th class="num" data-sort="rest" data-i18n="thRest">Rest</th>
+              <th class="num" data-sort="price" data-i18n="thUnit">Preis</th>
+              <th class="num" data-sort="val" data-i18n="thVal">Offener Wert</th>
+              <th class="num" data-sort="due" data-i18n="thDue">Fällig</th>
+              <th class="num" data-sort="late" data-i18n="thLate">Verzug</th>
+              <th data-sort="status" data-i18n="thStatus">Status</th>
+            </tr>
+          </thead>
+          <tbody id="modal-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </dialog>
+
+  <footer class="foot">
+    <span id="foot-file"></span>
+    <span class="foot-families" id="foot-families" hidden></span>
+    <span class="no-print"><button class="btn btn--quiet" type="button" data-families data-i18n="famAssign">Produktfamilien zuordnen</button> <button class="btn btn--quiet" type="button" data-archive data-i18n="importArchive">Archiv importieren</button> <button class="btn btn--quiet" type="button" id="print" data-i18n="print">Drucken oder als PDF speichern</button> <button class="btn btn--quiet" type="button" id="clear" data-i18n="clear">Gespeicherten Verlauf löschen</button></span>
+  </footer>
+</div>
+<script src="test-observer.js"></script>
+<script src="../assets/vendor/xlsx.full.min.js"></script>
+<script src="fixture.js"></script>
+<script src="fixture-day2.js"></script>
+<script src="fixture-day3.js"></script>
+<script src="fixture-day4.js"></script>
+<script src="fixture-sofort.js"></script>
+<script src="families-fixture.js"></script>
+<script src="../assets/app.js"></script>
+<script src="ask-test.js"></script>
+</body>
+</html>

@@ -144,6 +144,10 @@
     <h3>Phase-out chips</h3>
     <div class="demo row"><span class="chip chip--med">Auslauf → 303028-XX</span><span class="chip chip--high">Raus</span></div>
 
+    <h3>Search field and answer</h3>
+    <p class="lead">One field on its own row in the top bar. The answer reuses the information banner: one sentence, figures from the dashboard, example questions as links when a question is not understood.</p>
+    <div class="demo"><form class="ask" role="search" style="max-width:none"><input type="search" aria-label="Ask the dashboard" placeholder="Ask, e.g. “overdue by month”"></form><div class="banner ask-answer" data-kind="info"><div class="ask-body"><p class="ask-text">Overdue (Laryvox): €1.5k in 1 line from 1 order, oldest 25 days late. Largest item: order 1001 (Alpha Medizintechnik), €1.5k.</p></div><button type="button" class="btn btn--quiet">Close answer</button></div></div>
+
     <h3>Overdue matrix</h3>
     <p class="lead">Due month × product family. Scrolls inside its own container with a sticky first column; cells are buttons.</p>
     <div class="demo"><div class="matrix-scroll"><table class="data matrix"><thead><tr><th>Due in</th><th class="num"><button type="button" class="cell-btn">Laryvox</button></th><th class="num"><button type="button" class="cell-btn">BMV Cuff</button></th><th class="num">Total</th></tr></thead><tbody><tr><th><button type="button" class="cell-btn">Aug 2026</button></th><td class="num"><button type="button" class="cell-btn">€600</button></td><td class="num is-empty">–</td><td class="num total"><button type="button" class="cell-btn">€600</button></td></tr><tr><th><button type="button" class="cell-btn">Oct 2026</button></th><td class="num"><button type="button" class="cell-btn">€1,000</button></td><td class="num is-selected"><button type="button" class="cell-btn" aria-pressed="true">€1,500</button></td><td class="num total"><button type="button" class="cell-btn">€2,500</button></td></tr></tbody><tfoot><tr class="total"><th>Total</th><td class="num">€1,600</td><td class="num">€1,500</td><td class="num">€3,100</td></tr></tfoot></table></div></div>

@@ -9,6 +9,7 @@ history, mapping, views and language are never touched. The pages are not linked
 | `drilldown-test.html` | Drill-down, breadcrumb, URL hash, order drawer, CSV (13 tests) |
 | `scorecard-test.html` | Key account scorecard (21 tests) |
 | `btb-test.html` | Book-to-bill and order intake (21 tests) |
+| `ask-test.html` | Search field: question types, follow-ups, examples, DE/EN, keyboard (17 tests) |
 | `families-sofort-test.html` | Product families mapping, families tab, model/size drill-down, PDT, Sofortbedarf, overdue matrix, changes sheet, saved views, DE/EN, layout, CSP (tests 1–25; reloads itself three times) |
 
 Fixtures: `fixture.js` (09.09.2026), `fixture-day2.js` (10.09.), `fixture-day3.js` (12.09.),

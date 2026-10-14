@@ -313,7 +313,34 @@
       vwSave: "Aktuelle Ansicht speichern …", vwDefault: "Als Standard festlegen", vwDelete: n => `„${n}“ löschen`, vwIsDefault: " (Standard)",
       vwDialogTitle: "Aktuelle Ansicht speichern", vwName: "Name der Ansicht", vwSaveBtn: "Speichern", vwCancel: "Abbrechen",
       vwSaved: n => `Ansicht „${n}“ gespeichert.`, vwDeleted: n => `Ansicht „${n}“ gelöscht.`,
-      vwDefaultSet: n => `„${n}“ ist jetzt die Standardansicht und gilt nach jedem Laden einer Datei.`, vwCurrent: "Aktuelle Ansicht"
+      vwDefaultSet: n => `„${n}“ ist jetzt die Standardansicht und gilt nach jedem Laden einer Datei.`, vwCurrent: "Aktuelle Ansicht",
+      askLabel: "Frage an das Dashboard", askPlaceholder: "Frage stellen, z. B. „überfällig nach Monat“", askClose: "Antwort schließen",
+      askNoData: "Bitte zuerst eine Tagesdatei hochladen.",
+      askUnknown: "Diese Frage kann ich nicht beantworten. Versuchen Sie zum Beispiel:",
+      askHelp: "Fragen Sie nach Überfälligem, Sofortbedarf, Kunden, Produktfamilien, Fälligkeiten, Aufträgen oder Änderungen, zum Beispiel:",
+      askEx: { late: f => `überfällig ${f}`, lateMonth: "überfällig nach Monat", imm: c => `Sofortbedarf ${c}`, changes: "was ist neu", fam: "größte Produktfamilie", due: m => `fällig im ${m}`, order: o => `Auftrag ${o}` },
+      aLate: (s, v, n, o, d) => `Überfällig${s}: ${v} in ${pl(n, "Position", "Positionen")} aus ${pl(o, "Auftrag", "Aufträgen")}, ältester Verzug ${d} Tage.`,
+      aLateTop: (o, c, v) => ` Größter Posten: Auftrag ${o} (${c}), ${v}.`,
+      aLateNone: s => `Überfällig${s}: nichts.`,
+      aImm: (s, v, n, q, a, d) => `Sofortbedarf${s}: ${v} in ${pl(n, "Position", "Positionen")} (${q}), Ø ${a} Tage Wartezeit, ältester Auftrag vom ${d}.`,
+      aImmNone: s => `Sofortbedarf${s}: keine offenen Positionen.`,
+      aOpen: (s, v, n, o, l, i) => `Offener Bestand${s}: ${v} in ${pl(n, "Position", "Positionen")} aus ${pl(o, "Auftrag", "Aufträgen")}, davon ${l} überfällig und ${i} Sofortbedarf.`,
+      aDue: (m, s, v, n) => `Fällig im ${m}${s}: ${v} in ${pl(n, "Position", "Positionen")}.`,
+      aDue7: (s, v) => `In den nächsten 7 Tagen fällig${s}: ${v}.`,
+      aShip: (s, v, n, ot) => `Heute versandt${s}: ${v} mit ${pl(n, "Lieferschein", "Lieferscheinen")}${ot == null ? "" : `, ${ot} termingerecht`}.`,
+      aShipNone: s => `Heute versandt${s}: keine Lieferscheine.`,
+      aIntake: (since, v, r) => `Auftragseingang ${since}: ${v}. Book-to-Bill 4 Wochen: ${r}.`,
+      aChanges: (d, nl, nlv, no, nov, mv, im, dl) => `Seit ${d}: ${nl} neu überfällig (${nlv}), ${pl(no, "neuer Auftrag", "neue Aufträge")} (${nov}), ${pl(mv, "Termin", "Termine")} nach hinten verschoben, ${im} mit neuem Sofortbedarf, ${dl} geliefert.`,
+      aFam: (f, v, p, lp) => `Größte Produktfamilie: ${f} mit ${v} (${p} des offenen Werts), davon ${lp} überfällig.`,
+      aFamNone: "Noch keine Produktfamilien zugeordnet. Bitte im Fußbereich „Produktfamilien zuordnen“ wählen.",
+      aCust: (c, v, p, n) => `Größter Kunde: ${c} mit ${v} (${p} des offenen Werts). ${pl(n, "Kunde hat", "Kunden haben")} offene Aufträge.`,
+      aOutlook: (s, v30, late, mt, ml) => `Nächste 30 Tage${s}: voraussichtlich ${v30} Versand, davon ${late} aus überfälligen Positionen. ${mt}: ${ml}.`,
+      aPhaseNone: "Keine offenen Positionen auf Auslauf- oder Raus-Artikeln.",
+      aOther: (p, v) => `${p} des offenen Werts (${v}) ist keiner Produktfamilie zugeordnet.`,
+      aOrder: (o, c, v, n, l, q) => `Auftrag ${o} (${c}): ${v} offen in ${pl(n, "Position", "Positionen")}, davon ${l} überfällig, ${q} geliefert.`,
+      aOrderNone: o => `Auftrag ${o} ist in der aktuellen Datei nicht enthalten.`,
+      aSc: (c, v, l) => `Scorecard ${c}: ${v} offen, davon ${l} überfällig.`,
+      aReset: "Alle Filter zurückgesetzt."
     },
     en: {
       drillHint: "Tip: bars, customers and order numbers are clickable.",
@@ -561,7 +588,34 @@
       vwSave: "Save current view …", vwDefault: "Set as default", vwDelete: n => `Delete “${n}”`, vwIsDefault: " (default)",
       vwDialogTitle: "Save current view", vwName: "View name", vwSaveBtn: "Save", vwCancel: "Cancel",
       vwSaved: n => `View “${n}” saved.`, vwDeleted: n => `View “${n}” deleted.`,
-      vwDefaultSet: n => `“${n}” is now the default view and applies after every file load.`, vwCurrent: "Current view"
+      vwDefaultSet: n => `“${n}” is now the default view and applies after every file load.`, vwCurrent: "Current view",
+      askLabel: "Ask the dashboard", askPlaceholder: "Ask, e.g. “overdue by month”", askClose: "Close answer",
+      askNoData: "Upload today's file first.",
+      askUnknown: "I can't answer that question. Try for example:",
+      askHelp: "Ask about overdue lines, immediate demand, customers, product families, due dates, orders or changes, for example:",
+      askEx: { late: f => `overdue ${f}`, lateMonth: "overdue by month", imm: c => `immediate demand ${c}`, changes: "what's new", fam: "largest product family", due: m => `due in ${m}`, order: o => `order ${o}` },
+      aLate: (s, v, n, o, d) => `Overdue${s}: ${v} in ${pl(n, "line", "lines")} from ${pl(o, "order", "orders")}, oldest ${d} days late.`,
+      aLateTop: (o, c, v) => ` Largest item: order ${o} (${c}), ${v}.`,
+      aLateNone: s => `Overdue${s}: nothing.`,
+      aImm: (s, v, n, q, a, d) => `Immediate demand${s}: ${v} in ${pl(n, "line", "lines")} (${q}), waiting ${a} days on average, oldest order from ${d}.`,
+      aImmNone: s => `Immediate demand${s}: no open lines.`,
+      aOpen: (s, v, n, o, l, i) => `Open backlog${s}: ${v} in ${pl(n, "line", "lines")} from ${pl(o, "order", "orders")}, of which ${l} overdue and ${i} immediate demand.`,
+      aDue: (m, s, v, n) => `Due in ${m}${s}: ${v} in ${pl(n, "line", "lines")}.`,
+      aDue7: (s, v) => `Due in the next 7 days${s}: ${v}.`,
+      aShip: (s, v, n, ot) => `Shipped today${s}: ${v} on ${pl(n, "delivery note", "delivery notes")}${ot == null ? "" : `, ${ot} on time`}.`,
+      aShipNone: s => `Shipped today${s}: no delivery notes.`,
+      aIntake: (since, v, r) => `Order intake ${since}: ${v}. Book-to-bill 4 weeks: ${r}.`,
+      aChanges: (d, nl, nlv, no, nov, mv, im, dl) => `Since ${d}: ${nl} newly late (${nlv}), ${pl(no, "new order", "new orders")} (${nov}), ${pl(mv, "date", "dates")} moved later, ${im} with new immediate demand, ${dl} delivered.`,
+      aFam: (f, v, p, lp) => `Largest product family: ${f} with ${v} (${p} of open value), ${lp} of it overdue.`,
+      aFamNone: "No product families assigned yet. Use “Assign product families” in the footer.",
+      aCust: (c, v, p, n) => `Largest customer: ${c} with ${v} (${p} of open value). ${pl(n, "customer has", "customers have")} open orders.`,
+      aOutlook: (s, v30, late, mt, ml) => `Next 30 days${s}: about ${v30} expected to ship, of which ${late} from overdue lines. ${mt}: ${ml}.`,
+      aPhaseNone: "No open lines on phase-out or discontinued articles.",
+      aOther: (p, v) => `${p} of open value (${v}) is not assigned to a product family.`,
+      aOrder: (o, c, v, n, l, q) => `Order ${o} (${c}): ${v} open in ${pl(n, "line", "lines")}, ${l} of them overdue, ${q} delivered.`,
+      aOrderNone: o => `Order ${o} is not in the current file.`,
+      aSc: (c, v, l) => `Scorecard ${c}: ${v} open, of which ${l} overdue.`,
+      aReset: "All filters cleared."
     }
   };
 
@@ -2073,6 +2127,7 @@
     renderBtbSheet();
     renderChangesSheet();
     fillViewSelect();
+    renderAsk();
     $("#foot-file").textContent = `${DATA.fileName || "DOPK export"} · ${tf("linesRead", lines.length)}`;
     renderFamiliesFoot();
     $("#app").hidden = false; $("#empty").hidden = true;
@@ -3314,6 +3369,233 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
 
+  // ------------------------------------------------------------- ask: the search field (phase 1, no AI)
+  // A question is matched to a fixed question type plus the customer, family, model, size, PDT variant,
+  // month and order number it names. The dashboard opens that view and answers in one sentence built
+  // from its own calculations. Nothing leaves the browser.
+  const normQ = s => String(s ?? "").toLowerCase().replace(/ß/g, "ss").normalize("NFD").replace(/\p{Diacritic}/gu, "")
+    .replace(/[„“”"'’?!,;:()]/g, " ").replace(/\.(?=\s|$)/g, " ").replace(/\s+/g, " ").trim();
+  // Words are written normalised (no umlauts, lower case); phrases match on whole words.
+  const ASK_WORDS = {
+    changes: ["was ist neu", "was gibt es neues", "neu seit", "seit gestern", "seit dem letzten", "anderungen", "anderung", "geandert", "aenderungen", "geaendert", "whats new", "what s new", "what changed", "changes", "new since", "since yesterday"],
+    intake: ["auftragseingang", "neue auftrage", "neue auftraege", "book to bill", "book-to-bill", "bookings", "order intake", "intake", "new orders"],
+    scorecard: ["scorecard"],
+    imm: ["sofortbedarf", "sofort", "ohne liefertermin", "ohne termin", "schnellstmoglich", "schnellstmoeglich", "immediate", "asap", "undated", "no delivery date"],
+    late: ["uberfallig", "uberfallige", "uberfalliges", "uberfalligen", "ueberfaellig", "ueberfaellige", "verzug", "verspatet", "verspaetet", "ruckstand", "rueckstand", "overdue", "late", "past due"],
+    due: ["fallig", "falligkeit", "faellig", "due"],
+    ship: ["versandt", "geliefert", "lieferschein", "lieferscheine", "shipped", "delivered", "deliveries", "shipments"],
+    outlook: ["umsatz", "prognose", "ausblick", "landung", "monatslandung", "forecast", "outlook", "revenue"],
+    phase: ["auslauf", "raus", "phase-out", "phase out", "discontinued", "nachfolger", "successor"],
+    other: ["sonstige", "nicht zugeordnet", "unassigned", "unmapped"],
+    fam: ["produktfamilie", "produktfamilien", "familie", "familien", "family", "families"],
+    cust: ["kunde", "kunden", "customer", "customers", "abhangigkeit", "konzentration", "concentration"],
+    open: ["offen", "offener", "offene", "bestand", "auftragsbestand", "backlog", "open"],
+    reset: ["ubersicht", "uebersicht", "zurucksetzen", "reset", "overview", "alles", "gesamt"],
+    help: ["hilfe", "help", "was kann ich fragen", "what can i ask"]
+  };
+  const ASK_ORDER = ["changes", "intake", "scorecard", "imm", "late", "due", "ship", "outlook", "phase", "other", "fam", "cust", "open", "reset", "help"];
+  const ASK_MONTHS = [["januar", "jan", "january"], ["februar", "feb", "february"], ["marz", "maerz", "mar", "march"], ["april", "apr"], ["mai", "may"], ["juni", "jun", "june"],
+    ["juli", "jul", "july"], ["august", "aug"], ["september", "sep", "sept"], ["oktober", "okt", "oct", "october"], ["november", "nov"], ["dezember", "dez", "dec", "december"]];
+  const ASK_GENERIC = new Set(["gmbh", "mbh", "und", "co", "kg", "ag", "the", "klinik", "kliniken", "klinikum", "apotheke", "sanitatshaus", "medizintechnik", "medical", "praxis", "zentrum", "care", "home"]);
+  const ASK_FOLLOW = ["late", "imm", "due", "ship", "outlook", "open"];
+  let ASK = null, ASK_LAST = null;
+
+  function parseQuestion(text) {
+    const q = normQ(text), toks = q.split(" "), padded = " " + q + " ";
+    const has = list => list.some(w => padded.includes(" " + w + " "));
+    const lines = DATA.lines, ent = {};
+    // order or customer number
+    const om = q.match(/(?:^|\s)(?:auftrag|auftragsnummer|order|nr)\s*(\d{3,})(?=\s|$)/);
+    const nums = toks.filter(t => /^\d{3,}$/.test(t));
+    if (om) ent.order = om[1];
+    const custNum = nums.find(t => t !== ent.order && lines.some(l => String(l.custId) === t));
+    if (!ent.order && !custNum) { const n = nums.find(t => lines.some(l => String(l.order) === t)); if (n) ent.order = n; }
+    // customer: distinctive words of the short name, or "key account"
+    const custs = new Map();
+    lines.forEach(l => { if (!custs.has(l.cust)) custs.set(l.cust, { name: l.cust, id: String(l.custId), val: 0 }); if (!l.shipped) custs.get(l.cust).val += l.val; });
+    let best = null;
+    custs.forEach(c => {
+      const words = normQ(shortName(c.name)).split(" ").filter(w => w.length >= 3 && !ASK_GENERIC.has(w));
+      const score = words.filter(w => toks.includes(w)).length + (custNum === c.id ? 5 : 0);
+      if (score && (!best || score > best.score || (score === best.score && c.val > best.val))) best = { ...c, score };
+    });
+    if (!best && has(["key account", "keyaccount", "ka"])) {
+      const ka = getKeyAccounts(lines)[0], l = ka && lines.find(x => String(x.custId) === String(ka.id));
+      if (l) best = { name: l.cust };
+    }
+    if (best) ent.customer = best.name;
+    // product family (longest full name, else a unique first word), model, size
+    const fams = [...new Set(lines.map(famKey).filter(f => f !== OTHER))];
+    let fam = fams.filter(f => padded.includes(" " + normQ(f) + " ")).sort((a, b) => b.length - a.length)[0];
+    if (!fam) { const c = fams.filter(f => toks.includes(normQ(f).split(" ")[0])); if (c.length === 1) fam = c[0]; }
+    const models = [...new Set(lines.filter(l => l.model && (!fam || famKey(l) === fam)).map(l => l.model))];
+    const mod = models.find(m => toks.includes(normQ(m)));
+    if (mod) { ent.model = mod; fam = fam || famKey(lines.find(l => l.model === mod)); }
+    if (fam) ent.family = fam;
+    const sm = q.match(/(?:^|\s)(?:gr|grosse|size)\s+([a-z0-9-]+)/);
+    if (sm && ent.model) { const sz = [...new Set(lines.filter(l => l.model === ent.model).map(l => l.size).filter(Boolean))].find(s => normQ(s) === sm[1]); if (sz) ent.size = sz; }
+    // PDT variant
+    if (has(["ohne pdt", "without pdt", "kein pdt", "no pdt", "non pdt"])) ent.variant = "nopdt";
+    else if (toks.includes("pdt")) ent.variant = "pdt";
+    // month (+ optional year)
+    const mi = ASK_MONTHS.findIndex(names => names.some(n => toks.includes(n)));
+    const yr = toks.find(t => /^20\d\d$/.test(t));
+    if (mi >= 0) ent.month = { m: mi, y: yr ? +yr : null };
+    let intent = ASK_ORDER.find(k => has(ASK_WORDS[k])) || null;
+    if (ent.order && (!intent || intent === "open")) intent = "order";
+    if (!intent && ent.month) intent = "due";
+    return {
+      intent, ent, hasEnt: Object.keys(ent).length > 0,
+      // "und Duracuff Pro?" / "and Laryvox?" repeat the previous question for something else
+      followUp: /^(und|and|what about|how about|und bei|und fur|wie ist es mit|wie sieht es mit)(\s|$)/.test(q),
+      matrix: has(["nach monat", "je monat", "pro monat", "by month", "per month", "monatlich", "monthly"]),
+      byCust: has(["nach kunde", "nach kunden", "je kunde", "pro kunde", "by customer", "per customer"]),
+      byFam: has(["nach familie", "nach produktfamilie", "je familie", "by family", "by product family", "per family"])
+    };
+  }
+
+  const askKey = () => JSON.stringify([VIEW.customer, VIEW.period, VIEW.family, VIEW.model, VIEW.size, VIEW.variant, VIEW.lateMonth, SHARE_TAB, LATE_TAB, UND_GROUP]);
+  // Applies the view a question asks for and shows the answer. Returns the stored answer state.
+  function askQuestion(text) {
+    const raw = String(text || "").trim();
+    ASK = null;
+    if (!raw) { renderAsk(); return null; }
+    if (!DATA) { ASK = { intent: "nodata" }; renderAsk(); return ASK; }
+    const p = parseQuestion(raw), e = p.ent, lines = DATA.lines, rd = DATA.reportDate;
+    let intent = p.intent;
+    if (!intent && p.hasEnt) intent = p.followUp && ASK_FOLLOW.includes(ASK_LAST) ? ASK_LAST : "open";
+    if (!intent) intent = "unknown";
+    if ((intent === "fam" || intent === "cust") && (e.family || e.customer)) intent = "open";
+    const monthOf = past => {
+      if (!e.month) return null;
+      let y = e.month.y ?? rd.getFullYear();
+      const key = () => `${y}-${String(e.month.m + 1).padStart(2, "0")}`;
+      if (e.month.y == null) { if (past && key() > monthKey(rd)) y--; if (!past && key() < monthKey(rd)) y++; }
+      return key();
+    };
+    const filters = { customer: e.customer || null, family: e.family || null, model: e.model || null, size: e.size || null, variant: e.variant || null, period: null, lateMonth: null };
+    let changes = { ...filters, order: null, sc: null, btb: false, chg: false }, extra = {};
+    if (intent === "late") {
+      changes.period = "late"; changes.lateMonth = monthOf(true);
+      if (p.matrix) { LATE_TAB = "month"; store.set(LS_LATETAB, LATE_TAB); }
+    } else if (intent === "imm") {
+      changes.period = "undated";
+      if (p.byCust) UND_GROUP = "cust"; else if (p.byFam) UND_GROUP = "fam";
+    } else if (intent === "due") changes.period = monthOf(false);
+    else if (intent === "intake") changes.btb = true;
+    else if (intent === "changes") changes = { chg: true };
+    else if (intent === "order") { changes = { order: e.order }; extra.order = e.order; }
+    else if (intent === "scorecard") {
+      const id = e.customer ? lines.find(l => l.cust === e.customer)?.custId : getKeyAccounts(lines)[0]?.id;
+      changes = id != null ? { sc: String(id) } : null; extra.sc = id != null ? String(id) : null;
+    } else if (intent === "fam" || intent === "other") { SHARE_TAB = "fam"; store.set(LS_SHARETAB, SHARE_TAB); }
+    else if (intent === "cust") { SHARE_TAB = "cust"; store.set(LS_SHARETAB, SHARE_TAB); }
+    else if (intent === "help" || intent === "unknown") changes = null;
+    if (changes) applyView(changes, "push");
+    if (intent === "phase") { WATCH_OPEN = "phaseout"; WATCH_ALL = false; applyView({}); }
+    if (ASK_FOLLOW.includes(intent)) ASK_LAST = intent;
+    ASK = { intent, ...extra, key: askKey() };
+    renderAsk();
+    if (intent === "outlook") $("#outlook")?.scrollIntoView({ block: "start" });
+    return ASK;
+  }
+
+  // Example questions built from the loaded file, so each one has an answer.
+  function askExamples() {
+    const lines = DATA.lines, rd = DATA.reportDate, m = compute(lines, rd, {}), ex = T("askEx");
+    const famTop = FAMILIES ? aggregate(m.late, famKey, rd).filter(x => x.key !== OTHER && x.val > 0).sort((x, y) => y.val - x.val)[0] : null;
+    const ka = getKeyAccounts(lines)[0];
+    const next = m.months.find(x => x.val > 0 && (x.y > rd.getFullYear() || x.m > rd.getMonth()));
+    const lateOrder = [...m.late].sort((x, y) => y.val - x.val)[0];
+    return [famTop ? ex.late(famTop.key) : null, ex.lateMonth, ex.imm(ka ? ka.label : ""), ex.changes, FAMILIES ? ex.fam : null,
+      next ? ex.due(monthName(next.m, next.y, false)) : null, lateOrder ? ex.order(lateOrder.order) : null].filter(Boolean).map(s => s.trim());
+  }
+
+  // The answer sentence for the view now on screen, in the current language.
+  function askAnswer(a) {
+    if (a.intent === "nodata") return { text: T("askNoData") };
+    if (a.intent === "unknown") return { text: T("askUnknown"), examples: askExamples() };
+    if (a.intent === "help") return { text: T("askHelp"), examples: askExamples() };
+    const lines = DATA.lines, rd = DATA.reportDate, m = compute(lines, rd, VIEW), hist = store.get(LS_HISTORY, { snaps: {} });
+    const parts = [VIEW.customer === "__xtop" ? T("otherGroup") : VIEW.customer ? shortName(VIEW.customer) : null, VIEW.family && famName(VIEW.family),
+      VIEW.model && modelName(VIEW.model), VIEW.size && sizeName(VIEW.size), VIEW.variant && variantName(VIEW.variant), VIEW.lateMonth && monthLabel(VIEW.lateMonth)].filter(Boolean);
+    const s = parts.length ? ` (${parts.join(" · ")})` : "";
+    const open = () => ({ text: tf("aOpen", s, eur(m.openVal), m.openLines, m.openOrders, eur(m.lateVal), eur(m.immediate.val)) });
+    switch (a.intent) {
+      case "late": {
+        if (!(m.lateVal > 0)) return { text: tf("aLateNone", s) };
+        const top = [...m.late].sort((x, y) => y.val - x.val)[0], oldest = Math.max(...m.late.map(l => daysBetween(rd, l.due)));
+        return { text: tf("aLate", s, eur(m.lateVal), m.late.length, uniq(m.late, l => l.order), oldest) + tf("aLateTop", top.order, top.short, eur(top.val)) };
+      }
+      case "imm": {
+        const i = m.immediate;
+        if (!i.n) return { text: tf("aImmNone", s) };
+        const oldest = i.lines.reduce((d, l) => l.date && (!d || l.date < d) ? l.date : d, null);
+        return { text: tf("aImm", s, eur(i.val), i.n, fmtQty(i.qty), Math.round(i.waitAvg), fmtDate(oldest)) };
+      }
+      case "due":
+        return VIEW.period && /^\d{4}-\d{2}$/.test(VIEW.period) ? { text: tf("aDue", monthLabel(VIEW.period), s, eur(m.openVal), m.openLines) } : { text: tf("aDue7", s, eur(m.in7Val)) };
+      case "ship":
+        return { text: m.notes ? tf("aShip", s, eur(m.shippedVal), m.notes, m.onTimePct == null ? null : pct(m.onTimePct, 0)) : tf("aShipNone", s) };
+      case "intake": {
+        const b = computeBookToBill(hist, rd, VIEW), prev = previous(hist, rd);
+        return { text: tf("aIntake", prev ? tf("btbSince", fmtDate(parseDate(prev.date))) : T("today"), eur(b.currentIntake), b.heroRatio) };
+      }
+      case "changes": {
+        const c = computeChanges(hist, DATA);
+        if (!c) return { text: T("chgNone") };
+        const g = k => c.cats.find(x => x.key === k);
+        return { text: tf("aChanges", fmtDate(c.since), g("newLate").n, eur(g("newLate").val), uniq(g("intake").items, i => i.order), eur(g("intake").val), g("moved").n, g("newImm").n, eur(g("delivered").val)) };
+      }
+      case "fam": case "other": {
+        if (!FAMILIES) return { text: T("aFamNone") };
+        const all = aggregate(m.open, famKey, rd), tot = sum(all, x => x.val);
+        if (a.intent === "other") { const o = all.find(x => x.key === OTHER); return { text: tf("aOther", pct(tot ? (o?.val || 0) / tot * 100 : 0, 0), eur(o?.val || 0)) }; }
+        const top = all.filter(x => x.key !== OTHER).sort((x, y) => y.val - x.val)[0];
+        return top ? { text: tf("aFam", famName(top.key), eur(top.val), pct(tot ? top.val / tot * 100 : 0, 0), pct(top.val ? top.late / top.val * 100 : 0, 0)) } : { text: T("aFamNone") };
+      }
+      case "cust": {
+        const c = m.custs[0];
+        return c ? { text: tf("aCust", c.short, eur(c.val), pct(m.openVal ? c.val / m.openVal * 100 : 0, 0), m.custs.length) } : open();
+      }
+      case "outlook": {
+        const product = { family: VIEW.family, model: VIEW.model, size: VIEW.size, variant: VIEW.variant }, productOn = !!(VIEW.family || VIEW.variant);
+        const o = computeOutlook(productOn ? lines.filter(l => matchesProduct(l, product)) : lines, rd, VIEW.customer || "__all", hist, productOn ? product : null);
+        return { text: tf("aOutlook", s, eur(o.calibrated ? o.d30.expected : o.d30.plan), eur(o.d30.catchUp), tf("outlookMonthTitle", o.monthLanding.monthName), eur(o.monthLanding.landing)) };
+      }
+      case "phase": {
+        const po = m.open.filter(l => PHASE_OUT.test(l.artStatus) || DISCONTINUED.test(l.artStatus));
+        return { text: po.length ? tf("wPhaseOut", po.length, eur(sum(po, l => l.val))) + "." : T("aPhaseNone") };
+      }
+      case "order": {
+        const ls = lines.filter(l => String(l.order) === String(a.order));
+        if (!ls.length) return { text: tf("aOrderNone", a.order) };
+        const op = ls.filter(l => !l.shipped), late = op.filter(l => l.due && l.due < rd), q = ls.find(l => l.quote != null)?.quote ?? 0;
+        return { text: tf("aOrder", a.order, ls[0].short, eur(sum(op, l => l.val)), op.length, late.length, pct(q, 0)) };
+      }
+      case "scorecard": {
+        if (!a.sc) return { text: T("askUnknown"), examples: askExamples() };
+        const acc = computeAccount(lines, rd, a.sc, hist);
+        return { text: tf("aSc", acc.account.label, eur(acc.openVal), eur(acc.lateVal)) };
+      }
+      case "reset": return { text: T("aReset") + " " + open().text };
+      default: return open();
+    }
+  }
+
+  // The answer stays while the view it answered is on screen; any other filter change closes it.
+  function renderAsk() {
+    const el = $("#ask-answer");
+    if (!el) return;
+    if (ASK && ASK.key && ASK.key !== askKey()) ASK = null;
+    el.hidden = !ASK;
+    if (!ASK) { el.innerHTML = ""; return; }
+    const { text, examples } = askAnswer(ASK);
+    el.innerHTML = `<div class="ask-body"><p class="ask-text">${esc(text)}</p>` +
+      (examples?.length ? `<p class="ask-examples">${examples.map(x => `<button type="button" class="text-action link-action" data-action="ask" data-value="${esc(x)}">${esc(x)}</button>`).join(" · ")}</p>` : "") +
+      `</div><button type="button" class="btn btn--quiet" data-action="ask-close">${esc(T("askClose"))}</button>`;
+  }
+
   function handleAction(e) {
     const target = e.target.closest?.("[data-action]");
     if (!target) return;
@@ -3351,6 +3633,8 @@
     else if (action === "table-all") { TABLE_ALL = true; applyView({}); }
     else if (action === "dismiss-hint") { store.set("dopk.hint.v1", true); applyView({}); }
     else if (action === "dismiss-notice") { showNotice("", ""); return; }
+    else if (action === "ask") { const input = $("#ask-input"); if (input) input.value = value; askQuestion(value); return; }
+    else if (action === "ask-close") { ASK = null; renderAsk(); $("#ask-input")?.focus(); return; }
     else if (action === "late-tab") { LATE_TAB = value === "month" ? "month" : "list"; store.set(LS_LATETAB, LATE_TAB); applyView({}); }
     else if (action === "matrix-unit") { MATRIX_UNIT = value === "qty" ? "qty" : "eur"; applyView({}); }
     else if (action === "matrix-cell") {
@@ -3557,6 +3841,8 @@
     renderFamiliesFoot();
     $("#filter").addEventListener("change", e => applyView({ customer: e.target.value === "__all" ? null : e.target.value }));
     $("#view-select")?.addEventListener("change", e => onViewSelect(e.target.value));
+    $("#ask-form")?.addEventListener("submit", e => { e.preventDefault(); askQuestion($("#ask-input").value); });
+    $("#ask-input")?.addEventListener("keydown", e => { if (e.key === "Escape" && (e.target.value || ASK)) { e.preventDefault(); e.target.value = ""; ASK = null; renderAsk(); } });
     const viewDlg = $("#view-dialog");
     if (viewDlg) {
       $("#view-form").addEventListener("submit", e => { e.preventDefault(); if (saveCurrentView($("#view-name").value)) closeViewDialog(); });
@@ -3627,7 +3913,8 @@
         clearHistory: () => TEST_STORAGE.delete(LS_HISTORY),
         loadFamiliesFile, buildUnassignedCsv, setFamilies, get families() { return FAMILIES; }, buildImmediateCsv, computeOutlook,
         computeChanges: () => computeChanges(store.get(LS_HISTORY, { snaps: {} }), DATA), buildChangesCsv,
-        onViewSelect, saveCurrentView, get currentView() { return CURRENT_VIEW; }, i18nKeys: () => ({ de: Object.keys(I18N.de), en: Object.keys(I18N.en) }), get toggles() { return { share: SHARE_TAB, late: LATE_TAB, unit: MATRIX_UNIT, und: UND_GROUP }; },
+        onViewSelect, saveCurrentView, get currentView() { return CURRENT_VIEW; },
+        ask: askQuestion, parseQuestion, get askState() { return ASK; }, askText: () => ASK ? askAnswer(ASK).text : null, i18nKeys: () => ({ de: Object.keys(I18N.de), en: Object.keys(I18N.en) }), get toggles() { return { share: SHARE_TAB, late: LATE_TAB, unit: MATRIX_UNIT, und: UND_GROUP }; },
         importArchive: aois => commitArchive(aois.map((aoa, i) => ({ aoa, data: parseRows(aoa, "DOPK.xlsx"), name: "DOPK_" + i + ".xlsx", mod: i })), []),
         get history() { return store.get(LS_HISTORY, { snaps: {} }); },
         get view() { return { ...VIEW }; }, get data() { return DATA; }, get metrics() { return compute(DATA.lines, DATA.reportDate, VIEW); }

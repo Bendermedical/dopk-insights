@@ -31,9 +31,15 @@
     <input type="file" id="file" accept=".xlsx,.xls,.csv" hidden>
     <input type="file" id="archive" accept=".xlsx,.xls,.csv" multiple hidden>
     <input type="file" id="families-file" accept=".csv,.txt,.xlsx,.xls" hidden>
+    <form class="ask no-print" id="ask-form" role="search">
+      <label class="sr-only" for="ask-input" data-i18n="askLabel">Frage an das Dashboard</label>
+      <input type="search" id="ask-input" autocomplete="off" enterkeyhint="search" data-i18n-placeholder="askPlaceholder" placeholder="Frage stellen, z. B. „überfällig nach Monat“">
+    </form>
   </header>
 
   <div class="breadcrumb-slot"><nav id="breadcrumb" class="breadcrumb" data-i18n-label="filterScope" aria-label="Filterauswahl" hidden></nav></div>
+
+  <div class="banner ask-answer no-print" id="ask-answer" data-kind="info" role="status" aria-live="polite" hidden></div>
 
   <section class="dropzone" id="empty">
     <h1 data-i18n="dropTitle">Ziehen Sie den heutigen DOPK-Export hierher, um den Auftragsbestand zu lesen.</h1>
