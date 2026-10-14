@@ -145,7 +145,7 @@ button.vital:hover .vital-action, button.vital:focus-visible .vital-action { col
 /* ---- Families tab: one row per product family ------------------------- */
 .fam-tools { margin-bottom: var(--s3); }
 .fam-list { list-style: none; margin: 0; padding: 0; }
-.fam-list li { display:grid; grid-template-columns: minmax(0,1.1fr) minmax(48px,1fr) auto auto auto; gap: var(--s3); align-items: center; padding: var(--s2) 0; border-bottom: 1px solid var(--rule-soft); font-size: var(--fs-sm); cursor: pointer; }
+.fam-list li { display:grid; grid-template-columns: minmax(0,1.5fr) minmax(40px,1fr) auto auto auto; gap: var(--s3); align-items: center; padding: var(--s2) 0; border-bottom: 1px solid var(--rule-soft); font-size: var(--fs-sm); cursor: pointer; }
 .fam-list li[aria-pressed="true"] { font-weight: var(--fw-bold); }
 .fam-list li.is-dim { opacity: .45; }
 .fam-list .name { overflow:hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -192,6 +192,9 @@ table.matrix th .cell-btn { font-weight: var(--fw-bold); color: var(--ink-muted)
 table.matrix .cell-btn:hover { background: var(--steel-200); }
 table.matrix .cell-btn[aria-pressed="true"], table.matrix td.is-selected { background: var(--steel-200); font-weight: var(--fw-bold); }
 table.matrix td.is-empty { color: var(--ink-faint); padding: var(--s2); }
+table.matrix tbody th, table.matrix tfoot th { border-bottom: 1px solid var(--rule-soft); font-weight: var(--fw-regular); }
+table.matrix .cell-txt { display:block; padding: var(--s2); }
+table.matrix th .cell-txt { padding-left: 0; }
 table.matrix tfoot td, table.matrix tfoot th, table.matrix td.total { font-weight: var(--fw-bold); }
 table.matrix tfoot tr > * { border-top: 2px solid var(--graphite); border-bottom: 0; }
 table.matrix tbody tr:hover { background: transparent; }

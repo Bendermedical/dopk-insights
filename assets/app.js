@@ -2244,7 +2244,7 @@
   function renderFamilies(m) {
     const rd = DATA.reportDate;
     const variantCtl = hasPdtVariants(DATA.lines)
-      ? `<div class="fam-tools">${segmented(T("variantLabel"), "variant", [["", T("variantAll")], ["pdt", T("variantPdt")], ["nopdt", T("variantNoPdt")]], VIEW.variant || "")}</div>` : "";
+      ? `<div class="fam-tools">${segmented(T("variantLabel"), "variant", [["", T("variantAll")], ["pdt", T("variantPdt")], ["nopdt", T("variantNoPdt")]], VIEW.variant || "", "segmented--small")}</div>` : "";
     if (!FAMILIES) { $("#share-fam").innerHTML = variantCtl + famEmptyHTML() + otherWarnHTML(m.open); return; }
     const all = aggregate(m.open, famKey, rd).filter(e => e.val > 0 || e.qty > 0).sort(byValueOtherLast);
     const max = RULES.families?.maxRows ?? 8;
@@ -2338,7 +2338,7 @@
     const sel = (f, mo) => (f == null || VIEW.family === f) && (mo == null || VIEW.lateMonth === mo) && VIEW.period === "late" && (f != null || mo != null);
     const btn = (action, value, label, aria, pressed) => `<button type="button" class="cell-btn" data-action="${action}" data-value="${esc(value)}" aria-pressed="${pressed}" aria-label="${esc(aria)}">${esc(label)}</button>`;
     const colTotal = f => { const out = { val: 0, qty: 0, n: 0 }; mx.months.forEach(mo => { const c = mx.cell(mo, f); out.val += c.val; out.qty += c.qty; out.n += c.n; }); return out; };
-    const head = `<tr><th scope="col">${esc(T("matrixMonth"))}</th>` + mx.cols.map(f => `<th scope="col" class="num">${f === "__more" ? esc(colName(f)) : btn("matrix-family", f, colName(f), colName(f), VIEW.period === "late" && VIEW.family === f && !VIEW.lateMonth)}</th>`).join("") + `<th scope="col" class="num">${esc(T("matrixTotal"))}</th></tr>`;
+    const head = `<tr><th scope="col">${esc(T("matrixMonth"))}</th>` + mx.cols.map(f => `<th scope="col" class="num">${f === "__more" ? `<span class="cell-txt">${esc(colName(f))}</span>` : btn("matrix-family", f, colName(f), colName(f), VIEW.period === "late" && VIEW.family === f && !VIEW.lateMonth)}</th>`).join("") + `<th scope="col" class="num">${esc(T("matrixTotal"))}</th></tr>`;
     const rows = mx.months.map(mo => {
       const label = monthLabel(mo);
       return `<tr><th scope="row">${btn("matrix-month", mo, label, label, sel(null, mo) && !VIEW.family)}</th>` + mx.cols.map(f => {
@@ -2348,7 +2348,7 @@
       }).join("") + `<td class="num total">${btn("matrix-month", mo, fmt(mx.cell(mo, null)), tf("matrixCell", label, T("matrixTotal"), fmt(mx.cell(mo, null))), false)}</td></tr>`;
     }).join("");
     const grand = { val: mx.total, qty: sum(mx.months, mo => mx.cell(mo, null).qty), n: 1 };
-    const foot = `<tr class="total"><th scope="row">${esc(T("matrixTotal"))}</th>` + mx.cols.map(f => { const c = colTotal(f), v = fmt(c); return `<td class="num">${f === "__more" || v === "–" ? esc(v) : btn("matrix-family", f, v, tf("matrixCell", T("matrixTotal"), colName(f), v), false)}</td>`; }).join("") + `<td class="num">${esc(fmt(grand))}</td></tr>`;
+    const foot = `<tr class="total"><th scope="row"><span class="cell-txt">${esc(T("matrixTotal"))}</span></th>` + mx.cols.map(f => { const c = colTotal(f), v = fmt(c); return `<td class="num">${f === "__more" || v === "–" ? `<span class="cell-txt">${esc(v)}</span>` : btn("matrix-family", f, v, tf("matrixCell", T("matrixTotal"), colName(f), v), false)}</td>`; }).join("") + `<td class="num"><span class="cell-txt">${esc(fmt(grand))}</span></td></tr>`;
     $("#late-matrix").innerHTML = mx.months.length
       ? `<div class="matrix-head">${segmented(T("matrixUnitLabel"), "matrix-unit", [["eur", T("unitEur")], ["qty", T("unitQty")]], MATRIX_UNIT, "segmented--small")}</div>` +
         `<div class="matrix-scroll" tabindex="0" role="region" aria-label="${esc(T("matrixLabel"))}"><table class="data matrix"><thead>${head}</thead><tbody>${rows}</tbody><tfoot>${foot}</tfoot></table></div>` +
