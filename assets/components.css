@@ -171,6 +171,11 @@ table.data .num { text-align: right; white-space: nowrap; }
 table.data .clip { max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 table.data td.late { color: #9E1F2D; font-weight: var(--fw-bold); }
 table.data tbody tr:hover { background: var(--steel-200); }
+table.data tbody tr[role="button"] { cursor: pointer; }
+table.data td .chip { margin-left: var(--s1); }
+.late-actions { display:flex; align-items: flex-start; gap: var(--s2); flex-wrap: wrap; }
+.late-tools { display:flex; gap: var(--s2); flex-wrap: wrap; }
+.drawer-fam { display:block; font-size: var(--fs-xs); color: var(--ink-faint); }
 
 /* ---- Watchlist -------------------------------------------------------- */
 .watch { list-style: none; margin: 0; padding: 0; }

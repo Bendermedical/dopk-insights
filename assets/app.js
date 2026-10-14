@@ -277,7 +277,8 @@
       phaseOutChip: s => s ? `Auslauf → ${s}` : "Auslauf", outChip: "Raus",
       wPhaseOut: (n, v) => `${pl(n, "offene Position", "offene Positionen")} auf Auslauf-/Raus-Artikeln (${v})`,
       wPhaseOutBody: "Offener Kundenbedarf auf auslaufenden Artikeln. Nachfolger anbieten oder Restmengen sichern.",
-      csvFamHead: ["Produktfamilie", "Modell", "Größe"]
+      csvFamHead: ["Produktfamilie", "Modell", "Größe"],
+      drillModels: n => pl(n, "Modell", "Modelle"), drillSizes: n => pl(n, "Größe", "Größen")
     },
     en: {
       drillHint: "Tip: bars, customers and order numbers are clickable.",
@@ -492,7 +493,8 @@
       phaseOutChip: s => s ? `Phase-out → ${s}` : "Phase-out", outChip: "Discontinued",
       wPhaseOut: (n, v) => `${pl(n, "open line", "open lines")} on phase-out or discontinued articles (${v})`,
       wPhaseOutBody: "Open customer demand on articles being phased out. Offer the successor or secure the remaining stock.",
-      csvFamHead: ["Product family", "Model", "Size"]
+      csvFamHead: ["Product family", "Model", "Size"],
+      drillModels: n => pl(n, "model", "models"), drillSizes: n => pl(n, "size", "sizes")
     }
   };
 
@@ -627,7 +629,7 @@
   const famName = f => f === OTHER ? T("famOther") : f;
   // Semicolon (preferred), tab or comma separated text with quoted fields; a leading BOM is ignored.
   function parseDelimited(text) {
-    text = String(text).replace(/^﻿/, "");
+    text = String(text).replace(/^\ufeff/, "");
     const first = text.split(/\r?\n/, 1)[0] || "";
     const delim = first.includes(";") ? ";" : first.includes("\t") ? "\t" : ",";
     const rows = []; let row = [], cell = "", quoted = false;
@@ -643,7 +645,7 @@
     return rows;
   }
   function parseMapping(aoa) {
-    const norm = s => String(s ?? "").replace(/^﻿/, "").trim().toLowerCase();
+    const norm = s => String(s ?? "").replace(/^\ufeff/, "").trim().toLowerCase();
     const h = aoa.findIndex(r => Array.isArray(r) && r.some(c => MAP_COLS.art.includes(norm(c))) && r.some(c => MAP_COLS.fam.includes(norm(c))));
     if (h < 0) throw new Error(T("famErrHeader"));
     const head = aoa[h].map(norm), idx = {};
@@ -2069,23 +2071,83 @@
     $("#share-stats").innerHTML = `<div><b>${m.custs.length}</b>${T("custsWith")}</div><div><b>${nf(Math.round(m.hhi))}</b>${T("hhi")} <span class="chip chip--${lvl}">${txt}</span></div>`;
   }
 
+  // Lower-left panel: late list (default), family drill-down (models → sizes → lines) or a period list.
+  function lowerMode() {
+    const p = VIEW.period;
+    if (VIEW.family && p !== "late") return VIEW.size ? "lines" : VIEW.model ? "sizes" : "models";
+    return "list";
+  }
+  const fifoSort = (a, b) => (a.date ? +a.date : Infinity) - (b.date ? +b.date : Infinity) || b.val - a.val;
   function tableLines(m) {
+    const mode = lowerMode();
+    if (mode === "models" || mode === "sizes" || mode === "lines") return [...m.open].sort(VIEW.period === "undated" ? fifoSort : (a, b) => b.val - a.val);
     return [...(VIEW.period && VIEW.period !== "late" ? m.open : m.late)].sort((a, b) => b.val - a.val);
+  }
+  const PHASE_OUT = /^auslauf$/i, DISCONTINUED = /^raus$/i;
+  // "Raus" (act now) outranks "Auslauf → successor" (watch) when a group holds both.
+  function phaseChip(lines) {
+    if (lines.some(l => DISCONTINUED.test(l.artStatus))) return ` <span class="chip chip--high">${esc(T("outChip"))}</span>`;
+    const l = lines.find(x => PHASE_OUT.test(x.artStatus));
+    return l ? ` <span class="chip chip--med">${esc(tf("phaseOutChip", l.successor))}</span>` : "";
+  }
+  const naturalSort = (a, b) => ((a.key === NONE) - (b.key === NONE)) || String(a.key).localeCompare(String(b.key), LOC(), { numeric: true });
+  const lateHead = cells => { $("#late-head").innerHTML = `<tr>${cells.map(([t, num, id]) => `<th${id ? ` id="${id}"` : ""}${num ? ' class="num"' : ""}>${esc(t)}</th>`).join("")}</tr>`; };
+  const moreLink = (list, rows) => list.length > rows.length ? TABLE_ALL ? `<span class="panel-note">${T("fullExport")}</span>` : `<button type="button" class="text-action" data-action="table-all">${tf("showAll", list.length)}</button>` : "";
+
+  // Family drill-down: models of the family, sizes of a model, then the order lines of a size.
+  function renderDrill(mode, m, rd) {
+    const base = compute(DATA.lines, rd, { ...VIEW, model: null, size: null }).open;
+    const groupRow = (action, e, cells) => `<tr role="button" tabindex="0" data-action="${action}" data-value="${esc(e.key)}">${cells}</tr>`;
+    $("#late-tools").innerHTML = "";
+    if (mode === "models") {
+      const groups = aggregate(base, modelKey, rd).sort((a, b) => ((a.key === NONE) - (b.key === NONE)) || b.val - a.val);
+      const desc = e => { const d = e.list.find(l => l.mapDesc)?.mapDesc || e.list[0].desc; return d.replace(/\s+(Gr\.?|Größe|Size)\s*\S+$/i, ""); };
+      $("#late-title").textContent = tf("modelsTitle", famName(VIEW.family));
+      $("#late-count").textContent = `${tf("drillModels", groups.length)} · ${eurFull(sum(groups, e => e.val))}`;
+      lateHead([[T("thModel")], [T("thDesc")], [T("thVal"), 1], [T("thOpenQty"), 1], [T("thLines"), 1], [T("thLateVal"), 1], [T("thImmVal"), 1]]);
+      $("#late-body").innerHTML = groups.map(e => groupRow("model", e,
+        `<td>${esc(modelName(e.key))}${phaseChip(e.list)}</td><td class="clip" title="${esc(desc(e))}">${esc(desc(e))}</td><td class="num">${eurFull(e.val)}</td><td class="num">${esc(fmtQty(e.qty))}</td>` +
+        `<td class="num">${nf(e.lines)}</td><td class="num${e.late > 0 ? " late" : ""}">${eurFull(e.late)}</td><td class="num">${eurFull(e.imm)}</td>`)).join("") || `<tr><td colspan="7">${T("tableEmpty")}</td></tr>`;
+      $("#late-more").innerHTML = "";
+    } else if (mode === "sizes") {
+      const groups = aggregate(base.filter(l => modelKey(l) === VIEW.model), sizeKey, rd).sort(naturalSort);
+      $("#late-title").textContent = tf("sizesTitle", modelName(VIEW.model));
+      $("#late-count").textContent = `${tf("drillSizes", groups.length)} · ${eurFull(sum(groups, e => e.val))}`;
+      lateHead([[T("thSize")], [T("thVal"), 1], [T("thOpenQty"), 1], [T("thLateQty"), 1], [T("thImmQty"), 1]]);
+      $("#late-body").innerHTML = groups.map(e => groupRow("size", e,
+        `<td>${esc(sizeName(e.key))}${phaseChip(e.list)}</td><td class="num">${eurFull(e.val)}</td><td class="num">${esc(fmtQty(e.qty))}</td>` +
+        `<td class="num${e.lateQty > 0 ? " late" : ""}">${esc(fmtQty(e.lateQty))}</td><td class="num">${esc(fmtQty(e.immQty))}</td>`)).join("") || `<tr><td colspan="5">${T("tableEmpty")}</td></tr>`;
+      $("#late-more").innerHTML = "";
+    } else {
+      const list = tableLines(m), rows = list.slice(0, TABLE_ALL ? 50 : 10);
+      $("#late-title").textContent = tf("sizeLinesTitle", modelName(VIEW.model), sizeName(VIEW.size));
+      $("#late-count").textContent = tf("filterCount", rows.length, list.length);
+      lateHead([[T("thOrder")], [T("thCust")], [T("thArt")], [T("thDesc")], [T("thRestQty"), 1], [T("thDue"), 1], [T("thVal"), 1]]);
+      $("#late-body").innerHTML = rows.map(l => `<tr><td>${orderButton(l)}</td><td class="clip" title="${esc(l.cust)}">${esc(l.short)}</td>` +
+        `<td><button type="button" class="text-action order-link" data-action="order" data-value="${l.order}" aria-haspopup="dialog"><code>${esc(l.art)}</code></button></td><td class="clip" title="${esc(l.desc)}">${esc(l.desc)}</td>` +
+        `<td class="num">${esc(fmtQty(l.rest))}</td><td class="num${l.due && l.due < rd ? " late" : ""}">${l.due ? fmtDate(l.due) : esc(T("sofortShort"))}</td><td class="num">${eurFull(l.val)}</td></tr>`).join("") || `<tr><td colspan="7">${T("tableEmpty")}</td></tr>`;
+      $("#late-more").innerHTML = moreLink(list, rows);
+    }
+    $("#export-late").textContent = T("exportCsv");
+    $("#export-late").disabled = !m.open.length;
   }
 
   function renderLate(m, rd) {
+    const mode = lowerMode();
+    if (mode === "models" || mode === "sizes" || mode === "lines") { renderDrill(mode, m, rd); return; }
+    $("#late-tools").innerHTML = "";
     const list = tableLines(m), rows = list.slice(0, TABLE_ALL ? 50 : 10);
     const p = VIEW.period;
     const daysTitle = p === "undated" ? T("orderAge") : p && p !== "late" ? T("dueIn") : T("thLate");
     $("#late-title").textContent = p === "undated" ? T("undatedTitle") : p && p !== "late" ? tf("monthTitle", periodName(p)) : T("lateTitle");
-    $("#late-days").textContent = daysTitle;
+    lateHead([[T("thOrder")], [T("thCust")], [T("thArt")], [T("thDue"), 1], [daysTitle, 1, "late-days"], [T("thVal"), 1]]);
     $("#late-count").textContent = tf("filterCount", rows.length, list.length);
     $("#late-body").innerHTML = rows.length ? rows.map(l => {
       const days = p === "undated" ? (l.date ? daysBetween(rd, l.date) : null) : p && p !== "late" ? daysBetween(l.due, rd) : daysBetween(rd, l.due);
       const artText = l.art ? `${l.art} · ${l.desc}` : l.desc;
       return `<tr><td>${orderButton(l)}</td><td class="clip" title="${esc(l.cust)}">${esc(l.short)}</td><td class="clip" title="${esc(artText)}"><button type="button" class="text-action order-link" data-action="order" data-value="${l.order}" aria-haspopup="dialog">${esc(artText)}</button></td><td class="num">${fmtDate(l.due)}</td><td class="num${!p || p === "late" ? " late" : ""}">${days == null ? "–" : tf("days", days)}</td><td class="num">${eurFull(l.val)}</td></tr>`;
     }).join("") : `<tr><td colspan="6">${T("tableEmpty")}</td></tr>`;
-    $("#late-more").innerHTML = list.length > rows.length ? TABLE_ALL ? `<span class="panel-note">${T("fullExport")}</span>` : `<button type="button" class="text-action" data-action="table-all">${tf("showAll", list.length)}</button>` : "";
+    $("#late-more").innerHTML = moreLink(list, rows);
     $("#export-late").textContent = T("exportCsv");
     $("#export-late").disabled = !list.length;
   }
@@ -2097,7 +2159,8 @@
       { id: "close-out", lvl: "low", t: tf("wClose", m.closeOut.length, RULES.closeOutQuote), b: tf("wCloseBody", eur(m.closeOutVal)), lines: m.open.filter(l => m.closeOut.some(([k]) => +k === l.order)) },
       { id: "price", lvl: "med", t: tf("wPrice", m.priceFlags.length), b: m.priceFlags.length ? (() => { const w = [...m.priceFlags].sort((a, b) => a.r - b.r)[0]; return tf("wPriceBody", w.l.art, w.l.short, eurUnit(w.l.unit), eurUnit(w.med)); })() : "", lines: m.priceFlags.map(w => w.l) },
       { id: "zero", lvl: "high", t: tf("wZero", m.zeroPrice.length), b: m.zeroPrice.slice(0, 2).map(l => `${l.order} ${l.short}, ${l.desc}`).join("; "), lines: m.zeroPrice },
-      { id: "mismatch", lvl: "med", t: tf("wMis", m.mismatch.length), b: tf("wMisBody", [...new Set(m.mismatch.map(l => l.order))].join(", ")), lines: m.mismatch }
+      { id: "mismatch", lvl: "med", t: tf("wMis", m.mismatch.length), b: tf("wMisBody", [...new Set(m.mismatch.map(l => l.order))].join(", ")), lines: m.mismatch },
+      (() => { const po = m.open.filter(l => PHASE_OUT.test(l.artStatus) || DISCONTINUED.test(l.artStatus)); return { id: "phaseout", lvl: "med", t: tf("wPhaseOut", po.length, eur(sum(po, l => l.val))), b: T("wPhaseOutBody"), lines: po }; })()
     ].filter(i => i.lines.length);
   }
 
@@ -2365,7 +2428,8 @@
       ];
     });
 
-    const csv = "\ufeff" + [T("csvModalHead"), ...rows].map(r => r.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(";")).join("\r\n");
+    rows.forEach((r, i) => r.push(famName(famKey(list[i])), list[i].model, list[i].size));
+    const csv = "\ufeff" + [[...T("csvModalHead"), ...T("csvFamHead")], ...rows].map(r => r.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(";")).join("\r\n");
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
     const prefixes = T("csvFilePrefixes") || {};
@@ -2378,9 +2442,9 @@
     const m = compute(DATA.lines, DATA.reportDate, VIEW), list = tableLines(m);
     const de = LANG === "de", p = VIEW.period;
     const daysTitle = p === "undated" ? T("orderAge") : p && p !== "late" ? T("dueIn") : T("thLate");
-    const head = [...T("csvHead")]; head[6] = daysTitle;
+    const head = [...T("csvHead"), ...T("csvFamHead")]; head[6] = daysTitle;
     const cell = v => `"${String(v ?? "").replace(/"/g, '\"\"')}"`;
-    const rows = list.map(l => [l.order, l.cust, l.art, l.desc, de ? String(l.rest).replace(".", ",") : l.rest, fmtDate(l.due), p === "undated" ? (l.date ? daysBetween(DATA.reportDate, l.date) : "") : p && p !== "late" ? daysBetween(l.due, DATA.reportDate) : daysBetween(DATA.reportDate, l.due), de ? l.val.toFixed(2).replace(".", ",") : l.val.toFixed(2)]);
+    const rows = list.map(l => [l.order, l.cust, l.art, l.desc, de ? String(l.rest).replace(".", ",") : l.rest, fmtDate(l.due), p === "undated" ? (l.date ? daysBetween(DATA.reportDate, l.date) : "") : !l.due ? "" : p && p !== "late" ? daysBetween(l.due, DATA.reportDate) : daysBetween(DATA.reportDate, l.due), de ? l.val.toFixed(2).replace(".", ",") : l.val.toFixed(2), famName(famKey(l)), l.model, l.size]);
     const prefix = p === "undated" ? "ohne-termin" : p && p !== "late" ? `faellig_${p}` : "ueberfaellig";
     const customer = VIEW.customer ? "_" + (VIEW.customer === "__xtop" ? "weitere-kunden" : VIEW.customer).replace(/[<>:"/\\|?*\x00-\x1f]/g, "-").replace(/\s+/g, "_") : "";
     return { csv: "\ufeff" + [head, ...rows].map(r => r.map(cell).join(";")).join("\r\n"), name: `${prefix}${customer}_${iso(DATA.reportDate)}.csv`, lines: list };
@@ -2670,13 +2734,15 @@
     const headers = ["thArt", "thDesc", "thQty", "thRest", "delivered", "thDue", "thLate", "thStatus", "thVal"];
     const isNum = [false, false, true, true, true, false, false, false, true];
     $("#order-lines").innerHTML = `<thead><tr>${headers.map((k, i) => `<th class="${isNum[i] ? "num" : ""}">${T(k)}</th>`).join("")}</tr></thead><tbody>${list.map(l => {
-      const values = [esc(l.art), esc(l.desc), nf(l.qty, Number.isInteger(l.qty) ? 0 : 2), nf(l.rest, Number.isInteger(l.rest) ? 0 : 2), pct(l.qty ? (l.qty - l.rest) / l.qty * 100 : 0, 0), fmtDate(l.due), l.due && l.due < rd ? tf("days", daysBetween(rd, l.due)) : "–", esc(l.shipped ? T("shippedStatus") : l.status), eurFull(l.val)];
+      const famLine = l.family && l.family !== OTHER ? `<span class="drawer-fam">${esc([famName(l.family), l.model, l.size ? tf("sizeName", l.size) : ""].filter(Boolean).join(" · "))}</span>` : "";
+      const values = [esc(l.art), esc(l.desc) + famLine, nf(l.qty, Number.isInteger(l.qty) ? 0 : 2), nf(l.rest, Number.isInteger(l.rest) ? 0 : 2), pct(l.qty ? (l.qty - l.rest) / l.qty * 100 : 0, 0), fmtDate(l.due), l.due && l.due < rd ? tf("days", daysBetween(rd, l.due)) : "–", esc(l.shipped ? T("shippedStatus") : l.status), eurFull(l.val)];
       return `<tr>${values.map((v, i) => `<td data-label="${esc(T(headers[i]))}" class="${isNum[i] ? "num" : ""}${i === 6 && l.due && l.due < rd ? " late" : ""}">${i === 0 ? `<code>${v}</code>` : v}</td>`).join("")}</tr>`;
     }).join("")}</tbody>`;
     const groups = exceptionGroups(compute(lines, rd, {})).filter(i => i.lines.some(l => String(l.order) === VIEW.order));
     $("#order-notes").innerHTML = groups.map(i => {
       const count = i.lines.filter(l => String(l.order) === VIEW.order).length;
-      const note = i.id === "close-out" ? tf("wClose", 1, RULES.closeOutQuote) : tf({ "ship-late": "wShipLate", price: "wPrice", zero: "wZero", mismatch: "wMis" }[i.id], count);
+      const own = i.lines.filter(l => String(l.order) === VIEW.order);
+      const note = i.id === "close-out" ? tf("wClose", 1, RULES.closeOutQuote) : i.id === "phaseout" ? tf("wPhaseOut", count, eur(sum(own, l => l.val))) : tf({ "ship-late": "wShipLate", price: "wPrice", zero: "wZero", mismatch: "wMis" }[i.id], count);
       return `<p class="panel-note">${esc(note)}</p>`;
     }).join("");
     if (!dlg.open) {
@@ -2918,6 +2984,8 @@
     else if (action === "table-all") { TABLE_ALL = true; applyView({}); }
     else if (action === "dismiss-hint") { store.set("dopk.hint.v1", true); applyView({}); }
     else if (action === "dismiss-notice") { showNotice("", ""); return; }
+    else if (action === "model") applyView({ model: VIEW.model === value ? null : value, size: null });
+    else if (action === "size") applyView({ size: VIEW.size === value ? null : value });
     else if (action === "share-tab") { SHARE_TAB = value === "fam" ? "fam" : "cust"; store.set(LS_SHARETAB, SHARE_TAB); applyView({}); }
     else if (action === "family") { applyView({ family: VIEW.family === value ? null : value, model: null, size: null }); }
     else if (action === "fam-all") { FAM_ALL = true; applyView({}); }
@@ -2933,7 +3001,9 @@
     // Rendering replaces controls: keep keyboard focus on the equivalent target.
     if (action !== "order" && action !== "close-order" && action !== "scorecard" && action !== "close-scorecard" && action !== "btb" && action !== "close-btb" && action !== "export-btb" && action !== "sc-show-late" && action !== "dismiss-notice" && !VIEW.order && !VIEW.sc && !VIEW.btb) {
       const replacement = [...document.querySelectorAll("[data-action]")].find(el => el.dataset.action === action && el.dataset.value === value);
-      (replacement || $("#filter")).focus({ preventScroll: true });
+      // Drilling replaces the table: continue in the first row of the next level.
+      const next = !replacement && /^(family|model|size)$/.test(action) ? $("#late-body [tabindex='0'], #late-body button") : null;
+      (replacement || next || $("#filter")).focus({ preventScroll: true });
     }
   }
 
@@ -2967,7 +3037,7 @@
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
   const csvCell = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
-  const csvText = rows => "﻿" + rows.map(r => r.map(csvCell).join(";")).join("\r\n");
+  const csvText = rows => "\ufeff" + rows.map(r => r.map(csvCell).join(";")).join("\r\n");
   const deNum = (v, d) => (d == null ? String(Math.round(v * 1000) / 1000) : Number(v).toFixed(d)).replace(".", ",");
 
   // Mapping file: CSV (semicolon or comma, UTF-8 with or without BOM) or XLSX. Used by the footer file picker.

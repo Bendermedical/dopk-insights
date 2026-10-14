@@ -36,6 +36,13 @@ document.addEventListener("DOMContentLoaded", async function () {
   const reset = () => api.applyView({ customer: null, period: null, order: null, sc: null, btb: false, family: null, model: null, size: null, variant: null, lateMonth: null, chg: false });
   const loadMapping = async () => { await api.loadFamiliesFile(new File([window.DOPK_FAMILIES_CSV], "families-fixture.csv", { type: "text/csv" })); await paint(); };
   const loadDay = async (rows, name) => { api.load(rows, name); await paint(); };
+  const historyBack = () => new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("Back navigation timed out")), 2000);
+    window.addEventListener("popstate", () => { clearTimeout(timer); requestAnimationFrame(() => requestAnimationFrame(resolve)); }, { once: true });
+    history.back();
+  });
+  const crumbs = () => $$("#breadcrumb .crumb").map(c => c.firstChild.textContent);
+  const bodyRows = () => [...$("#late-body").rows].map(r => [...r.cells].map(c => c.textContent.trim()));
 
   api.RULES.keyAccount.accounts = [{ id: "10001", label: "Alpha" }];
   const phase = saved?.phase || "start";
@@ -74,10 +81,60 @@ document.addEventListener("DOMContentLoaded", async function () {
       assert(text("#share-fam .fam-qty-note") === "Mengen in Auftragseinheiten", "German quantity note");
     });
 
+    await test(3, "Drill-down Laryvox → A1-XX → Gr. 01 → line 1001/A100, breadcrumb and Back", async () => {
+      reset(); await paint();
+      click(byValue("#fam-list li", "Laryvox")); await paint();
+      assert(api.view.family === "Laryvox" && location.hash.includes("f=Laryvox"), "VIEW.family and hash f=");
+      assert(text("#late-title") === "Modelle in Laryvox", `Title ${text("#late-title")}`);
+      let rows = bodyRows();
+      assert(rows.length === 2 && rows[0][0] === "A1-XX" && rows[0][2] === "5.500 €" && rows[0][3] === "250 Stk" && rows[1][0] === "F1-XX" && rows[1][2] === "600 €" && rows[1][3] === "10 Stk", `Models ${JSON.stringify(rows)}`);
+      assert(rows[0][1] === "LARYVOX Tape", `Model description from the mapping: ${rows[0][1]}`);
+      assert(byValue("#fam-list li", "Laryvox").getAttribute("aria-pressed") === "true" && $$("#fam-list li").length === 6, "Families tab ignores the family filter");
+      key(byValue('#late-body [data-action="model"]', "A1-XX"), "Enter"); await paint();
+      assert(api.view.model === "A1-XX" && location.hash.includes("m=A1-XX"), "VIEW.model and hash m=");
+      rows = bodyRows();
+      assert(rows.length === 2 && rows[0][0] === "Gr. 01" && rows[0][1] === "1.500 €" && rows[0][2] === "50 Stk" && rows[0][3] === "50 Stk" && rows[1][0] === "Gr. 02" && rows[1][1] === "4.000 €" && rows[1][2] === "200 Stk" && rows[1][3] === "0 Stk", `Sizes ${JSON.stringify(rows)}`);
+      assert(document.activeElement === byValue('#late-body [data-action="size"]', "01"), "Keyboard focus continues in the size rows");
+      key(byValue('#late-body [data-action="size"]', "01"), " "); await paint();
+      assert(api.view.size === "01" && location.hash.includes("s=01"), "VIEW.size and hash s=");
+      rows = bodyRows();
+      assert(rows.length === 1 && rows[0][0] === "1001" && rows[0][2] === "A100", `Lines ${JSON.stringify(rows)}`);
+      assert(JSON.stringify(crumbs()) === JSON.stringify(["Laryvox", "A1-XX", "Gr. 01"]), `Breadcrumb ${crumbs()}`);
+      assert(near(api.metrics.openVal, 1500), "Other views honour the size filter");
+      await historyBack(); assert(api.view.size === null && api.view.model === "A1-XX", "Back to sizes");
+      await historyBack(); assert(api.view.model === null && api.view.family === "Laryvox", "Back to models");
+      await historyBack(); assert(api.view.family === null, "Back to all families");
+    });
+
+    await test(4, "Phase-out chip on BMV Cuff 303011-XX and watchlist item", async () => {
+      reset(); click(byValue("#fam-list li", "BMV Cuff")); await paint();
+      const row = byValue('#late-body [data-action="model"]', "303011-XX");
+      assert(row && row.querySelector(".chip.chip--med")?.textContent === "Auslauf → 303028-XX", `Chip ${row?.textContent}`);
+      reset(); await paint();
+      const item = byValue('#watch [data-action="watch"]', "phaseout");
+      assert(item && item.textContent.includes("1 offene Position auf Auslauf-/Raus-Artikeln (1,5 T€)") && item.querySelector(".chip--med"), `Watch ${item?.textContent}`);
+      click(item); await paint();
+      assert(!$("#watch-phaseout").hidden && $('#watch-phaseout [data-action="order"][data-value="1008"]'), "Expandable to the lines");
+    });
+
+    await test(5, "PDT toggle: PDT €1,000 · 1 line · 10 pcs; ohne PDT €11,597.50", async () => {
+      reset(); await paint();
+      const pdt = byValue('#share-fam [data-action="variant"]', "pdt");
+      assert(pdt && byValue('#share-fam [data-action="variant"]', "nopdt"), "PDT toggle visible");
+      click(pdt); await paint();
+      const m = api.metrics;
+      assert(api.view.variant === "pdt" && location.hash.includes("v=pdt") && near(m.openVal, 1000) && m.openLines === 1 && m.open[0].art === "A201" && m.open[0].rest === 10, "PDT scope");
+      assert(crumbs().includes("PDT"), "PDT in the breadcrumb");
+      click(byValue('#share-fam [data-action="variant"]', "nopdt")); await paint();
+      assert(api.view.variant === "nopdt" && near(api.metrics.openVal, 11597.5), `ohne PDT ${api.metrics.openVal}`);
+      click(byValue('#share-fam [data-action="variant"]', "")); await paint();
+      assert(api.view.variant === null, "All");
+    });
+
     await test(6, "Unassigned export on day 1 lists E101 (HME Filter, 1 line, €300, 30)", async () => {
       const u = api.buildUnassignedCsv();
       assert(u.name === "nicht_zugeordnet_2026-09-09.csv", `File name ${u.name}`);
-      const rows = u.csv.replace(/^﻿/, "").split("\r\n");
+      const rows = u.csv.replace(/^\ufeff/, "").split("\r\n");
       assert(rows[0] === '"Artikel-Nr.";"Bezeichnung";"Zeilen";"Offener Wert (EUR)";"Restmenge"', `Header ${rows[0]}`);
       assert(rows.length === 2 && rows[1] === '"E101";"HME Filter";"1";"300,00";"30"', `Rows ${rows.slice(1).join(" | ")}`);
       assert(u.csv.charCodeAt(0) === 0xfeff, "UTF-8 BOM");
