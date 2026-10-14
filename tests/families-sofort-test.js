@@ -163,6 +163,79 @@ document.addEventListener("DOMContentLoaded", async function () {
       assert(api.families && Object.keys(api.families.rows).length === 12, "Mapping restored");
       assert(api.data.lines.find(l => l.art === "D100").model === "303011-XX", "Lines assigned after reload");
     });
+
+    // ---------------------------------------------------------------- Sofortbedarf (fixture-sofort, mapping loaded)
+    api.setLang("en"); reset();
+    const plan = () => { const o = api.computeOutlook(api.data.lines, api.data.reportDate, "__all", { snaps: {} }); return [o.d7.plan, o.d30.plan, o.d90.plan]; };
+    const planDay1 = plan();
+    await loadDay(window.DOPK_FIXTURE_SOFORT, "DOPK_09_09.xlsx"); reset(); await paint();
+
+    await test(8, "Key figure: €2,700 · 3 lines · 560 pcs · avg 79 days (78.7) · oldest 181 days · act now", async () => {
+      const kf = $("#vitals [data-kind='undated']"), imm = api.metrics.immediate;
+      assert(near(imm.val, 2700) && imm.n === 3 && imm.qty === 560 && near(imm.waitAvg, 78.74) && imm.waitMax === 181, `Stats ${JSON.stringify({ v: imm.val, n: imm.n, q: imm.qty, a: imm.waitAvg, o: imm.waitMax })}`);
+      assert(kf.querySelector(".vital-value").textContent === "€2.7k" && kf.textContent.includes("3 lines · 560 pcs · avg 79 days · oldest 181 days"), `Key figure ${kf.textContent}`);
+      assert(kf.dataset.level === "high" && kf.querySelector(".chip--high"), "Act now");
+      assert(kf.textContent.includes("no delivery date – as soon as possible"), "Subtitle");
+    });
+
+    await test(9, "Sofortbedarf by family and by customer", async () => {
+      click($("#vitals [data-kind='undated']")); await paint();
+      assert(api.view.period === "undated" && text("#late-title") === "Immediate demand by product family", "Title");
+      let rows = bodyRows().map(r => [r[0], r[1], r[2], r[5]]);
+      assert(JSON.stringify(rows) === JSON.stringify([["Laryvox", "€1,500", "50 pcs", "20/08/2026"], ["Humidotrach", "€1,000", "500 pcs", "12/03/2026"], ["Other", "€200", "10 pcs", "01/09/2026"]]), `Families ${JSON.stringify(rows)}`);
+      click(byValue('#late-tools [data-action="und-group"]', "cust")); await paint();
+      assert(text("#late-title") === "Immediate demand by customer", "Customer title");
+      rows = bodyRows().map(r => [r[0], r[1]]);
+      assert(JSON.stringify(rows) === JSON.stringify([["Alpha Medizintechnik", "€2,500"], ["Gamma Sanitätshaus", "€200"]]), `Customers ${JSON.stringify(rows)}`);
+      click(byValue('#late-tools [data-action="und-group"]', "fam")); await paint();
+    });
+
+    await test(10, "Laryvox → A1-XX → Gr. 03 → line 1013; FIFO export 1003, 1013, 1014", async () => {
+      click(byValue('#late-body [data-action="family"]', "Laryvox")); await paint();
+      assert(api.view.period === "undated" && api.view.family === "Laryvox", "Family within Sofortbedarf");
+      click(byValue('#late-body [data-action="model"]', "A1-XX")); await paint();
+      assert(bodyRows().length === 1 && bodyRows()[0][0] === "Size 03", `Sizes ${JSON.stringify(bodyRows())}`);
+      click(byValue('#late-body [data-action="size"]', "03")); await paint();
+      const rows = bodyRows();
+      assert(rows.length === 1 && rows[0][0] === "1013" && rows[0][5] === "ASAP", `Lines ${JSON.stringify(rows)}`);
+      assert(text("#export-late") === "Production priority list", "Export button label");
+      api.applyView({ family: null, model: null, size: null }); await paint();
+      const x = api.buildImmediateCsv(), csv = x.csv.replace(/^\ufeff/, "").split("\r\n");
+      assert(x.name === "immediate-demand_2026-09-09.csv", `Name ${x.name}`);
+      assert(csv[0] === '"Order";"Customer";"Article";"Description";"Product family";"Model";"Size";"Remaining qty";"Order date";"Days waiting";"Open value EUR"', `Head ${csv[0]}`);
+      assert(csv.length === 4 && csv[1].startsWith('"1003"') && csv[2].startsWith('"1013"') && csv[3].startsWith('"1014"'), `FIFO ${csv.slice(1).map(r => r.slice(0, 6))}`);
+      assert(csv[2].includes('"Laryvox";"A1-XX";"03"') && csv[1].includes('"181"') && csv[3].includes('"Other";"";""'), `Family columns ${csv[2]}`);
+      api.setLang("de");
+      assert(api.buildImmediateCsv().name === "sofortbedarf_2026-09-09.csv", "German file name");
+      api.setLang("en");
+    });
+
+    await test(11, "Open backlog €14,297.50 incl. Sofortbedarf; horizon Late €3,500, then Sofort €2,700, then months", async () => {
+      reset(); await paint();
+      assert(near(api.metrics.openVal, 14297.5), `Open ${api.metrics.openVal}`);
+      const cols = $$("#horizon [data-action='period']");
+      assert(cols[0].dataset.value === "late" && cols[0].getAttribute("aria-label").includes("€3,500"), "Late first");
+      assert(cols[1].dataset.value === "undated" && cols[1].getAttribute("aria-label").startsWith("Immediate demand: €2,700"), `Sofort second ${cols[1].getAttribute("aria-label")}`);
+      assert(cols[1].textContent.includes("ASAP") && /^\d{4}-\d{2}$/.test(cols[2].dataset.value), "Months follow");
+      assert(cols[1].querySelector(".bar-fill").getAttribute("fill") === "url(#hatch)", "Hatched style kept");
+    });
+
+    await test(12, "Outlook line \"bis zu 2,7 T€ zusätzlich bei verfügbarer Kapazität\"; plan unchanged vs day 1", async () => {
+      api.setLang("de"); await paint();
+      assert(text("#outlook .outlook-imm") === "Sofortbedarf: bis zu 2,7 T€ zusätzlich bei verfügbarer Kapazität", `Line ${text("#outlook .outlook-imm")}`);
+      assert(text("#outlook .outlook-card--month").includes("ohne Sofortbedarf"), "Month landing note");
+      assert(JSON.stringify(plan()) === JSON.stringify(planDay1), `Plan ${plan()} vs ${planDay1}`);
+    });
+
+    await test(13, "Scorecard Alpha: Sofortbedarf €2,500, Ø 84 days, act now; no undated-% alarm; verdict 79 Tage", async () => {
+      api.applyView({ sc: "10001" }); await paint();
+      const card = $$("#scorecard-body .sc-vitals .vital")[2];
+      assert(card.textContent.includes("Sofortbedarf") && card.textContent.includes("2,5 T€") && card.textContent.includes("Ø 84 Tage") && card.dataset.level === "high", `Card ${card.textContent}`);
+      assert(!card.textContent.includes("%"), "No percentage on the scorecard readout");
+      api.applyView({ sc: null }); await paint();
+      assert(!$("#vitals [data-kind='undated']").textContent.includes("%"), "No percentage on the key figure");
+      assert(text("#verdict").includes("2,7 T€ Sofortbedarf warten im Schnitt 79 Tage auf Fertigung."), `Verdict ${text("#verdict")}`);
+    });
   }
 
   sessionStorage.removeItem(RESUME);

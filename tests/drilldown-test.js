@@ -56,10 +56,16 @@ document.addEventListener("DOMContentLoaded", async function () {
       assert(m().shippedVal === 800 && text('#vitals [data-kind="shipped"]').includes("800"), "Shipment period isolation");
       assert(m().intakeVal === 600, "Intake period isolation");
     });
-    await test(4, "Undated KPI and order age", () => {
-      click($("#vitals [data-kind='undated']"));
-      assert(api.view.period === "undated" && text("#late-title") === "Lines without delivery date" && text("#late-days") === "Order age", "Undated view");
-      assert(text("#late-body").includes("1003") && text("#late-body").includes("181 d") && m().openVal === 1000, "Undated order/age/value");
+    // Changed with Sofortbedarf (section 2): the key figure is the value with waiting days, and the
+    // period view groups by product family (all "Other" without a mapping) instead of listing lines.
+    await test(4, "Sofortbedarf key figure and grouped view with waiting days", () => {
+      reset();
+      const kf = $("#vitals [data-kind='undated']");
+      assert(kf.querySelector(".vital-value").textContent === "€1.0k" && kf.textContent.includes("1 line · 500 pcs · avg 181 days · oldest 181 days") && kf.dataset.level === "high", `Key figure ${kf.textContent}`);
+      click(kf);
+      assert(api.view.period === "undated" && text("#late-title") === "Immediate demand by product family", "Sofortbedarf view");
+      const cells = [...$("#late-body").rows[0].cells].map(c => c.textContent);
+      assert(JSON.stringify(cells) === JSON.stringify(["Other", "€1,000", "500 pcs", "1", "1", "12/03/2026", "181 days"]) && m().openVal === 1000, `Row ${JSON.stringify(cells)}`);
     });
     await test(5, "Order drawer details, Escape and restored focus", () => {
       reset(); const origin = $("#late-body [data-value='1001']"); origin.focus(); click(origin);

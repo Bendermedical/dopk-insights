@@ -121,6 +121,7 @@ button.vital:hover .vital-action, button.vital:focus-visible .vital-action { col
 
 .outlook-notes { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s4); margin-top: var(--s3); font-size: var(--fs-xs); color: var(--ink-muted); }
 .outlook-note-item { display: inline-flex; align-items: center; gap: 4px; }
+.outlook-imm { margin: var(--s3) 0 0; font-size: var(--fs-sm); color: var(--ink); }
 
 /* ---- Horizon chart ---------------------------------------------------- */
 .horizon { overflow-x: auto; }

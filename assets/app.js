@@ -6,7 +6,7 @@
   // ---------------------------------------------------------------- config
   const RULES = {
     overduePct: { high: 5, med: 2 },       // % of open value that is late
-    undatedPct: { high: 15, med: 5 },      // % of open value without delivery date
+    undatedPct: { high: 15, med: 5 },      // kept for stored history only; Sofortbedarf alarms on waiting days (RULES.immediate)
     onTimePct:  { high: 90, med: 97 },     // % of today's shipped lines on time (below = alarm)
     priceLow: 0.6, priceHigh: 1.6,         // unit price vs article median
     closeOutQuote: 75,                     // order ≥ this % delivered = close-out candidate
@@ -48,6 +48,9 @@
         med: 0.75             // 0.75-0.89: watch; < 0.75: high (act now)
       }
     },
+    immediate: {
+      waitDays: { med: 30, high: 60 } // value-weighted average days since order date for lines without delivery date (Sofortbedarf)
+    },
     families: {
       otherWarnPct: 15,       // "Sonstige" above this % of open value shows the unassigned note
       maxRows: 8,             // families tab rows before "N weitere"
@@ -70,8 +73,8 @@
       periodNote: "Zeitraum gilt für offene Positionen",
       removeFilter: "Filter entfernen",
       dueIn: "Fällig in",
-      orderAge: "Auftragsalter",
-      undatedTitle: "Positionen ohne Liefertermin",
+      orderAge: "Wartezeit",
+      undatedTitle: "Sofortbedarf nach Produktfamilie",
       fullExport: "Für die vollständige Liste exportieren",
       fulfilment: "Erfüllungsgrad",
       delivered: "Geliefert",
@@ -93,7 +96,7 @@
       dropTitle: "Ziehen Sie den heutigen DOPK-Export hierher, um den Auftragsbestand zu lesen.",
       dropBody: "Verwenden Sie die .xlsx-Datei der offenen Aufträge aus dem ERP. Sie wird nur in diesem Browser gelesen und nie auf einen Server hochgeladen. Jede neue Tagesdatei wird mit der vorherigen verglichen, damit sichtbar wird, was sich bewegt hat.",
       keyFigures: "Kennzahlen",
-      horizonTitle: "Auftragshorizont", legLate: "Überfällig", legFlow: "Geplant", legUndated: "Ohne Liefertermin",
+      horizonTitle: "Auftragshorizont", legLate: "Überfällig", legFlow: "Geplant", legUndated: "Sofortbedarf",
       shareTitle: "Von wem der Bestand abhängt", shareNote: "Anteil am offenen Wert je Kunde.",
       lateTitle: "Überfällige Positionen nachfassen", exportLate: "Überfälligkeitsliste exportieren",
       thOrder: "Auftrag", thCust: "Kunde", thArt: "Artikel", thDue: "Fällig", thLate: "Verzug", thVal: "Offener Wert",
@@ -110,13 +113,13 @@
       due7: v => `In den nächsten 7 Tagen werden ${v} fällig.`,
       due7none: hasLate => `In den nächsten 7 Tagen wird nichts ${hasLate ? "weiter " : ""}fällig.`,
       todayLine: (n, sv, o, iv) => `Heute: ${n ? pl(n, "Lieferschein", "Lieferscheine") + " über " + sv + " erstellt" : "keine Lieferscheine erstellt"}, ${o ? pl(o, "neuer Auftrag", "neue Aufträge") + " über " + iv + " erfasst" : "keine neuen Aufträge erfasst"}.`,
-      vOpen: "Offener Bestand", vLate: "Überfällig", vShip: "Heute versandt", vIn: "Auftragseingang", vUnd: "Ohne Liefertermin",
+      vOpen: "Offener Bestand", vLate: "Überfällig", vShip: "Heute versandt", vIn: "Auftragseingang", vUnd: "Sofortbedarf",
       sOpen: (l, o) => `${pl(l, "Position", "Positionen")} in ${pl(o, "Auftrag", "Aufträgen")}`,
       sLate: (p, l) => `${p} des offenen Werts, ${pl(l, "Position", "Positionen")}`,
       sShip: (n, ot) => `${pl(n, "Lieferschein", "Lieferscheine")}, ${ot == null ? "keine datierten Positionen" : ot + " termingerecht"}`,
       sIn: (o, c) => `${pl(o, "Auftrag", "Aufträge")} von ${pl(c, "Kunde", "Kunden")}`,
       sUnd: (v, l) => `${v} in ${pl(l, "Position", "Positionen")}`,
-      colLate: "Überfällig", colLateFull: "Überfällig", colUnd: "o. Termin", colUndFull: "Ohne Liefertermin", today: "Heute",
+      colLate: "Überfällig", colLateFull: "Überfällig", colUnd: "Sofort", colUndFull: "Sofortbedarf", today: "Heute",
       avg6: v => `6-Monats-Schnitt ${v}`, tip: (m, v, n) => `${m}: ${v} in ${pl(n, "Position", "Positionen")}`,
       chartLabel: "Offener Wert nach Liefermonat",
       dropNote: m => `Geplante Lieferungen fallen im ${m} unter die Hälfte des 6-Monats-Schnitts. Neue Abrufe rechtzeitig einplanen.`,
@@ -144,9 +147,9 @@
       modalSubLate: (l, o, v) => `${pl(l, "überfällige Position", "überfällige Positionen")} in ${pl(o, "Auftrag", "Aufträgen")} · Gesamt ${v}`,
       modalSubShip: (l, n, v) => `${pl(l, "Position", "Positionen")} in ${pl(n, "Lieferschein", "Lieferscheinen")} · Gesamt ${v}`,
       modalSubIn: (l, o, v) => `${pl(l, "neu erfasste Position", "neu erfasste Positionen")} in ${pl(o, "Auftrag", "Aufträgen")} · Gesamt ${v}`,
-      modalSubUnd: (l, o, v) => `${pl(l, "Position ohne Termin", "Positionen ohne Termin")} in ${pl(o, "Auftrag", "Aufträgen")} · Gesamt ${v}`,
+      modalSubUnd: (l, o, v) => `${pl(l, "Position mit Sofortbedarf", "Positionen mit Sofortbedarf")} in ${pl(o, "Auftrag", "Aufträgen")} · Gesamt ${v}`,
       csvModalHead: ["Auftrag", "Datum", "Kunde", "Artikel", "Bezeichnung", "Auftragsmenge", "Restmenge", "Nettopreis EUR", "Wert EUR", "Liefertermin", "Tage Verzug", "Status"],
-      csvFilePrefixes: { open: "offener_bestand", late: "ueberfaellig", shipped: "heute_versandt", intake: "neue_auftraege", undated: "ohne_termin" },
+      csvFilePrefixes: { open: "offener_bestand", late: "ueberfaellig", shipped: "heute_versandt", intake: "neue_auftraege", undated: "sofortbedarf" },
       csvHead: ["Auftrag", "Kunde", "Artikel", "Bezeichnung", "Restmenge", "Liefertermin", "Tage Verzug", "Offener Wert EUR"], csvName: "ueberfaellig",
       errHeader: "Diese Datei hat keine Kopfzeile mit „Auftrag“ und „Restmenge“. Bitte den DOPK-Export offener Aufträge hochladen.",
       errCol: c => `Die Spalte „${c}“ fehlt.`, errNoLines: "Die Kopfzeile wurde gefunden, aber es folgen keine Auftragspositionen.",
@@ -278,7 +281,20 @@
       wPhaseOut: (n, v) => `${pl(n, "offene Position", "offene Positionen")} auf Auslauf-/Raus-Artikeln (${v})`,
       wPhaseOutBody: "Offener Kundenbedarf auf auslaufenden Artikeln. Nachfolger anbieten oder Restmengen sichern.",
       csvFamHead: ["Produktfamilie", "Modell", "Größe"],
-      drillModels: n => pl(n, "Modell", "Modelle"), drillSizes: n => pl(n, "Größe", "Größen")
+      drillModels: n => pl(n, "Modell", "Modelle"), drillSizes: n => pl(n, "Größe", "Größen"),
+      immSubtitle: "ohne Liefertermin – schnellstmöglich",
+      sImm: (n, q, a, o) => `${pl(n, "Position", "Positionen")} · ${q} · Ø ${a} Tage · älteste ${o} Tage`,
+      sImmNone: "keine offenen Positionen",
+      verdictImm: (v, d) => `${v} Sofortbedarf warten im Schnitt ${d} Tage auf Fertigung.`,
+      immTitleCust: "Sofortbedarf nach Kunde", immGroupLabel: "Sofortbedarf gliedern nach", immGroupFam: "Familie", immGroupCust: "Kunde",
+      immCount: (n, o, v) => `${pl(n, "Position", "Positionen")} in ${pl(o, "Auftrag", "Aufträgen")} · ${v} · ohne Liefertermin – schnellstmöglich`,
+      thOrders: "Aufträge", thOldest: "Ältester Auftrag", thWaitAvg: "Ø Wartezeit", waitDays: d => `${d} Tage`,
+      exportImmediate: "Produktionsprioritätsliste",
+      csvImmHead: ["Auftrag", "Kunde", "Artikel", "Bezeichnung", "Produktfamilie", "Modell", "Größe", "Restmenge", "Auftragsdatum", "Wartetage", "Offener Wert EUR"],
+      csvImmPrefix: "sofortbedarf",
+      outlookImm: v => `Sofortbedarf: bis zu ${v} zusätzlich bei verfügbarer Kapazität`,
+      outlookMonthExclImm: "ohne Sofortbedarf",
+      scSubImm: (n, q, a) => `${pl(n, "Position", "Positionen")} · ${q} · Ø ${a} Tage Wartezeit`
     },
     en: {
       drillHint: "Tip: bars, customers and order numbers are clickable.",
@@ -286,8 +302,8 @@
       periodNote: "Period applies to open lines",
       removeFilter: "Remove filter",
       dueIn: "Due in",
-      orderAge: "Order age",
-      undatedTitle: "Lines without delivery date",
+      orderAge: "Waiting",
+      undatedTitle: "Immediate demand by product family",
       fullExport: "Export for the full list",
       fulfilment: "Fulfilment",
       delivered: "Delivered",
@@ -309,7 +325,7 @@
       dropTitle: "Drop today's DOPK export here to read the order book.",
       dropBody: "Use the .xlsx open-order file from the ERP. It is read in this browser only and never uploaded to a server. Each new day's file is compared with the previous one to show what moved.",
       keyFigures: "Key figures",
-      horizonTitle: "Order-book horizon", legLate: "Past due", legFlow: "Scheduled", legUndated: "No delivery date",
+      horizonTitle: "Order-book horizon", legLate: "Past due", legFlow: "Scheduled", legUndated: "Immediate demand",
       shareTitle: "Who the backlog depends on", shareNote: "Share of open value by customer.",
       lateTitle: "Late lines to chase", exportLate: "Export overdue list",
       thOrder: "Order", thCust: "Customer", thArt: "Article", thDue: "Due", thLate: "Late by", thVal: "Open value",
@@ -326,13 +342,13 @@
       due7: v => `${v} falls due in the next 7 days.`,
       due7none: hasLate => `Nothing ${hasLate ? "else " : ""}falls due in the next 7 days.`,
       todayLine: (n, sv, o, iv) => `Today ${n ? pl(n, "delivery note", "delivery notes") + " went out worth " + sv : "no delivery notes went out"}, and ${o ? pl(o, "new order", "new orders") + " came in worth " + iv : "no new orders came in"}.`,
-      vOpen: "Open backlog", vLate: "Overdue", vShip: "Shipped today", vIn: "Order intake", vUnd: "No delivery date",
+      vOpen: "Open backlog", vLate: "Overdue", vShip: "Shipped today", vIn: "Order intake", vUnd: "Immediate demand",
       sOpen: (l, o) => `${pl(l, "line", "lines")} in ${pl(o, "order", "orders")}`,
       sLate: (p, l) => `${p} of open, ${pl(l, "line", "lines")}`,
       sShip: (n, ot) => `${pl(n, "delivery note", "delivery notes")}, ${ot == null ? "no dated lines" : ot + " on time"}`,
       sIn: (o, c) => `${pl(o, "order", "orders")} from ${pl(c, "customer", "customers")}`,
       sUnd: (v, l) => `${v} in ${pl(l, "line", "lines")}`,
-      colLate: "Late", colLateFull: "Past due", colUnd: "No date", colUndFull: "No delivery date", today: "Today",
+      colLate: "Late", colLateFull: "Past due", colUnd: "ASAP", colUndFull: "Immediate demand", today: "Today",
       avg6: v => `6-month average ${v}`, tip: (m, v, n) => `${m}: ${v} in ${pl(n, "line", "lines")}`,
       chartLabel: "Open value by delivery month",
       dropNote: m => `Scheduled deliveries fall below half the 6-month average in ${m}. Plan new call-offs before then.`,
@@ -360,9 +376,9 @@
       modalSubLate: (l, o, v) => `${pl(l, "late line", "late lines")} in ${pl(o, "order", "orders")} · Total ${v}`,
       modalSubShip: (l, n, v) => `${pl(l, "line", "lines")} in ${pl(n, "delivery note", "delivery notes")} · Total ${v}`,
       modalSubIn: (l, o, v) => `${pl(l, "new line", "new lines")} in ${pl(o, "order", "orders")} · Total ${v}`,
-      modalSubUnd: (l, o, v) => `${pl(l, "undated line", "undated lines")} in ${pl(o, "order", "orders")} · Total ${v}`,
+      modalSubUnd: (l, o, v) => `${pl(l, "immediate-demand line", "immediate-demand lines")} in ${pl(o, "order", "orders")} · Total ${v}`,
       csvModalHead: ["Order", "Date", "Customer", "Article", "Description", "Order qty", "Remaining qty", "Unit price EUR", "Value EUR", "Due date", "Days late", "Status"],
-      csvFilePrefixes: { open: "open_backlog", late: "overdue", shipped: "shipped_today", intake: "new_orders", undated: "no_delivery_date" },
+      csvFilePrefixes: { open: "open_backlog", late: "overdue", shipped: "shipped_today", intake: "new_orders", undated: "immediate-demand" },
       csvHead: ["Order", "Customer", "Article", "Description", "Remaining qty", "Due date", "Days late", "Open value EUR"], csvName: "overdue",
       errHeader: "This file has no header row with “Auftrag” and “Restmenge”. Upload the DOPK open-order export.",
       errCol: c => `Column “${c}” is missing.`, errNoLines: "The header row was found, but no order lines follow it.",
@@ -494,7 +510,20 @@
       wPhaseOut: (n, v) => `${pl(n, "open line", "open lines")} on phase-out or discontinued articles (${v})`,
       wPhaseOutBody: "Open customer demand on articles being phased out. Offer the successor or secure the remaining stock.",
       csvFamHead: ["Product family", "Model", "Size"],
-      drillModels: n => pl(n, "model", "models"), drillSizes: n => pl(n, "size", "sizes")
+      drillModels: n => pl(n, "model", "models"), drillSizes: n => pl(n, "size", "sizes"),
+      immSubtitle: "no delivery date – as soon as possible",
+      sImm: (n, q, a, o) => `${pl(n, "line", "lines")} · ${q} · avg ${a} days · oldest ${o} days`,
+      sImmNone: "no open lines",
+      verdictImm: (v, d) => `${v} of immediate demand has been waiting ${d} days on average.`,
+      immTitleCust: "Immediate demand by customer", immGroupLabel: "Break down immediate demand by", immGroupFam: "Family", immGroupCust: "Customer",
+      immCount: (n, o, v) => `${pl(n, "line", "lines")} in ${pl(o, "order", "orders")} · ${v} · no delivery date – as soon as possible`,
+      thOrders: "Orders", thOldest: "Oldest order", thWaitAvg: "Avg wait", waitDays: d => `${d} days`,
+      exportImmediate: "Production priority list",
+      csvImmHead: ["Order", "Customer", "Article", "Description", "Product family", "Model", "Size", "Remaining qty", "Order date", "Days waiting", "Open value EUR"],
+      csvImmPrefix: "immediate-demand",
+      outlookImm: v => `Immediate demand: up to ${v} more if capacity allows`,
+      outlookMonthExclImm: "excludes immediate demand",
+      scSubImm: (n, q, a) => `${pl(n, "line", "lines")} · ${q} · avg ${a} days waiting`
     }
   };
 
@@ -665,6 +694,18 @@
   }
 
   // ------------------------------------------------------------- metrics
+  // Sofortbedarf: open lines without delivery date = produce and ship as soon as material and staff allow.
+  // Waiting days count from the order date; the average is weighted by open value. Alarm: RULES.immediate.waitDays.
+  function immediateStats(lines, rd) {
+    const und = lines.filter(l => !l.shipped && !l.due);
+    const val = sum(und, l => l.val), qty = sum(und, l => l.rest);
+    const waits = und.map(l => ({ d: l.date ? Math.max(0, Math.round((Date.UTC(rd.getFullYear(), rd.getMonth(), rd.getDate()) - Date.UTC(l.date.getFullYear(), l.date.getMonth(), l.date.getDate())) / DAY)) : 0, v: l.val }));
+    const waitAvg = !und.length ? 0 : val > 0 ? sum(waits, w => w.d * w.v) / val : sum(waits, w => w.d) / waits.length;
+    const waitMax = waits.length ? Math.max(...waits.map(w => w.d)) : 0;
+    const t = RULES.immediate?.waitDays || { med: 30, high: 60 };
+    const level = !und.length ? "clear" : waitAvg > t.high ? "high" : waitAvg > t.med ? "med" : "low";
+    return { lines: und, val, qty, n: und.length, orders: uniq(und, l => l.order), waitAvg, waitMax, level };
+  }
   // options.ignore: "customer", "period", "family" (with model and size), "variant", "lateMonth" or a list of them.
   function compute(all, rd, view = {}, options = {}) {
     const ign = [].concat(options.ignore || []);
@@ -732,7 +773,7 @@
       L, open, shipped, topCust, custs, hhi, lateByCust, months, avg6, dropIdx,
       openVal, openLines: open.length, openOrders: uniq(open, l => l.order),
       late, lateVal, latePct: openVal ? lateVal / openVal * 100 : 0,
-      undated, undatedVal, undatedPct: openVal ? undatedVal / openVal * 100 : 0,
+      undated, undatedVal, undatedPct: openVal ? undatedVal / openVal * 100 : 0, immediate: immediateStats(open, rd),
       in7Val: sum(in7, l => l.val),
       shippedVal: sum(shipped, l => l.val), notes: uniq(shipped, l => l.status), shipCusts: uniq(shipped, l => l.cust),
       onTimePct: shippedDated.length ? (1 - shippedLate.length / shippedDated.length) * 100 : null, shippedLate,
@@ -1532,6 +1573,9 @@
       shippedVal: m.shippedVal,
       intakeVal: m.intakeVal,
       undatedPct: m.undatedPct,
+      immediateVal: Math.round(m.immediate.val),
+      immediateQty: m.immediate.qty,
+      immediateWaitAvg: Math.round(m.immediate.waitAvg * 10) / 10,
       keys,
       shippedKeys,
       accounts,
@@ -1786,6 +1830,7 @@
     if (m.lateVal > 0 && topLate) s.push(lateShare > 99.5 ? tf("lateAll", topLate.short) : tf("lateShare", pct(lateShare, 0), topLate.short));
     s.push(m.in7Val > 0 ? tf("due7", eur(m.in7Val)) : tf("due7none", m.lateVal > 0));
     s.push(tf("todayLine", m.notes, eur(m.shippedVal), m.intakeOrders, eur(m.intakeVal)));
+    if (m.immediate.val > 0) s.push(tf("verdictImm", eur(m.immediate.val), Math.round(m.immediate.waitAvg)));
     if (btbMain.hasHistory && (btbMain.level === "med" || btbMain.level === "high") && btbMain.ratio4w != null) {
       s.push(tf("verdictBtb", pct(btbMain.ratio4w * 100, 0)));
     }
@@ -1793,7 +1838,7 @@
       (!store.get("dopk.hint.v1", false) ? `<div class="drill-hint no-print"><span>${T("drillHint")}</span><button type="button" class="text-action" data-action="dismiss-hint" aria-label="${T("dismiss")}">×</button></div>` : "");
     renderBreadcrumb();
 
-    const lateLvl = level(m.latePct, RULES.overduePct), undLvl = level(m.undatedPct, RULES.undatedPct);
+    const lateLvl = level(m.latePct, RULES.overduePct), imm = m.immediate;
     const otLvl = m.onTimePct == null ? "low" : level(m.onTimePct, RULES.onTimePct, true);
     const vit = (lbl, lvl, value, sub, extra = "", kind = "open") => {
       const clickable = kind === "late" || kind === "undated";
@@ -1826,7 +1871,7 @@
       vit(T("vLate"), lateLvl, eur(m.lateVal), `${tf("sLate", pct(m.latePct), m.late.length)} ${deltaHTML(m.lateVal, P?.lateVal, true)}`, "", "late"),
       vit(T("vShip"), otLvl, eur(m.shippedVal), tf("sShip", m.notes, m.onTimePct == null ? null : pct(m.onTimePct, 0)), "", "shipped"),
       intakeVital,
-      vit(T("vUnd"), undLvl, pct(m.undatedPct, 0), tf("sUnd", eur(m.undatedVal), m.undated.length), "", "undated")
+      vit(T("vUnd"), imm.level, eur(imm.val), imm.n ? tf("sImm", imm.n, fmtQty(imm.qty), Math.round(imm.waitAvg), imm.waitMax) : T("sImmNone"), `<div class="vital-subline">${esc(T("immSubtitle"))}</div>`, "undated")
     ].join("");
     const outlookKey = [VIEW.customer, VIEW.family, VIEW.model, VIEW.size, VIEW.variant].join("|");
     if (OUTLOOK_DATA !== DATA || OUTLOOK_KEY !== outlookKey || OUTLOOK_LANG !== LANG) {
@@ -1898,12 +1943,10 @@
         targetLineHTML +
       `</div>` +
       targetSubHTML +
+      `<div class="outlook-compare">${esc(T("outlookMonthExclImm"))}</div>` +
       `</div>`;
 
     const notes = [];
-    if (outlook.undatedCount > 0) {
-      notes.push(tf("outlookUndatedNote", eur(outlook.undatedVal), outlook.undatedCount));
-    }
     if (outlook.calibrated) {
       notes.push(tf("outlookCalibratedNote", pct(outlook.calibRate * 100, 0), RULES.outlook.calibrationDays));
     } else if (outlook.calibReason === "filter") {
@@ -1932,6 +1975,7 @@
         readoutCard(T("outlook90d"), outlook.d90) +
         monthCard +
       `</div>` +
+      (outlook.undatedVal > 0 ? `<p class="outlook-imm">${esc(tf("outlookImm", eur(outlook.undatedVal)))}</p>` : "") +
       `<div class="outlook-notes">` +
         notesHTML +
       `</div>`;
@@ -1941,19 +1985,20 @@
     const compact = !!options.compact;
     const targetEl = $(targetSelector);
     if (!targetEl) return;
+    // Sofortbedarf sits directly after "Late": both are due now.
     const cols = [{ label: T("colLate"), full: T("colLateFull"), val: m.lateVal, n: m.late.length, kind: "late", value: "late" },
-      ...m.months.map(x => ({ label: monthName(x.m, x.y, x.yearTag ? "short" : false), full: monthName(x.m, x.y, true), val: x.val, n: x.n, kind: "flow", value: `${x.y}-${String(x.m + 1).padStart(2, "0")}` })),
-      { label: T("colUnd"), full: T("colUndFull"), val: m.undatedVal, n: m.undated.length, kind: "undated", value: "undated" }];
+      { label: T("colUnd"), full: T("colUndFull"), val: m.undatedVal, n: m.undated.length, kind: "undated", value: "undated" },
+      ...m.months.map(x => ({ label: monthName(x.m, x.y, x.yearTag ? "short" : false), full: monthName(x.m, x.y, true), val: x.val, n: x.n, kind: "flow", value: `${x.y}-${String(x.m + 1).padStart(2, "0")}` }))];
     const W = compact ? 680 : 820, H = compact ? 160 : 280, top = compact ? 18 : 26, bottom = compact ? 26 : 34, gap = compact ? 4 : 6;
     const cw = (W - gap * (cols.length + 1)) / cols.length;
     const max = Math.max(1, ...cols.map(c => c.val));
     const y = v => top + (H - top - bottom) * (1 - v / max);
     let svg = `<svg viewBox="0 0 ${W} ${H}" role="group" aria-label="${esc(T("chartLabel"))}"><defs><pattern id="${compact ? "sc-hatch" : "hatch"}" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="var(--alarm-med-tint)"/><line x1="0" y1="0" x2="0" y2="6" stroke="var(--alarm-med)" stroke-width="3"/></pattern></defs>`;
     [0.5, 1].forEach(f => { svg += `<line x1="0" x2="${W}" y1="${y(max * f)}" y2="${y(max * f)}" stroke="var(--rule-soft)"/>`; });
-    if (m.avg6) svg += `<line x1="${gap + cw + gap}" x2="${W - cw - gap * 2}" y1="${y(m.avg6)}" y2="${y(m.avg6)}" stroke="var(--ink-muted)" stroke-dasharray="3 4"/><text x="${W - cw - gap * 2}" y="${y(m.avg6) - (compact ? 4 : 6)}" text-anchor="end" font-size="${compact ? "10" : "11"}" fill="var(--ink-muted)">${esc(tf("avg6", eur(m.avg6)))}</text>`;
+    if (m.avg6) svg += `<line x1="${gap + 2 * (cw + gap)}" x2="${W - gap}" y1="${y(m.avg6)}" y2="${y(m.avg6)}" stroke="var(--ink-muted)" stroke-dasharray="3 4"/><text x="${W - gap}" y="${y(m.avg6) - (compact ? 4 : 6)}" text-anchor="end" font-size="${compact ? "10" : "11"}" fill="var(--ink-muted)">${esc(tf("avg6", eur(m.avg6)))}</text>`;
     cols.forEach((c, i) => {
       const x = gap + i * (cw + gap), yy = y(c.val), fill = c.kind === "late" ? COLORS.late : c.kind === "undated" ? `url(#${compact ? "sc-hatch" : "hatch"})` : COLORS.flow;
-      const dim = !compact && c.kind === "flow" && m.dropIdx >= 0 && i - 1 >= m.dropIdx;
+      const dim = !compact && c.kind === "flow" && m.dropIdx >= 0 && i - 2 >= m.dropIdx;
       if (compact) {
         svg += `<g class="col" aria-label="${esc(tf("tip", c.full, eurFull(c.val), c.n))}">`;
       } else {
@@ -1963,7 +2008,7 @@
       svg += `<rect class="bar-fill" x="${x}" y="${yy}" width="${cw}" height="${Math.max(0, H - bottom - yy)}" fill="${fill}" opacity="${!compact && VIEW.period && VIEW.period !== c.value ? 0.35 : dim ? 0.45 : 1}"/>`;
       if (c.val > 0) svg += `<text x="${x + cw / 2}" y="${yy - (compact ? 4 : 6)}" text-anchor="middle" font-size="${compact ? "10" : "12"}" font-weight="700" fill="var(--ink)">${esc(eurShort(c.val))}</text>`;
       svg += `<text x="${x + cw / 2}" y="${H - bottom + (compact ? 14 : 18)}" text-anchor="middle" font-size="${compact ? "10" : "12"}" fill="${c.kind === "late" ? "#9E1F2D" : "var(--ink-muted)"}" font-weight="${c.kind === "flow" ? 400 : 700}">${esc(c.label)}</text></g>`;
-      if (i === 0) svg += `<line x1="${x + cw + gap / 2}" x2="${x + cw + gap / 2}" y1="${top - (compact ? 6 : 10)}" y2="${H - bottom + 4}" stroke="var(--graphite)" stroke-width="1.5"/><text x="${x + cw + gap / 2 + 4}" y="${top - (compact ? 8 : 12)}" font-size="${compact ? "10" : "11"}" font-weight="700" fill="var(--ink)">${T("today")}</text>`;
+      if (i === 1) svg += `<line x1="${x + cw + gap / 2}" x2="${x + cw + gap / 2}" y1="${top - (compact ? 6 : 10)}" y2="${H - bottom + 4}" stroke="var(--graphite)" stroke-width="1.5"/><text x="${x + cw + gap / 2 + 4}" y="${top - (compact ? 8 : 12)}" font-size="${compact ? "10" : "11"}" font-weight="700" fill="var(--ink)">${T("today")}</text>`;
     });
     svg += `<line x1="0" x2="${W}" y1="${H - bottom}" y2="${H - bottom}" stroke="var(--graphite)"/></svg>`;
     targetEl.innerHTML = svg;
@@ -2075,7 +2120,35 @@
   function lowerMode() {
     const p = VIEW.period;
     if (VIEW.family && p !== "late") return VIEW.size ? "lines" : VIEW.model ? "sizes" : "models";
+    if (p === "undated") return "immediate";
     return "list";
+  }
+  // Period "undated": Sofortbedarf grouped by product family or customer; a family row continues into the drill-down.
+  function renderImmediate(m, rd) {
+    const byCust = UND_GROUP === "cust";
+    const groups = aggregate(m.open, byCust ? l => l.cust : famKey, rd).sort(byValueOtherLast);
+    const stats = e => immediateStats(e.list, rd);
+    $("#late-title").textContent = byCust ? T("immTitleCust") : T("undatedTitle");
+    $("#late-count").textContent = tf("immCount", m.open.length, uniq(m.open, l => l.order), eurFull(m.openVal));
+    $("#late-tools").innerHTML = segmented(T("immGroupLabel"), "und-group", [["fam", T("immGroupFam")], ["cust", T("immGroupCust")]], UND_GROUP, "segmented--small");
+    lateHead([[byCust ? T("thCust") : T("scFamily")], [T("thVal"), 1], [T("thQty"), 1], [T("thLines"), 1], [T("thOrders"), 1], [T("thOldest"), 1], [T("thWaitAvg"), 1]]);
+    $("#late-body").innerHTML = groups.map(e => {
+      const st = stats(e), name = byCust ? e.list[0].short : famName(e.key);
+      return `<tr role="button" tabindex="0" data-action="${byCust ? "customer" : "family"}" data-value="${esc(e.key)}"><td class="clip" title="${esc(byCust ? e.key : name)}">${esc(name)}</td>` +
+        `<td class="num">${eurFull(e.val)}</td><td class="num">${esc(fmtQty(e.qty))}</td><td class="num">${nf(e.lines)}</td><td class="num">${nf(e.orders.size)}</td>` +
+        `<td class="num">${fmtDate(e.oldest)}</td><td class="num">${esc(tf("waitDays", Math.round(st.waitAvg)))}</td></tr>`;
+    }).join("") || `<tr><td colspan="7">${T("tableEmpty")}</td></tr>`;
+    $("#late-more").innerHTML = byCust ? "" : otherWarnHTML(m.open);
+    $("#export-late").textContent = T("exportImmediate");
+    $("#export-late").disabled = !m.open.length;
+  }
+  // Production priority list: Sofortbedarf lines of the current scope, oldest order first (FIFO).
+  function buildImmediateCsv() {
+    const rd = DATA.reportDate, de = LANG === "de";
+    const list = compute(DATA.lines, rd, { ...VIEW, period: "undated", lateMonth: null }).open.sort(fifoSort);
+    const rows = list.map(l => [l.order, l.cust, l.art, l.desc, famName(famKey(l)), l.model, l.size, de ? deNum(l.rest) : String(l.rest),
+      fmtDate(l.date), l.date ? Math.max(0, daysBetween(rd, l.date)) : "", de ? deNum(l.val, 2) : l.val.toFixed(2)]);
+    return { csv: csvText([T("csvImmHead"), ...rows]), name: `${T("csvImmPrefix")}_${iso(rd)}.csv`, lines: list };
   }
   const fifoSort = (a, b) => (a.date ? +a.date : Infinity) - (b.date ? +b.date : Infinity) || b.val - a.val;
   function tableLines(m) {
@@ -2134,7 +2207,8 @@
 
   function renderLate(m, rd) {
     const mode = lowerMode();
-    if (mode === "models" || mode === "sizes" || mode === "lines") { renderDrill(mode, m, rd); return; }
+    if (mode === "models" || mode === "sizes" || mode === "lines") { renderDrill(mode, m, rd); if (VIEW.period === "undated") $("#export-late").textContent = T("exportImmediate"); return; }
+    if (mode === "immediate") { renderImmediate(m, rd); return; }
     $("#late-tools").innerHTML = "";
     const list = tableLines(m), rows = list.slice(0, TABLE_ALL ? 50 : 10);
     const p = VIEW.period;
@@ -2451,7 +2525,7 @@
   }
 
   function exportLate() {
-    const { csv, name } = buildViewCsv();
+    const { csv, name } = VIEW.period === "undated" ? buildImmediateCsv() : buildViewCsv();
     const a = document.createElement("a"), url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
     a.href = url; a.download = name;
     document.body.appendChild(a); a.click(); a.remove();
@@ -2482,7 +2556,9 @@
     const undatedLines = openLines.filter(l => !l.due);
     const undatedVal = sum(undatedLines, l => l.val);
     const undatedPct = openVal > 0 ? undatedVal / openVal * 100 : 0;
-    const undatedLevel = level(undatedPct, RULES.undatedPct);
+    // Sofortbedarf alarms on waiting days, not on its share of the backlog.
+    const immediate = immediateStats(openLines, rd);
+    const undatedLevel = immediate.level;
 
     // day-over-day, from the previous stored snapshot that has this account
     const snaps = history?.snaps || {};
@@ -2612,6 +2688,7 @@
       prevOpen: prevAcc ? prevAcc.open : null, prevLate: prevAcc ? prevAcc.late : null,
       lateVal, lateLines: lateLines.length, latePct, lateLevel,
       undatedVal, undatedLines: undatedLines.length, undatedPct, undatedLevel,
+      immediate: { val: immediate.val, qty: immediate.qty, n: immediate.n, waitAvg: immediate.waitAvg, waitMax: immediate.waitMax, level: immediate.level },
       coverMonth, coverMonths, coverLevel, sched30, sched90,
       btbRatio, btbRatioDisplay, btbLevel,
       btb4w: { ratio: btbRatio, display: btbRatioDisplay, level: btbLevel, intake: btbIntakeAcc, shipped: btbShippedAcc, intake4w: btbIntakeAcc, shipped4w: btbShippedAcc },
@@ -2654,7 +2731,7 @@
     const vitals = `<div class="sc-vitals" role="group" aria-label="${esc(T("scVitals"))}">` +
       vital(T("vOpen"), "none", esc(eur(a.openVal)), `${esc(tf("sOpen", a.openLines, a.openOrders))} ${deltaHTML(a.openVal, a.prevOpen, false)}`) +
       vital(T("vLate"), a.lateLevel, esc(eur(a.lateVal)), `${esc(tf("scSubOverdue", pct(a.latePct), a.lateLines))} ${deltaHTML(a.lateVal, a.prevLate, true)}`) +
-      vital(T("vUnd"), a.undatedLevel, esc(pct(a.undatedPct)), esc(tf("scSubUndated", eur(a.undatedVal), a.undatedLines))) +
+      vital(T("vUnd"), a.undatedLevel, esc(eur(a.immediate.val)), esc(a.immediate.n ? tf("scSubImm", a.immediate.n, fmtQty(a.immediate.qty), Math.round(a.immediate.waitAvg)) : T("sImmNone"))) +
       vital(T("scCoverTitle"), a.coverLevel, esc(a.coverMonth ? tf("scMonthsVal", nf(a.coverMonths, 1)) : "0"), esc(list) + (a.btbRatioDisplay ? `<div class="sc-btb-line" data-level="${a.btbLevel}">${esc(tf("scBtbRatio", 4, a.btbRatioDisplay))}</div>` : "")) +
       vital(T("scOnTimeTitle"), a.onTime.level, esc(a.onTime.available ? pct(a.onTime.pct, 0) : "–"),
         a.onTime.available ? esc(tf("scSubOnTime", a.onTime.ships, eurFull(a.onTime.val), pct(a.onTime.linePct, 0))) : unavailable) +
@@ -2662,8 +2739,9 @@
         a.reliability.available ? esc(tf("scSubReliability", a.reliability.moved, a.reliability.open, a.reliability.twice)) : unavailable) +
       `</div>`;
 
-    const legend = `<div class="legend"><span><i style="background:var(--alarm-high)"></i>${esc(T("legLate"))}</span><span><i style="background:var(--alarm-low)"></i>${esc(T("legFlow"))}</span>` +
-      `<span><i style="background:repeating-linear-gradient(45deg,var(--alarm-med) 0 2px,var(--alarm-med-tint) 2px 5px)"></i>${esc(T("legUndated"))}</span></div>`;
+    const legend = `<div class="legend"><span><i style="background:var(--alarm-high)"></i>${esc(T("legLate"))}</span>` +
+      `<span><i style="background:repeating-linear-gradient(45deg,var(--alarm-med) 0 2px,var(--alarm-med-tint) 2px 5px)"></i>${esc(T("legUndated"))}</span>` +
+      `<span><i style="background:var(--alarm-low)"></i>${esc(T("legFlow"))}</span></div>`;
     const schedule = `<section class="sc-section" aria-labelledby="sc-h-schedule"><h3 id="sc-h-schedule">${esc(T("scSchedule"))}</h3>` +
       `<div id="sc-horizon" class="horizon sc-horizon"></div>${legend}<p class="sc-sched-note">${esc(tf("scSched3090", eur(a.sched30), eur(a.sched90)))}</p></section>`;
 
@@ -2984,6 +3062,7 @@
     else if (action === "table-all") { TABLE_ALL = true; applyView({}); }
     else if (action === "dismiss-hint") { store.set("dopk.hint.v1", true); applyView({}); }
     else if (action === "dismiss-notice") { showNotice("", ""); return; }
+    else if (action === "und-group") { UND_GROUP = value === "cust" ? "cust" : "fam"; applyView({}); }
     else if (action === "model") applyView({ model: VIEW.model === value ? null : value, size: null });
     else if (action === "size") applyView({ size: VIEW.size === value ? null : value });
     else if (action === "share-tab") { SHARE_TAB = value === "fam" ? "fam" : "cust"; store.set(LS_SHARETAB, SHARE_TAB); applyView({}); }
@@ -3239,7 +3318,7 @@
         load: rows => loadAoa(rows, "DOPK_09_09.xlsx", false), applyView, compute, setLang, buildViewCsv, RULES, computeAccount,
         deliveredBetween, intakeBetween, computeBookToBill, buildBtbCsv,
         clearHistory: () => TEST_STORAGE.delete(LS_HISTORY),
-        loadFamiliesFile, buildUnassignedCsv, setFamilies, get families() { return FAMILIES; },
+        loadFamiliesFile, buildUnassignedCsv, setFamilies, get families() { return FAMILIES; }, buildImmediateCsv, computeOutlook,
         importArchive: aois => commitArchive(aois.map((aoa, i) => ({ aoa, data: parseRows(aoa, "DOPK.xlsx"), name: "DOPK_" + i + ".xlsx", mod: i })), []),
         get history() { return store.get(LS_HISTORY, { snaps: {} }); },
         get view() { return { ...VIEW }; }, get data() { return DATA; }, get metrics() { return compute(DATA.lines, DATA.reportDate, VIEW); }
