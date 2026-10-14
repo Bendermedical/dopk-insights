@@ -84,7 +84,8 @@
           <div><h2 id="late-title" data-i18n="lateTitle">Überfällige Positionen nachfassen</h2><p class="panel-note" id="late-count"></p></div>
           <div class="late-actions no-print"><div id="late-tools" class="late-tools"></div><button class="btn btn--quiet" type="button" id="export-late" data-i18n="exportLate">Überfälligkeitsliste exportieren</button></div>
         </div>
-        <div class="table-scroll">
+        <div id="late-matrix" class="matrix-wrap" hidden></div>
+        <div class="table-scroll" id="late-table">
           <table class="data">
             <thead id="late-head"><tr><th>Auftrag</th><th>Kunde</th><th>Artikel</th><th class="num">Fällig</th><th id="late-days" class="num">Verzug</th><th class="num">Offener Wert</th></tr></thead>
             <tbody id="late-body"></tbody>

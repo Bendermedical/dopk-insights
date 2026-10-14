@@ -178,6 +178,25 @@ table.data td .chip { margin-left: var(--s1); }
 .late-tools { display:flex; gap: var(--s2); flex-wrap: wrap; }
 .drawer-fam { display:block; font-size: var(--fs-xs); color: var(--ink-faint); }
 
+/* ---- Overdue matrix: due month × product family ----------------------- */
+.matrix-wrap { margin-bottom: var(--s4); }
+.matrix-head { display:flex; justify-content: flex-end; margin-bottom: var(--s2); }
+.matrix-scroll { overflow-x: auto; max-width: 100%; }
+table.matrix { width: auto; min-width: 100%; }
+table.matrix th, table.matrix td { padding: 0; white-space: nowrap; }
+table.matrix th:first-child { position: sticky; left: 0; z-index: 1; background: var(--bg); text-align: left; }
+table.matrix thead th { padding: var(--s2) var(--s2) var(--s2) 0; }
+table.matrix thead th:first-child, table.matrix tbody th, table.matrix tfoot th { padding-right: var(--s3); }
+table.matrix .cell-btn { font: inherit; color: inherit; background: transparent; border: 0; padding: var(--s2) var(--s2); width: 100%; text-align: inherit; cursor: pointer; white-space: nowrap; }
+table.matrix th .cell-btn { font-weight: var(--fw-bold); color: var(--ink-muted); padding-left: 0; }
+table.matrix .cell-btn:hover { background: var(--steel-200); }
+table.matrix .cell-btn[aria-pressed="true"], table.matrix td.is-selected { background: var(--steel-200); font-weight: var(--fw-bold); }
+table.matrix td.is-empty { color: var(--ink-faint); padding: var(--s2); }
+table.matrix tfoot td, table.matrix tfoot th, table.matrix td.total { font-weight: var(--fw-bold); }
+table.matrix tfoot tr > * { border-top: 2px solid var(--graphite); border-bottom: 0; }
+table.matrix tbody tr:hover { background: transparent; }
+.matrix-note { font-size: var(--fs-xs); }
+
 /* ---- Watchlist -------------------------------------------------------- */
 .watch { list-style: none; margin: 0; padding: 0; }
 .watch li { padding: var(--s3) 0; border-bottom: 1px solid var(--rule-soft); }

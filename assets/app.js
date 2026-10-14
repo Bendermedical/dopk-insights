@@ -294,7 +294,12 @@
       csvImmPrefix: "sofortbedarf",
       outlookImm: v => `Sofortbedarf: bis zu ${v} zusätzlich bei verfügbarer Kapazität`,
       outlookMonthExclImm: "ohne Sofortbedarf",
-      scSubImm: (n, q, a) => `${pl(n, "Position", "Positionen")} · ${q} · Ø ${a} Tage Wartezeit`
+      scSubImm: (n, q, a) => `${pl(n, "Position", "Positionen")} · ${q} · Ø ${a} Tage Wartezeit`,
+      lateTabLabel: "Überfällige anzeigen als", lateTabList: "Liste", lateTabMonth: "Nach Monat",
+      matrixUnitLabel: "Einheit", unitEur: "€", unitQty: "Stk", matrixMore: "Weitere", matrixTotal: "Summe", matrixMonth: "Fällig im",
+      matrixLabel: "Überfälliger Wert nach Fälligkeitsmonat und Produktfamilie",
+      matrixFresh: p => `${p} des überfälligen Werts ist weniger als 30 Tage überfällig`,
+      matrixCell: (mo, f, v) => `${mo}, ${f}: ${v}`
     },
     en: {
       drillHint: "Tip: bars, customers and order numbers are clickable.",
@@ -523,7 +528,12 @@
       csvImmPrefix: "immediate-demand",
       outlookImm: v => `Immediate demand: up to ${v} more if capacity allows`,
       outlookMonthExclImm: "excludes immediate demand",
-      scSubImm: (n, q, a) => `${pl(n, "line", "lines")} · ${q} · avg ${a} days waiting`
+      scSubImm: (n, q, a) => `${pl(n, "line", "lines")} · ${q} · avg ${a} days waiting`,
+      lateTabLabel: "Show overdue lines as", lateTabList: "List", lateTabMonth: "By month",
+      matrixUnitLabel: "Unit", unitEur: "€", unitQty: "pcs", matrixMore: "More", matrixTotal: "Total", matrixMonth: "Due in",
+      matrixLabel: "Overdue value by due month and product family",
+      matrixFresh: p => `${p} of the overdue value is less than 30 days late`,
+      matrixCell: (mo, f, v) => `${mo}, ${f}: ${v}`
     }
   };
 
@@ -563,10 +573,11 @@
   const eurFull = v => LANG === "de" ? nf(v) + " €" : "€" + nf(v);
   const eurUnit = v => LANG === "de" ? nf(v, 2) + " €" : "€" + v.toFixed(2);
   const QTY_FORMATS = new Map();
-  const fmtQty = v => {
+  const plainQty = v => {
     if (!QTY_FORMATS.has(LANG)) QTY_FORMATS.set(LANG, new Intl.NumberFormat(LOC(), { maximumFractionDigits: 2 }));
-    return tf("qty", QTY_FORMATS.get(LANG).format(v));
+    return QTY_FORMATS.get(LANG).format(v);
   };
+  const fmtQty = v => tf("qty", plainQty(v));
   const pct = (v, d = 1) => (LANG === "de" ? nf(isFinite(v) ? v : 0, d) + " %" : (isFinite(v) ? v.toFixed(d) : "0") + "%");
   const fmtDate = d => {
     if (!d) return "–";
@@ -2121,10 +2132,59 @@
     const p = VIEW.period;
     if (VIEW.family && p !== "late") return VIEW.size ? "lines" : VIEW.model ? "sizes" : "models";
     if (p === "undated") return "immediate";
+    if (!p || p === "late") return LATE_TAB === "month" ? "matrix" : "list";
     return "list";
+  }
+  // Overdue by due month (rows, oldest first) and product family (columns). The matrix ignores its own
+  // family and month selection so its columns stay put; it honours customer and variant.
+  function computeLateMatrix(rd) {
+    const base = compute(DATA.lines, rd, VIEW, { ignore: ["family", "period", "lateMonth"] }).late;
+    const valued = base.filter(l => l.val > 0);
+    // Columns follow the families tab: total open value of the family, "Sonstige" last.
+    const openByFam = {};
+    compute(DATA.lines, rd, VIEW, { ignore: ["family", "period", "lateMonth"] }).open.forEach(l => { openByFam[famKey(l)] = (openByFam[famKey(l)] || 0) + l.val; });
+    const fams = aggregate(valued, famKey, rd).sort((a, b) => ((a.key === OTHER) - (b.key === OTHER)) || (openByFam[b.key] || 0) - (openByFam[a.key] || 0));
+    const maxCols = RULES.families?.matrixCols ?? 6;
+    const shown = fams.length > maxCols + 1 ? fams.slice(0, maxCols) : fams;
+    const shownKeys = new Set(shown.map(f => f.key));
+    const months = [...new Set(valued.map(l => monthKey(l.due)))].sort();
+    // Only families with overdue value take part; f = family key, "__more" = the remaining families, null = row total.
+    const famSet = new Set(fams.map(f => f.key));
+    const cell = (mo, f) => {
+      const ls = base.filter(l => monthKey(l.due) === mo && famSet.has(famKey(l)) && (f == null || (f === "__more" ? !shownKeys.has(famKey(l)) : famKey(l) === f)));
+      return { val: sum(ls, l => l.val), qty: sum(ls, l => l.rest), n: ls.length };
+    };
+    const cols = [...shown.map(f => f.key), ...(shown.length < fams.length ? ["__more"] : [])];
+    const fresh = sum(valued.filter(l => daysBetween(rd, l.due) < 30), l => l.val), total = sum(valued, l => l.val);
+    return { cols, months, cell, total, freshPct: total > 0 ? fresh / total * 100 : 0 };
+  }
+  function renderMatrix(mx, rd) {
+    const unitQty = MATRIX_UNIT === "qty";
+    const fmt = c => !c || !c.n || (!unitQty && c.val === 0) ? "–" : unitQty ? plainQty(c.qty) : eurFull(c.val);
+    const colName = f => f === "__more" ? T("matrixMore") : famName(f);
+    const sel = (f, mo) => (f == null || VIEW.family === f) && (mo == null || VIEW.lateMonth === mo) && VIEW.period === "late" && (f != null || mo != null);
+    const btn = (action, value, label, aria, pressed) => `<button type="button" class="cell-btn" data-action="${action}" data-value="${esc(value)}" aria-pressed="${pressed}" aria-label="${esc(aria)}">${esc(label)}</button>`;
+    const colTotal = f => { const out = { val: 0, qty: 0, n: 0 }; mx.months.forEach(mo => { const c = mx.cell(mo, f); out.val += c.val; out.qty += c.qty; out.n += c.n; }); return out; };
+    const head = `<tr><th scope="col">${esc(T("matrixMonth"))}</th>` + mx.cols.map(f => `<th scope="col" class="num">${f === "__more" ? esc(colName(f)) : btn("matrix-family", f, colName(f), colName(f), VIEW.period === "late" && VIEW.family === f && !VIEW.lateMonth)}</th>`).join("") + `<th scope="col" class="num">${esc(T("matrixTotal"))}</th></tr>`;
+    const rows = mx.months.map(mo => {
+      const label = monthLabel(mo);
+      return `<tr><th scope="row">${btn("matrix-month", mo, label, label, sel(null, mo) && !VIEW.family)}</th>` + mx.cols.map(f => {
+        const c = mx.cell(mo, f), v = fmt(c);
+        if (v === "–") return `<td class="num is-empty">–</td>`;
+        return `<td class="num${sel(f === "__more" ? null : f, mo) ? " is-selected" : ""}">${f === "__more" ? btn("matrix-month", mo, v, tf("matrixCell", label, colName(f), v), false) : btn("matrix-cell", `${mo}|${f}`, v, tf("matrixCell", label, colName(f), v), sel(f, mo))}</td>`;
+      }).join("") + `<td class="num total">${btn("matrix-month", mo, fmt(mx.cell(mo, null)), tf("matrixCell", label, T("matrixTotal"), fmt(mx.cell(mo, null))), false)}</td></tr>`;
+    }).join("");
+    const grand = { val: mx.total, qty: sum(mx.months, mo => mx.cell(mo, null).qty), n: 1 };
+    const foot = `<tr class="total"><th scope="row">${esc(T("matrixTotal"))}</th>` + mx.cols.map(f => { const c = colTotal(f), v = fmt(c); return `<td class="num">${f === "__more" || v === "–" ? esc(v) : btn("matrix-family", f, v, tf("matrixCell", T("matrixTotal"), colName(f), v), false)}</td>`; }).join("") + `<td class="num">${esc(fmt(grand))}</td></tr>`;
+    $("#late-matrix").innerHTML = mx.months.length
+      ? `<div class="matrix-head">${segmented(T("matrixUnitLabel"), "matrix-unit", [["eur", T("unitEur")], ["qty", T("unitQty")]], MATRIX_UNIT, "segmented--small")}</div>` +
+        `<div class="matrix-scroll" tabindex="0" role="region" aria-label="${esc(T("matrixLabel"))}"><table class="data matrix"><thead>${head}</thead><tbody>${rows}</tbody><tfoot>${foot}</tfoot></table></div>` +
+        `<p class="panel-note matrix-note">${esc(tf("matrixFresh", pct(mx.freshPct, 0)))}</p>` + otherWarnHTML(compute(DATA.lines, rd, VIEW, { ignore: ["family", "lateMonth"] }).open)
+      : `<p class="panel-note">${esc(T("noLate"))}</p>`;
   }
   // Period "undated": Sofortbedarf grouped by product family or customer; a family row continues into the drill-down.
   function renderImmediate(m, rd) {
+    $("#late-matrix").hidden = true; $("#late-table").hidden = false;
     const byCust = UND_GROUP === "cust";
     const groups = aggregate(m.open, byCust ? l => l.cust : famKey, rd).sort(byValueOtherLast);
     const stats = e => immediateStats(e.list, rd);
@@ -2169,6 +2229,7 @@
 
   // Family drill-down: models of the family, sizes of a model, then the order lines of a size.
   function renderDrill(mode, m, rd) {
+    $("#late-matrix").hidden = true; $("#late-table").hidden = false;
     const base = compute(DATA.lines, rd, { ...VIEW, model: null, size: null }).open;
     const groupRow = (action, e, cells) => `<tr role="button" tabindex="0" data-action="${action}" data-value="${esc(e.key)}">${cells}</tr>`;
     $("#late-tools").innerHTML = "";
@@ -2209,7 +2270,11 @@
     const mode = lowerMode();
     if (mode === "models" || mode === "sizes" || mode === "lines") { renderDrill(mode, m, rd); if (VIEW.period === "undated") $("#export-late").textContent = T("exportImmediate"); return; }
     if (mode === "immediate") { renderImmediate(m, rd); return; }
-    $("#late-tools").innerHTML = "";
+    $("#late-tools").innerHTML = segmented(T("lateTabLabel"), "late-tab", [["list", T("lateTabList")], ["month", T("lateTabMonth")]], LATE_TAB, "segmented--small");
+    const matrix = mode === "matrix", picked = VIEW.period === "late" && (VIEW.family || VIEW.lateMonth);
+    $("#late-matrix").hidden = !matrix;
+    $("#late-table").hidden = matrix && !picked;
+    if (matrix) renderMatrix(computeLateMatrix(rd), rd);
     const list = tableLines(m), rows = list.slice(0, TABLE_ALL ? 50 : 10);
     const p = VIEW.period;
     const daysTitle = p === "undated" ? T("orderAge") : p && p !== "late" ? T("dueIn") : T("thLate");
@@ -3062,6 +3127,15 @@
     else if (action === "table-all") { TABLE_ALL = true; applyView({}); }
     else if (action === "dismiss-hint") { store.set("dopk.hint.v1", true); applyView({}); }
     else if (action === "dismiss-notice") { showNotice("", ""); return; }
+    else if (action === "late-tab") { LATE_TAB = value === "month" ? "month" : "list"; store.set(LS_LATETAB, LATE_TAB); applyView({}); }
+    else if (action === "matrix-unit") { MATRIX_UNIT = value === "qty" ? "qty" : "eur"; applyView({}); }
+    else if (action === "matrix-cell") {
+      const mo = value.slice(0, 7), f = value.slice(8);
+      const same = VIEW.period === "late" && VIEW.family === f && VIEW.lateMonth === mo;
+      applyView(same ? { family: null, model: null, size: null, lateMonth: null } : { period: "late", family: f, model: null, size: null, lateMonth: mo });
+    }
+    else if (action === "matrix-month") applyView(VIEW.period === "late" && VIEW.lateMonth === value && !VIEW.family ? { lateMonth: null } : { period: "late", lateMonth: value, family: null, model: null, size: null });
+    else if (action === "matrix-family") applyView(VIEW.period === "late" && VIEW.family === value && !VIEW.lateMonth ? { family: null, model: null, size: null } : { period: "late", family: value, model: null, size: null, lateMonth: null });
     else if (action === "und-group") { UND_GROUP = value === "cust" ? "cust" : "fam"; applyView({}); }
     else if (action === "model") applyView({ model: VIEW.model === value ? null : value, size: null });
     else if (action === "size") applyView({ size: VIEW.size === value ? null : value });
@@ -3254,6 +3328,7 @@
     }
     FAMILIES = store.get(LS_FAMILIES, null);
     SHARE_TAB = store.get(LS_SHARETAB, "cust") === "fam" ? "fam" : "cust";
+    LATE_TAB = store.get(LS_LATETAB, "list") === "month" ? "month" : "list";
     renderFamiliesFoot();
     $("#filter").addEventListener("change", e => applyView({ customer: e.target.value === "__all" ? null : e.target.value }));
     $("#export-late").addEventListener("click", exportLate);

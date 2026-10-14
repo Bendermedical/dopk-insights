@@ -236,6 +236,43 @@ document.addEventListener("DOMContentLoaded", async function () {
       assert(!$("#vitals [data-kind='undated']").textContent.includes("%"), "No percentage on the key figure");
       assert(text("#verdict").includes("2,7 T€ Sofortbedarf warten im Schnitt 79 Tage auf Fertigung."), `Verdict ${text("#verdict")}`);
     });
+
+    // ---------------------------------------------------------------- Overdue by month and family
+    const matrix = () => $$("#late-matrix table tr").map(r => [...r.cells].map(c => c.textContent.trim()));
+    api.setLang("en"); api.clearHistory(); await loadDay(window.DOPK_FIXTURE, "DOPK_09_09.xlsx"); reset(); await paint();
+
+    await test(14, "Day 1 matrix (€ and pcs)", async () => {
+      click(byValue('#late-tools [data-action="late-tab"]', "month")); await paint();
+      assert(!$("#late-matrix").hidden && $("#late-table").hidden, "Matrix shown, list hidden until a selection");
+      assert(JSON.parse(sessionStorage.getItem("dopk.test.dopk.latetab.v1")) === "month", "Choice stored in dopk.latetab.v1");
+      const want = [["Due in", "Laryvox", "Duracuff Pro", "Total"], ["Aug 2026", "€1,500", "–", "€1,500"], ["Sep 2026", "–", "€2,000", "€2,000"], ["Total", "€1,500", "€2,000", "€3,500"]];
+      assert(JSON.stringify(matrix()) === JSON.stringify(want), `Matrix ${JSON.stringify(matrix())}`);
+      click(byValue('#late-matrix [data-action="matrix-unit"]', "qty")); await paint();
+      const q = matrix();
+      assert(q[1][1] === "50" && q[2][2] === "40" && q[1][2] === "–", `Pieces ${JSON.stringify(q)}`);
+      click(byValue('#late-matrix [data-action="matrix-unit"]', "eur")); await paint();
+      assert(text("#late-matrix .matrix-note") === "100% of the overdue value is less than 30 days late", `Note ${text("#late-matrix .matrix-note")}`);
+      assert(getComputedStyle($("#late-matrix th")).position === "sticky", "Sticky first column");
+    });
+
+    await test(15, "Day 4 matrix after days 1–4; Oct × BMV Cuff lists only 1008", async () => {
+      api.clearHistory();
+      for (const [rows, name] of [[window.DOPK_FIXTURE, "DOPK_09_09.xlsx"], [window.DOPK_FIXTURE_DAY2, "DOPK_10_09.xlsx"], [window.DOPK_FIXTURE_DAY3, "DOPK_12_09.xlsx"], [window.DOPK_FIXTURE_DAY4, "DOPK_16_10.xlsx"]]) await loadDay(rows, name);
+      reset(); await paint();
+      const want = [["Due in", "Laryvox", "BMV Cuff", "Total"], ["Aug 2026", "€600", "–", "€600"], ["Oct 2026", "€1,000", "€1,500", "€2,500"], ["Total", "€1,600", "€1,500", "€3,100"]];
+      assert(JSON.stringify(matrix()) === JSON.stringify(want), `Matrix ${JSON.stringify(matrix())}`);
+      assert(text("#late-matrix .matrix-note") === "81% of the overdue value is less than 30 days late", `Note ${text("#late-matrix .matrix-note")}`);
+      click(byValue('#late-matrix [data-action="matrix-cell"]', "2026-10|BMV Cuff")); await paint();
+      assert(api.view.period === "late" && api.view.family === "BMV Cuff" && api.view.lateMonth === "2026-10" && location.hash.includes("lm=2026-10"), "Cell sets period, family and month");
+      assert(!$("#late-table").hidden && bodyRows().length === 1 && bodyRows()[0][0] === "1008", `Lines ${JSON.stringify(bodyRows())}`);
+      assert(JSON.stringify(matrix()) === JSON.stringify(want), "Matrix keeps all columns while filtered");
+      click(byValue('#late-matrix [data-action="matrix-month"]', "2026-10")); await paint();
+      assert(api.view.lateMonth === "2026-10" && api.view.family === null && bodyRows().map(r => r[0]).join() === "1008,1012", `Row header: month only ${bodyRows().map(r => r[0])}`);
+      click(byValue('#late-matrix thead [data-action="matrix-family"]', "Laryvox")); await paint();
+      assert(api.view.family === "Laryvox" && api.view.lateMonth === null && bodyRows().map(r => r[0]).join() === "1012,1001", `Column header: family only ${bodyRows().map(r => r[0])}`);
+      assert(crumbs().join() === "Laryvox,Overdue", `Breadcrumb ${crumbs()}`);
+      click(byValue('#late-tools [data-action="late-tab"]', "list")); reset(); await paint();
+    });
   }
 
   sessionStorage.removeItem(RESUME);
