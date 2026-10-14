@@ -1,0 +1,13 @@
+﻿Artikel-Nr.;Produktfamilie;Modell;Bezeichnung;Groesse;Variante;Hauptgruppe;Gruppe;Untergruppe;Status;Nachfolger;Quelle
+A100;Laryvox;A1-XX;LARYVOX Tape Gr. 01;01;;Tracheostoma-Schutz;Basisplatten;;;;Test
+A101;Laryvox;A1-XX;LARYVOX Tape Gr. 02;02;;Tracheostoma-Schutz;Basisplatten;;;;Test
+A102;Laryvox;A1-XX;LARYVOX Tape Gr. 03;03;;Tracheostoma-Schutz;Basisplatten;;;;Test
+F100;Laryvox;F1-XX;LARYVOX Sprechventil Gr. 10;10;;Kanülenzubehör;Sprechventile;;;;Test
+G100;Laryvox;G1-XX;LARYVOX HME;;;Tracheostoma-Schutz;HME;;;;Test
+A200;Duracuff Pro;A2-XX;Duracuff Pro Gr. 08;08;;Kanülen;Trachealkanüle mit Cuff;;;;Test
+A201;Duracuff Pro;A2-XX;Duracuff Pro Percutec Gr. 09;09;PDT (Percutec/Percutan);Kanülen;Trachealkanüle mit Cuff;;;;Test
+A300;Humidotrach;A3-XX;Humidotrach;;;Tracheostoma-Schutz;künstliche Nasen;;;;Test
+B100;BMV Kompressen;B1-XX;Kanülendichtring Foam;;;Kanülenzubehör;Kompressen;;;;Test
+C100;BMV Sonstiges;;Wundtiefenmesser;;;Sonstiges;;;;;Test
+D100;BMV Cuff;303011-XX;BMV Cuff TK Gr. 08;08;;Kanülen;Trachealkanüle mit Cuff;;Auslauf;303028-XX;Test
+E100;Tracheosave;;Tracheosave;;;Kanülenzubehör;;;;;Test
