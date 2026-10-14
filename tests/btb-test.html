@@ -28,6 +28,7 @@
     <button class="btn no-print" type="button" data-upload data-i18n="upload">Tagesdatei hochladen</button>
     <input type="file" id="file" accept=".xlsx,.xls,.csv" hidden>
     <input type="file" id="archive" accept=".xlsx,.xls,.csv" multiple hidden>
+    <input type="file" id="families-file" accept=".csv,.txt,.xlsx,.xls" hidden>
   </header>
 
   <div class="breadcrumb-slot"><nav id="breadcrumb" class="breadcrumb" data-i18n-label="filterScope" aria-label="Filterauswahl" hidden></nav></div>
@@ -196,7 +197,8 @@
 
   <footer class="foot">
     <span id="foot-file"></span>
-    <span class="no-print"><button class="btn btn--quiet" type="button" data-archive data-i18n="importArchive">Archiv importieren</button> <button class="btn btn--quiet" type="button" id="print" data-i18n="print">Drucken oder als PDF speichern</button> <button class="btn btn--quiet" type="button" id="clear" data-i18n="clear">Gespeicherten Verlauf löschen</button></span>
+    <span class="foot-families" id="foot-families" hidden></span>
+    <span class="no-print"><button class="btn btn--quiet" type="button" data-families data-i18n="famAssign">Produktfamilien zuordnen</button> <button class="btn btn--quiet" type="button" data-archive data-i18n="importArchive">Archiv importieren</button> <button class="btn btn--quiet" type="button" id="print" data-i18n="print">Drucken oder als PDF speichern</button> <button class="btn btn--quiet" type="button" id="clear" data-i18n="clear">Gespeicherten Verlauf löschen</button></span>
   </footer>
 </div>
 <script src="test-observer.js"></script>

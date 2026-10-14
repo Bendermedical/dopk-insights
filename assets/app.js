@@ -47,11 +47,19 @@
         low: 0.90,            // 0.90-0.99: slightly shrinking (info)
         med: 0.75             // 0.75-0.89: watch; < 0.75: high (act now)
       }
+    },
+    families: {
+      otherWarnPct: 15,       // "Sonstige" above this % of open value shows the unassigned note
+      maxRows: 8,             // families tab rows before "N weitere"
+      matrixCols: 6           // overdue-by-month matrix family columns before "Weitere"
     }
   };
   const COLORS = { late: "var(--alarm-high)", flow: "var(--alarm-low)", undated: "var(--alarm-med)" };
   const SHARE_COLORS = ["#1F2629", "#11879A", "#7FB9C2", "#C4CBC9"];
   const LS_HISTORY = "dopk.history.v1", LS_LAST = "dopk.last.v1";
+  const LS_FAMILIES = "dopk.families.v1", LS_SHARETAB = "dopk.sharetab.v1", LS_LATETAB = "dopk.latetab.v1";
+  const LS_VIEWS = "dopk.views.v1", LS_DEFAULTVIEW = "dopk.defaultview.v1";
+  const OTHER = "__other", NONE = "__none";
 
   // ---------------------------------------------------------------- texts
   const pl = (n, one, many) => n + " " + (n === 1 ? one : many);
@@ -241,7 +249,19 @@
       verdictBtb: pctVal => `Der Auftragseingang deckt in den letzten 4 Wochen nur ${pctVal} % der Lieferungen.`,
       csvBtbHead: ["Woche", "Auftragseingang", "Lieferungen", "Verhältnis", "Vollständigkeit"],
       csvBtbPrefix: "auftragseingang-lieferungen",
-      csvBtbComplete: "vollständig"
+      csvBtbComplete: "vollständig",
+
+      famAssign: "Produktfamilien zuordnen",
+      famLoaded: (n, file, f) => `${nf(n)} Artikel aus ${file} geladen · ${pl(f, "Familie", "Familien")}`,
+      famSkipped: n => ` · ${pl(n, "Zeile", "Zeilen")} ohne Artikel-Nr. oder Produktfamilie übersprungen`,
+      famStatus: (file, n, d) => `Zuordnung: ${file} · ${nf(n)} Artikel · ${d}`,
+      famRemove: "Entfernen",
+      famExportUnassigned: "Nicht zugeordnete exportieren",
+      famErrHeader: "Die Zuordnungsdatei braucht die Spalten „Artikel-Nr.“ und „Produktfamilie“.",
+      famErrEmpty: "Die Zuordnungsdatei enthält keine Artikel mit Produktfamilie.",
+      famErrRead: "Die Zuordnungsdatei konnte nicht gelesen werden. Bitte eine CSV- oder Excel-Datei verwenden.",
+      famStorageFull: "Die Zuordnung ist zu groß für den Browserspeicher. Sie gilt nur, bis diese Seite geschlossen wird.",
+      famOther: "Sonstige"
     },
     en: {
       drillHint: "Tip: bars, customers and order numbers are clickable.",
@@ -428,7 +448,19 @@
       verdictBtb: pctVal => `Order intake covered only ${pctVal}% of shipments over the last 4 weeks.`,
       csvBtbHead: ["Week", "Intake", "Shipped", "Ratio", "Completeness"],
       csvBtbPrefix: "book-to-bill",
-      csvBtbComplete: "complete"
+      csvBtbComplete: "complete",
+
+      famAssign: "Assign product families",
+      famLoaded: (n, file, f) => `${nf(n)} articles loaded from ${file} · ${pl(f, "family", "families")}`,
+      famSkipped: n => ` · ${pl(n, "row", "rows")} without article number or product family skipped`,
+      famStatus: (file, n, d) => `Mapping: ${file} · ${nf(n)} articles · ${d}`,
+      famRemove: "Remove",
+      famExportUnassigned: "Export unassigned",
+      famErrHeader: "The mapping file needs the columns “Artikel-Nr.” and “Produktfamilie” (or “Article” and “Family”).",
+      famErrEmpty: "The mapping file contains no articles with a product family.",
+      famErrRead: "The mapping file couldn't be read. Use a CSV or Excel file.",
+      famStorageFull: "The mapping is too large for browser storage. It applies only until this page is closed.",
+      famOther: "Other"
     }
   };
 
@@ -532,7 +564,65 @@
     // stable line keys for day-over-day comparison
     const seen = {};
     lines.forEach(l => { const k = l.order + "|" + l.art + "|" + l.qty; seen[k] = (seen[k] || 0) + 1; l.key = k + "|" + seen[k]; });
+    assignFamilies(lines);
     return { lines, reportDate, fileName };
+  }
+
+  // ------------------------------------------------------------- product families (mapping file)
+  // Mapping rows: { art: [familie, modell, groesse, variante, status, nachfolger, hauptgruppe, gruppe, bezeichnung] }.
+  // Article numbers are compared as trimmed, case-sensitive strings. Unmapped articles are "Sonstige" (OTHER).
+  let FAMILIES = null;
+  const MAP_COLS = {
+    art: ["artikel-nr.", "artikel-nr", "artikelnummer", "artikel", "article", "article no.", "article number"],
+    fam: ["produktfamilie", "family", "product family"], model: ["modell", "model"], desc: ["bezeichnung", "description"],
+    size: ["groesse", "größe", "grösse", "size"], variant: ["variante", "variant"], main: ["hauptgruppe", "main group"],
+    group: ["gruppe", "group"], status: ["status"], succ: ["nachfolger", "successor"]
+  };
+  function assignFamilies(lines) {
+    const rows = FAMILIES?.rows || {};
+    lines.forEach(l => {
+      const r = rows[l.art];
+      l.family = r ? r[0] : OTHER;
+      l.model = r ? r[1] || "" : ""; l.size = r ? r[2] || "" : ""; l.variant = r ? r[3] || "" : "";
+      l.artStatus = r ? r[4] || "" : ""; l.successor = r ? r[5] || "" : ""; l.mapDesc = r ? r[8] || "" : "";
+    });
+  }
+  const famName = f => f === OTHER ? T("famOther") : f;
+  // Semicolon (preferred), tab or comma separated text with quoted fields; a leading BOM is ignored.
+  function parseDelimited(text) {
+    text = String(text).replace(/^﻿/, "");
+    const first = text.split(/\r?\n/, 1)[0] || "";
+    const delim = first.includes(";") ? ";" : first.includes("\t") ? "\t" : ",";
+    const rows = []; let row = [], cell = "", quoted = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (quoted) { if (c === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else quoted = false; } else cell += c; }
+      else if (c === '"') quoted = true;
+      else if (c === delim) { row.push(cell); cell = ""; }
+      else if (c === "\n" || c === "\r") { if (c === "\r" && text[i + 1] === "\n") i++; row.push(cell); rows.push(row); row = []; cell = ""; }
+      else cell += c;
+    }
+    if (cell !== "" || row.length) { row.push(cell); rows.push(row); }
+    return rows;
+  }
+  function parseMapping(aoa) {
+    const norm = s => String(s ?? "").replace(/^﻿/, "").trim().toLowerCase();
+    const h = aoa.findIndex(r => Array.isArray(r) && r.some(c => MAP_COLS.art.includes(norm(c))) && r.some(c => MAP_COLS.fam.includes(norm(c))));
+    if (h < 0) throw new Error(T("famErrHeader"));
+    const head = aoa[h].map(norm), idx = {};
+    Object.entries(MAP_COLS).forEach(([k, names]) => { idx[k] = head.findIndex(c => names.includes(c)); });
+    const rows = {};
+    let skipped = 0;
+    for (let i = h + 1; i < aoa.length; i++) {
+      const r = aoa[i];
+      if (!Array.isArray(r) || r.every(c => String(c ?? "").trim() === "")) continue;
+      const v = k => idx[k] >= 0 ? String(r[idx[k]] ?? "").trim() : "";
+      const art = v("art"), fam = v("fam");
+      if (!art || !fam) { skipped++; continue; }
+      rows[art] = [fam, v("model"), v("size"), v("variant"), v("status"), v("succ"), v("main"), v("group"), v("desc")];
+    }
+    if (!Object.keys(rows).length) throw new Error(T("famErrEmpty"));
+    return { rows, skipped };
   }
 
   // ------------------------------------------------------------- metrics
@@ -1264,18 +1354,39 @@
 
   // ------------------------------------------------------------- history
   // The unlinked fixture page runs without overwriting a user's real history.
+  // Settings the test pages need across a real reload are mirrored to sessionStorage under "dopk.test.*".
   const TEST_STORAGE = new Map();
+  const TEST_PERSIST = new Set([LS_FAMILIES, LS_SHARETAB, LS_LATETAB, LS_VIEWS, LS_DEFAULTVIEW]);
   const store = {
-    get(k, f) { if (window.DOPK_FIXTURE) return TEST_STORAGE.has(k) ? TEST_STORAGE.get(k) : f; try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : f; } catch (e) { return f; } },
-    set(k, v) { if (window.DOPK_FIXTURE) { TEST_STORAGE.set(k, v); return true; } try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
+    get(k, f) {
+      if (window.DOPK_FIXTURE) {
+        if (TEST_STORAGE.has(k)) return TEST_STORAGE.get(k);
+        if (TEST_PERSIST.has(k)) { try { const v = sessionStorage.getItem("dopk.test." + k); return v ? JSON.parse(v) : f; } catch (e) { return f; } }
+        return f;
+      }
+      try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : f; } catch (e) { return f; }
+    },
+    set(k, v) {
+      if (window.DOPK_FIXTURE) {
+        TEST_STORAGE.set(k, v);
+        if (TEST_PERSIST.has(k)) try { sessionStorage.setItem("dopk.test." + k, JSON.stringify(v)); } catch (e) {}
+        return true;
+      }
+      try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; }
+    },
+    remove(k) {
+      if (window.DOPK_FIXTURE) { TEST_STORAGE.delete(k); try { sessionStorage.removeItem("dopk.test." + k); } catch (e) {} return; }
+      try { localStorage.removeItem(k); } catch (e) {}
+    }
   };
   function recordHistory(data, m) {
     const h = store.get(LS_HISTORY, { snaps: {} });
     const d = iso(data.reportDate);
     const keys = {};
-    const hasFamily = data.lines.some(l => !!l.family);
+    // Families count only when a mapping assigned at least one real family; "Sonstige" alone is not family data.
+    const hasFamily = data.lines.some(l => l.family && l.family !== OTHER);
     data.lines.forEach(l => {
-      keys[l.key] = [l.due ? iso(l.due) : null, Math.round(l.val), String(l.custId), l.family || null];
+      keys[l.key] = [l.due ? iso(l.due) : null, Math.round(l.val), String(l.custId), hasFamily ? l.family || null : null, l.rest];
     });
 
     const shippedKeys = data.lines.filter(l => l.shipped).map(l => l.key);
@@ -1634,6 +1745,7 @@
     renderOrderDrawer();
     renderBtbSheet();
     $("#foot-file").textContent = `${DATA.fileName || "DOPK export"} · ${tf("linesRead", lines.length)}`;
+    renderFamiliesFoot();
     $("#app").hidden = false; $("#empty").hidden = true;
   }
 
@@ -2644,6 +2756,9 @@
     else if (action === "table-all") { TABLE_ALL = true; applyView({}); }
     else if (action === "dismiss-hint") { store.set("dopk.hint.v1", true); applyView({}); }
     else if (action === "dismiss-notice") { showNotice("", ""); return; }
+    else if (action === "families-load") { $("#families-file")?.click(); return; }
+    else if (action === "families-remove") { setFamilies(null); showNotice("", ""); return; }
+    else if (action === "families-export") { if (DATA) { const u = buildUnassignedCsv(); downloadCsv(u.csv, u.name); } return; }
     // Rendering replaces controls: keep keyboard focus on the equivalent target.
     if (action !== "order" && action !== "close-order" && action !== "scorecard" && action !== "close-scorecard" && action !== "btb" && action !== "close-btb" && action !== "export-btb" && action !== "sc-show-late" && action !== "dismiss-notice" && !VIEW.order && !VIEW.sc && !VIEW.btb) {
       const replacement = [...document.querySelectorAll("[data-action]")].find(el => el.dataset.action === action && el.dataset.value === value);
@@ -2674,6 +2789,73 @@
       r.readAsArrayBuffer(file);
     });
   }
+  function downloadCsv(csv, name) {
+    const a = document.createElement("a"), url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+  const csvCell = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const csvText = rows => "﻿" + rows.map(r => r.map(csvCell).join(";")).join("\r\n");
+  const deNum = (v, d) => (d == null ? String(Math.round(v * 1000) / 1000) : Number(v).toFixed(d)).replace(".", ",");
+
+  // Mapping file: CSV (semicolon or comma, UTF-8 with or without BOM) or XLSX. Used by the footer file picker.
+  function readMappingFile(file) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      const xlsx = /\.xlsx?$/i.test(file.name);
+      r.onload = e => {
+        try {
+          if (xlsx) {
+            const wb = XLSX.read(new Uint8Array(e.target.result), { type: "array" });
+            resolve(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: false, defval: "" }));
+          } else resolve(parseDelimited(e.target.result));
+        } catch (err) { reject(new Error(T("famErrRead"))); }
+      };
+      r.onerror = () => reject(new Error(T("famErrRead")));
+      xlsx ? r.readAsArrayBuffer(file) : r.readAsText(file, "utf-8");
+    });
+  }
+  async function loadFamiliesFile(file) {
+    if (!file) return;
+    try {
+      const { rows, skipped } = parseMapping(await readMappingFile(file));
+      const stored = setFamilies({ fileName: file.name, loadedAt: new Date().toISOString(), rows });
+      const n = Object.keys(rows).length, f = new Set(Object.values(rows).map(r => r[0])).size;
+      showNotice(tf("famLoaded", n, file.name, f) + (skipped ? tf("famSkipped", skipped) : "") + (stored ? "" : " " + T("famStorageFull")), stored ? "ok" : "warn");
+    } catch (e) { showNotice(e.message, "warn"); }
+  }
+  // Returns false when the mapping could only be kept in memory (storage full).
+  function setFamilies(mapping) {
+    FAMILIES = mapping;
+    const stored = mapping ? store.set(LS_FAMILIES, mapping) : (store.remove(LS_FAMILIES), true);
+    if (DATA) { assignFamilies(DATA.lines); OUTLOOK_DATA = null; applyView({}); }
+    else renderFamiliesFoot();
+    return stored;
+  }
+  function renderFamiliesFoot() {
+    const el = $("#foot-families");
+    if (!el) return;
+    el.hidden = !FAMILIES;
+    el.innerHTML = FAMILIES
+      ? `${esc(tf("famStatus", FAMILIES.fileName, Object.keys(FAMILIES.rows).length, fmtDate(new Date(FAMILIES.loadedAt))))} · ` +
+        `<button type="button" class="text-action" data-action="families-remove">${esc(T("famRemove"))}</button>` +
+        (DATA ? ` · <button type="button" class="text-action" data-action="families-export">${esc(T("famExportUnassigned"))}</button>` : "")
+      : "";
+  }
+  // Every article in the current file (shipped lines included) that the mapping doesn't know, largest value first.
+  function buildUnassignedCsv() {
+    const rows = FAMILIES?.rows || {}, byArt = {};
+    DATA.lines.forEach(l => {
+      if (!l.art || rows[l.art]) return;
+      const a = byArt[l.art] || (byArt[l.art] = { art: l.art, desc: l.desc, lines: 0, val: 0, rest: 0 });
+      a.lines++; a.val += l.val; a.rest += l.rest;
+    });
+    const list = Object.values(byArt).sort((a, b) => b.val - a.val);
+    const csv = csvText([["Artikel-Nr.", "Bezeichnung", "Zeilen", "Offener Wert (EUR)", "Restmenge"], ...list.map(a => [a.art, a.desc, a.lines, deNum(a.val, 2), deNum(a.rest)])]);
+    return { csv, name: `nicht_zugeordnet_${iso(DATA.reportDate)}.csv`, list };
+  }
+
   function showNotice(msg, kind) {
     const n = $("#notice");
     if (!n) return;
@@ -2745,6 +2927,13 @@
     document.querySelectorAll("[data-archive]").forEach(b => b.addEventListener("click", () => archive.click()));
     archive.addEventListener("change", e => { readFiles(e.target.files); archive.value = ""; });
     $("#notice button").addEventListener("click", () => showNotice("", ""));
+    const famInput = $("#families-file");
+    if (famInput) {
+      document.querySelectorAll("[data-families]").forEach(b => b.addEventListener("click", () => famInput.click()));
+      famInput.addEventListener("change", e => { loadFamiliesFile(e.target.files[0]); famInput.value = ""; });
+    }
+    FAMILIES = store.get(LS_FAMILIES, null);
+    renderFamiliesFoot();
     $("#filter").addEventListener("change", e => applyView({ customer: e.target.value === "__all" ? null : e.target.value }));
     $("#export-late").addEventListener("click", exportLate);
 
@@ -2808,6 +2997,7 @@
         load: rows => loadAoa(rows, "DOPK_09_09.xlsx", false), applyView, compute, setLang, buildViewCsv, RULES, computeAccount,
         deliveredBetween, intakeBetween, computeBookToBill, buildBtbCsv,
         clearHistory: () => TEST_STORAGE.delete(LS_HISTORY),
+        loadFamiliesFile, buildUnassignedCsv, setFamilies, get families() { return FAMILIES; },
         importArchive: aois => commitArchive(aois.map((aoa, i) => ({ aoa, data: parseRows(aoa, "DOPK.xlsx"), name: "DOPK_" + i + ".xlsx", mod: i })), []),
         get history() { return store.get(LS_HISTORY, { snaps: {} }); },
         get view() { return { ...VIEW }; }, get data() { return DATA; }, get metrics() { return compute(DATA.lines, DATA.reportDate, VIEW); }

@@ -28,6 +28,7 @@
     <button class="btn no-print" type="button" data-upload data-i18n="upload">Tagesdatei hochladen</button>
     <input type="file" id="file" accept=".xlsx,.xls,.csv" hidden>
     <input type="file" id="archive" accept=".xlsx,.xls,.csv" multiple hidden>
+    <input type="file" id="families-file" accept=".csv,.txt,.xlsx,.xls" hidden>
   </header>
 
   <div class="breadcrumb-slot"><nav id="breadcrumb" class="breadcrumb" data-i18n-label="filterScope" aria-label="Filterauswahl" hidden></nav></div>
@@ -130,6 +131,28 @@
     </div>
   </dialog>
 
+  <dialog id="btb-sheet" class="scorecard-sheet btb-sheet" role="dialog" aria-modal="true" aria-labelledby="btb-title">
+    <div class="sheet-inner">
+      <header class="sheet-head">
+        <div>
+          <div class="sc-head-top">
+            <h2 id="btb-title" class="sc-title" data-i18n="btbTitle">Book-to-Bill</h2>
+            <div id="btb-ratios" class="btb-head-ratios"></div>
+          </div>
+          <p id="btb-subtitle" class="panel-note"></p>
+        </div>
+        <div class="sc-head-actions">
+          <div id="btb-chip" class="sc-chip-slot"></div>
+          <button type="button" class="btn btn--quiet no-print" id="btb-export" data-action="export-btb" data-i18n="exportCsv">Als CSV exportieren</button>
+          <button type="button" class="dialog-close sc-close" id="btb-close" data-action="close-btb" aria-label="Schließen" data-i18n-label="closeDialog">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+      </header>
+      <div class="sheet-body" id="btb-body" role="region" tabindex="0" data-i18n-label="btbTitle"></div>
+    </div>
+  </dialog>
+
   <dialog id="detail-modal" class="detail-dialog" closedby="any" aria-labelledby="modal-title">
     <div class="dialog-inner">
       <header class="dialog-head">
@@ -174,7 +197,8 @@
 
   <footer class="foot">
     <span id="foot-file"></span>
-    <span class="no-print"><button class="btn btn--quiet" type="button" data-archive data-i18n="importArchive">Archiv importieren</button> <button class="btn btn--quiet" type="button" id="print" data-i18n="print">Drucken oder als PDF speichern</button> <button class="btn btn--quiet" type="button" id="clear" data-i18n="clear">Gespeicherten Verlauf löschen</button></span>
+    <span class="foot-families" id="foot-families" hidden></span>
+    <span class="no-print"><button class="btn btn--quiet" type="button" data-families data-i18n="famAssign">Produktfamilien zuordnen</button> <button class="btn btn--quiet" type="button" data-archive data-i18n="importArchive">Archiv importieren</button> <button class="btn btn--quiet" type="button" id="print" data-i18n="print">Drucken oder als PDF speichern</button> <button class="btn btn--quiet" type="button" id="clear" data-i18n="clear">Gespeicherten Verlauf löschen</button></span>
   </footer>
 </div>
 <script src="test-observer.js"></script>
