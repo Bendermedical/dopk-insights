@@ -47,7 +47,90 @@ The browser keeps the last 90 snapshots.
 3. Read the verdict, check the vitals, chase the late lines, and export the overdue list if needed.
 
 From the second day on you will see ▲▼ changes, a backlog trend line, completed lines,
-and lines whose delivery date moved later.
+and lines whose delivery date moved later. Click the "Seit …" item in the watchlist to open
+**Neu seit letztem Stand** (see below).
+
+## Sofortbedarf (lines without a delivery date)
+
+A line without a delivery date is **not missing data**. It means: produce and deliver as soon as
+material and staff are available. It is the most urgent part of the order book, so the dashboard
+calls it **Sofortbedarf** ("ohne Liefertermin – schnellstmöglich"; English: immediate demand).
+
+- **Key figure:** open value, number of lines, open quantity, the average waiting time since the
+  order date (weighted by value) and the oldest waiting time. It alarms on waiting time:
+  watch above 30 days, act now above 60 days (`RULES.immediate.waitDays`). There is no longer an
+  alarm on its share of the backlog (`RULES.undatedPct` stays only for stored history).
+- **Horizon:** the "Sofort" bar sits directly after "Überfällig".
+- **Click the key figure:** Sofortbedarf by product family or by customer (value, quantity, lines,
+  orders, oldest order, average waiting time). A family continues into models, sizes and order
+  lines, oldest order first.
+- **Produktionsprioritätsliste:** the export button in that view writes `sofortbedarf_YYYY-MM-DD.csv`
+  (oldest order first, with product family, model and size).
+- **Revenue outlook:** Sofortbedarf is not part of Plan or Expected; it is shown as
+  "bis zu X zusätzlich bei verfügbarer Kapazität".
+- Totals such as the open backlog still include Sofortbedarf.
+
+## Product families (mapping file)
+
+Product families come from an official mapping file maintained by sales/controlling. There is no
+guessing from article descriptions.
+
+**File format.** Semicolon-separated CSV, UTF-8 (with or without BOM); comma-separated CSV and
+Excel (`.xlsx`) also work. Header row:
+
+```
+Artikel-Nr.;Produktfamilie;Modell;Bezeichnung;Groesse;Variante;Hauptgruppe;Gruppe;Untergruppe;Status;Nachfolger;Quelle
+```
+
+Only `Artikel-Nr.` and `Produktfamilie` are required. English headers `Article`, `Family`, `Model`,
+`Size`, `Variant` work too. Article numbers must match the DOPK export exactly (trimmed,
+case-sensitive). Nothing adds or strips prefixes, so if Fahl and BMV numbers differ, list both
+numbers in the file. `Status` values `Auslauf` and `Raus` flag articles being phased out
+(`Nachfolger` is shown as the successor).
+
+**Load it.** Click **Produktfamilien zuordnen** in the footer and pick the file. The banner confirms
+for example "3.062 Artikel aus produktfamilien_mapping.csv geladen · 44 Familien". The mapping is
+kept in this browser (`dopk.families.v1`) and applies to every file you load. The footer shows
+"Zuordnung: <Datei> · <n> Artikel · <Datum>" with **Entfernen** to remove it. If the browser
+storage is full, a notice says so and the mapping works until the page is closed.
+
+**Keep it complete.** Articles that are not in the file are counted as "Sonstige". Click
+**Nicht zugeordnete exportieren** (footer, or the note shown when Sonstige holds more than 15 % of
+the open value) to get `nicht_zugeordnet_YYYY-MM-DD.csv`: every article number in the current DOPK
+file that the mapping doesn't know, with description, number of lines, value and remaining
+quantity, largest value first. Add those rows to the mapping file and load it again.
+
+**Where families appear.**
+- Customer share panel: switch **Kunden | Produktfamilien**. The families tab shows value,
+  overdue / scheduled / Sofortbedarf, open quantity (in order units) and overdue share.
+- Click a family to filter the whole dashboard (`#f=`); the lower-left panel then drills down
+  family → model → size → order lines. Back steps up one level.
+- **Alle | PDT | ohne PDT** appears in the families tab when the mapping has PDT variants.
+- The order drawer shows family · model · size under each line; CSV exports gain the columns
+  Produktfamilie, Modell, Größe.
+
+## Overdue by month
+
+In the late-lines panel switch **Liste | Nach Monat**. The matrix shows overdue value (or quantity
+with **€ | Stk**) by due month and product family. Click a cell, a month or a family to list the
+matching late lines. The note below says how much of the overdue value is less than 30 days late.
+
+## Neu seit letztem Stand (changes since the previous upload)
+
+The sheet compares today's file with the previous stored day: newly late lines, new orders,
+delivery dates moved later, new Sofortbedarf and deliveries, each with count, value and quantity.
+Order numbers open the order drawer and the sheet exports as CSV. Open it from the watchlist
+"Seit …" item, the view **Neu seit letztem Stand**, or the link `#chg=1`. It is available from the
+second upload on.
+
+## Saved views
+
+The **Ansicht** select in the top bar holds built-in views (Gesamtüberblick, Überfällig nach Monat,
+Sofortbedarf, Produktfamilien, Key Account überfällig, Neu seit letztem Stand) and your own.
+**Aktuelle Ansicht speichern …** stores the current filters and panel tabs under a name.
+**Als Standard festlegen** makes the selected (or current) view the one shown after every file load,
+unless the address already names a view (a shared link with `#…` wins). Views are stored in this
+browser (`dopk.views.v1`, `dopk.defaultview.v1`).
 
 ## Host it temporarily
 
@@ -83,6 +166,7 @@ and open http://localhost:8000.
 | `assets/components.css` | Component styles |
 | `assets/app.js` | Parsing, KPIs, charts, history. Thresholds are in the `RULES` block at the top |
 | `assets/vendor/xlsx.full.min.js` | SheetJS 0.18.5 (Apache-2.0), bundled so no CDN is needed |
+| `tests/` | Synthetic fixtures and acceptance test pages (not linked from the dashboard), see `tests/README.md` |
 
 ## What the dashboard reads from the file
 
@@ -94,4 +178,5 @@ Liefertermin, Status, Quote, Bestand I. The snapshot date is taken from the titl
 - `Status` starting with `LS:` = delivery note created today (shipped); all others are open.
 - Open value = `Summe` of non-shipped lines.
 - Overdue = open lines with `Liefertermin` before the snapshot date.
+- Sofortbedarf = open lines without `Liefertermin`; waiting time counts from `Datum` (order date).
 - `Quote` = order-level delivered %, used for close-out candidates (≥ 75%).

@@ -53,6 +53,8 @@
       <li>Panels are divided by rules, not floated as cards. Square panels, soft controls, round chips: radius tells you what you can touch.</li>
       <li>One typeface, chosen for legibility. Atkinson Hyperlegible Next was designed by the Braille Institute; its figures don't get confused, which matters for a page of numbers.</li>
       <li>Every figure has an action nearby: a list to chase, a file to export, a date to set.</li>
+      <li>No new permanent panels. More detail comes from toggles inside existing panels, drill-down and sheets that open on demand.</li>
+      <li>A line without a delivery date is not missing data. It is <b>Sofortbedarf</b>: produce and ship as soon as material and staff allow. It sits right after "overdue" and alarms on how long it has been waiting, never on its share of the backlog.</li>
     </ol>
   </section>
 
@@ -92,7 +94,9 @@
       <thead><tr><th>Measure</th><th>Watch</th><th>Act now</th></tr></thead>
       <tbody>
         <tr><td>Overdue share of open value</td><td>above 2%</td><td>above 5%</td></tr>
-        <tr><td>Open value without delivery date</td><td>above 5%</td><td>above 15%</td></tr>
+        <tr><td>Sofortbedarf: value-weighted average days since order date</td><td>above 30 days</td><td>above 60 days</td></tr>
+        <tr><td>Open value not assigned to a product family (muted note, no alarm)</td><td colspan="2">above 15%</td></tr>
+        <tr><td>Article status from the mapping file</td><td>Auslauf (phase-out)</td><td>Raus (discontinued)</td></tr>
         <tr><td>Today's shipments on time</td><td>below 97%</td><td>below 90%</td></tr>
         <tr><td>Customer concentration (HHI)</td><td>above 1,500</td><td>above 2,500</td></tr>
         <tr><td>Unit price vs article median</td><td colspan="2">below 60% or above 160%, where 3 or more customers buy the article</td></tr>
@@ -107,7 +111,7 @@
     <h3>Vital readout</h3>
     <div class="vitals" style="grid-template-columns:repeat(4,minmax(0,1fr))">
       <div class="vital" data-level="high"><div class="vital-head"><span class="vital-label">Overdue</span><span class="chip chip--high">Act now</span></div><span class="vital-value">€129k</span><div class="vital-sub">8.5% of open <span class="delta delta--up-bad">▲ €4.2k</span></div></div>
-      <div class="vital" data-level="med"><div class="vital-head"><span class="vital-label">No delivery date</span><span class="chip chip--med">Watch</span></div><span class="vital-value">12%</span><div class="vital-sub">€181k in 90 lines</div></div>
+      <div class="vital" data-level="high"><div class="vital-head"><span class="vital-label">Immediate demand</span><span class="chip chip--high">Act now</span></div><span class="vital-value">€2.7k</span><div class="vital-sub">3 lines · 560 pcs · avg 79 days · oldest 181 days</div><div class="vital-subline">no delivery date – as soon as possible</div></div>
       <div class="vital" data-level="low"><div class="vital-head"><span class="vital-label">New orders today</span><span class="chip chip--low">Info</span></div><span class="vital-value">€7.0k</span><div class="vital-sub">13 orders</div></div>
       <div class="vital" data-level="clear"><div class="vital-head"><span class="vital-label">Shipped today</span><span class="chip chip--clear">Clear</span></div><span class="vital-value">€27k</span><div class="vital-sub">100% on time <span class="delta delta--down-good">▼ €2k</span></div></div>
     </div>
@@ -125,6 +129,24 @@
 
     <h3>Share bar</h3>
     <div class="demo"><div class="share-bar"><div style="width:87%;background:#1F2629"></div><div style="width:10.5%;background:#11879A"></div><div style="width:1%;background:#7FB9C2"></div><div style="width:1.5%;background:#C4CBC9"></div></div></div>
+
+    <h3>Segmented control</h3>
+    <p class="lead">One component for the language switch, panel tabs (Kunden | Produktfamilien, Liste | Nach Monat) and filters (Alle | PDT | ohne PDT). <code>.segmented--small</code> sits inside panel heads.</p>
+    <div class="demo row">
+      <div class="segmented" role="group" aria-label="Example"><button type="button" aria-pressed="false">Customers</button><button type="button" aria-pressed="true">Product families</button></div>
+      <div class="segmented segmented--small" role="group" aria-label="Example"><button type="button" aria-pressed="true">€</button><button type="button" aria-pressed="false">pcs</button></div>
+    </div>
+
+    <h3>Product family row</h3>
+    <p class="lead">Stacked bar in the alarm colours: overdue, scheduled, Sofortbedarf (hatched). Value, open quantity in order units, overdue share muted.</p>
+    <div class="demo"><ul class="fam-list"><li><span class="name">Laryvox</span><span class="fam-bar"><i class="seg-late" style="width:25%"></i><i class="seg-flow" style="width:60%"></i><i class="seg-imm" style="width:15%"></i></span><span class="eur">€6,100</span><span class="qty">260 pcs</span><span class="fam-late">25% overdue</span></li></ul></div>
+
+    <h3>Phase-out chips</h3>
+    <div class="demo row"><span class="chip chip--med">Auslauf → 303028-XX</span><span class="chip chip--high">Raus</span></div>
+
+    <h3>Overdue matrix</h3>
+    <p class="lead">Due month × product family. Scrolls inside its own container with a sticky first column; cells are buttons.</p>
+    <div class="demo"><div class="matrix-scroll"><table class="data matrix"><thead><tr><th>Due in</th><th class="num"><button type="button" class="cell-btn">Laryvox</button></th><th class="num"><button type="button" class="cell-btn">BMV Cuff</button></th><th class="num">Total</th></tr></thead><tbody><tr><th><button type="button" class="cell-btn">Aug 2026</button></th><td class="num"><button type="button" class="cell-btn">€600</button></td><td class="num is-empty">–</td><td class="num total"><button type="button" class="cell-btn">€600</button></td></tr><tr><th><button type="button" class="cell-btn">Oct 2026</button></th><td class="num"><button type="button" class="cell-btn">€1,000</button></td><td class="num is-selected"><button type="button" class="cell-btn" aria-pressed="true">€1,500</button></td><td class="num total"><button type="button" class="cell-btn">€2,500</button></td></tr></tbody><tfoot><tr class="total"><th>Total</th><td class="num">€1,600</td><td class="num">€1,500</td><td class="num">€3,100</td></tr></tfoot></table></div></div>
   </section>
 
   <footer class="foot"><span>Files: assets/tokens.css, assets/components.css, tokens.json</span></footer>
