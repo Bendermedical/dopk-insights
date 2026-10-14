@@ -197,6 +197,15 @@ table.matrix tfoot tr > * { border-top: 2px solid var(--graphite); border-bottom
 table.matrix tbody tr:hover { background: transparent; }
 .matrix-note { font-size: var(--fs-xs); }
 
+/* ---- Changes sheet: one collapsible section per category -------------- */
+.chg-section { border-bottom: 1px solid var(--rule-soft); }
+.chg-section summary { display:flex; justify-content: space-between; gap: var(--s3); flex-wrap: wrap; padding: var(--s3) 0; cursor: pointer; }
+.chg-section summary::-webkit-details-marker { color: var(--ink-faint); }
+.chg-section .chg-name { font-weight: var(--fw-bold); }
+.chg-section .chg-sum { color: var(--ink-muted); font-size: var(--fs-sm); }
+.chg-section:not([open]) .chg-sum { color: var(--ink-faint); }
+.chg-section .table-scroll { padding-bottom: var(--s3); }
+
 /* ---- Watchlist -------------------------------------------------------- */
 .watch { list-style: none; margin: 0; padding: 0; }
 .watch li { padding: var(--s3) 0; border-bottom: 1px solid var(--rule-soft); }

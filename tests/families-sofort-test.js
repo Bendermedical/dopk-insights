@@ -273,6 +273,66 @@ document.addEventListener("DOMContentLoaded", async function () {
       assert(crumbs().join() === "Laryvox,Overdue", `Breadcrumb ${crumbs()}`);
       click(byValue('#late-tools [data-action="late-tab"]', "list")); reset(); await paint();
     });
+
+    // ---------------------------------------------------------------- Changes since the previous upload
+    const cat = (ch, k) => ch.cats.find(c => c.key === k);
+    const counts = ch => ch.cats.map(c => `${c.key}:${c.n}`).join(" ");
+    api.clearHistory(); await loadDay(window.DOPK_FIXTURE, "DOPK_09_09.xlsx");
+    await test("16a", "Without a previous snapshot: \"Verfügbar ab dem zweiten Upload\"", async () => {
+      api.setLang("de"); api.applyView({ chg: true }); await paint();
+      assert($("#changes-sheet").open && text("#changes-body") === "Verfügbar ab dem zweiten Upload" && location.hash.includes("chg=1"), `Sheet ${text("#changes-body")}`);
+      api.applyView({ chg: false }); await paint();
+      assert(!$("#changes-sheet").open, "Closed");
+    });
+    await loadDay(window.DOPK_FIXTURE_DAY2, "DOPK_10_09.xlsx");
+
+    await test(16, "Day 2 vs day 1: moved later 1 (1001/A101 €4,000), delivered €2,000 (1002/A200), all others 0", async () => {
+      const ch = api.computeChanges();
+      assert(cat(ch, "moved").n === 1 && cat(ch, "moved").items[0].order === 1001 && cat(ch, "moved").items[0].art === "A101" && near(cat(ch, "moved").val, 4000), `Moved ${JSON.stringify(cat(ch, "moved").items.map(i => [i.order, i.art, i.val]))}`);
+      assert(cat(ch, "delivered").n === 1 && near(cat(ch, "delivered").val, 2000) && cat(ch, "delivered").items[0].art === "A200" && cat(ch, "delivered").qty === 40, "Delivered");
+      assert(counts(ch) === "newLate:0 intake:0 moved:1 newImm:0 delivered:1", counts(ch));
+    });
+    await loadDay(window.DOPK_FIXTURE_DAY3, "DOPK_12_09.xlsx");
+
+    await test(17, "Day 3 vs day 2: new order 1012 (€1,000, 10 pcs); delivered €1,900; sheet \"seit 10.09.2026\"", async () => {
+      const ch = api.computeChanges();
+      const nw = cat(ch, "intake"), del = cat(ch, "delivered");
+      assert(nw.n === 1 && nw.items[0].order === 1012 && near(nw.val, 1000) && nw.qty === 10, `New orders ${JSON.stringify(nw.items.map(i => [i.order, i.val, i.qty]))}`);
+      assert(near(del.val, 1900) && del.items.map(i => `${i.order}:${i.val}:${i.qty}`).sort().join() === "1001:900:30,1003:1000:500", `Delivered ${del.items.map(i => `${i.order}:${i.val}:${i.qty}`)}`);
+      assert(counts(ch) === "newLate:0 intake:1 moved:0 newImm:0 delivered:2", counts(ch));
+      reset(); await paint();
+      const entry = $('#watch [data-action="changes"]');
+      assert(entry && entry.textContent.includes("Seit 10.09.2026"), "Watchlist entry point");
+      click(entry); await paint();
+      assert($("#changes-sheet").open && text("#changes-title") === "Änderungen seit 10.09.2026", `Title ${text("#changes-title")}`);
+      const sections = $$("#changes-sheet details");
+      assert(sections.length === 5 && sections.filter(d => d.open).map(d => d.dataset.cat).join() === "intake,delivered", `Collapsed when empty: ${sections.filter(d => d.open).map(d => d.dataset.cat)}`);
+      assert(text('#changes-sheet details[data-cat="intake"] summary').includes("1 Position · 1.000 € · 10 Stk"), text('#changes-sheet details[data-cat="intake"] summary'));
+      const order = $('#changes-sheet [data-action="order"][data-value="1012"]');
+      click(order); await paint();
+      assert($("#order-drawer").open && api.view.order === "1012", "Order number opens the drawer");
+      api.applyView({ order: null }); await paint();
+      assert($("#changes-sheet").open, "Sheet stays open behind the drawer");
+      const csv = api.buildChangesCsv();
+      assert(csv.name === "aenderungen_2026-09-12.csv" && csv.csv.split("\r\n").length === 4, `CSV ${csv.name} ${csv.csv.split("\r\n").length}`);
+      api.applyView({ chg: false }); await paint();
+    });
+    await loadDay(window.DOPK_FIXTURE_DAY4, "DOPK_16_10.xlsx");
+
+    await test(18, "Day 4 vs day 3: newly late 2 (1008 €1,500; 1012 €1,000); \"seit 12.09.2026\"; same through archive import", async () => {
+      const ch = api.computeChanges(), nl = cat(ch, "newLate");
+      assert(nl.n === 2 && nl.items.map(i => `${i.order}:${i.val}`).join() === "1008:1500,1012:1000", `Newly late ${nl.items.map(i => `${i.order}:${i.val}`)}`);
+      api.applyView({ chg: true }); await paint();
+      assert(text("#changes-title") === "Änderungen seit 12.09.2026", text("#changes-title"));
+      api.applyView({ chg: false }); await paint();
+      api.clearHistory();
+      api.importArchive([window.DOPK_FIXTURE, window.DOPK_FIXTURE_DAY2, window.DOPK_FIXTURE_DAY3, window.DOPK_FIXTURE_DAY4]); await paint();
+      const ch2 = api.computeChanges();
+      assert(counts(ch2) === counts(ch) && near(cat(ch2, "newLate").val, 2500), `Archive import ${counts(ch2)} vs ${counts(ch)}`);
+      api.setLang("en"); api.applyView({ chg: true }); await paint();
+      assert(text("#changes-title") === "Changes since 12/09/2026" && text('#changes-sheet details[data-cat="newLate"] summary').startsWith("Newly late"), "English sheet");
+      api.applyView({ chg: false }); await paint();
+    });
   }
 
   sessionStorage.removeItem(RESUME);

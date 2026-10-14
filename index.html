@@ -159,6 +159,23 @@
     </div>
   </dialog>
 
+  <dialog id="changes-sheet" class="scorecard-sheet changes-sheet" role="dialog" aria-modal="true" aria-labelledby="changes-title">
+    <div class="sheet-inner">
+      <header class="sheet-head">
+        <div>
+          <div class="sc-head-top"><h2 id="changes-title" class="sc-title"></h2></div>
+        </div>
+        <div class="sc-head-actions">
+          <button type="button" class="btn btn--quiet no-print" id="changes-export" data-action="export-changes" data-i18n="exportCsv">Als CSV exportieren</button>
+          <button type="button" class="dialog-close sc-close" id="changes-close" data-action="close-changes" aria-label="Schließen" data-i18n-label="closeDialog">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+      </header>
+      <div class="sheet-body" id="changes-body" role="region" tabindex="0" aria-labelledby="changes-title"></div>
+    </div>
+  </dialog>
+
   <dialog id="detail-modal" class="detail-dialog" closedby="any" aria-labelledby="modal-title">
     <div class="dialog-inner">
       <header class="dialog-head">

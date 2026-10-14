@@ -299,7 +299,14 @@
       matrixUnitLabel: "Einheit", unitEur: "€", unitQty: "Stk", matrixMore: "Weitere", matrixTotal: "Summe", matrixMonth: "Fällig im",
       matrixLabel: "Überfälliger Wert nach Fälligkeitsmonat und Produktfamilie",
       matrixFresh: p => `${p} des überfälligen Werts ist weniger als 30 Tage überfällig`,
-      matrixCell: (mo, f, v) => `${mo}, ${f}: ${v}`
+      matrixCell: (mo, f, v) => `${mo}, ${f}: ${v}`,
+      chgTitle: d => `Änderungen seit ${d}`, chgTitleNone: "Änderungen seit dem letzten Stand", chgNone: "Verfügbar ab dem zweiten Upload",
+      chgOpen: "Änderungen anzeigen",
+      chgCats: { newLate: "Neu überfällig", intake: "Neue Aufträge", moved: "Liefertermin nach hinten verschoben", newImm: "Neuer Sofortbedarf", delivered: "Geliefert" },
+      chgSummary: (n, v, q) => `${pl(n, "Position", "Positionen")} · ${v}${q ? " · " + q : ""}`, chgEmpty: "keine",
+      chgDueMove: (a, b) => `${a} → ${b}`, thChange: "Liefertermin",
+      csvChgHead: ["Kategorie", "Auftrag", "Kunde", "Artikel", "Bezeichnung", "Menge", "Wert EUR", "Liefertermin vorher", "Liefertermin jetzt"],
+      csvChgPrefix: "aenderungen"
     },
     en: {
       drillHint: "Tip: bars, customers and order numbers are clickable.",
@@ -533,7 +540,14 @@
       matrixUnitLabel: "Unit", unitEur: "€", unitQty: "pcs", matrixMore: "More", matrixTotal: "Total", matrixMonth: "Due in",
       matrixLabel: "Overdue value by due month and product family",
       matrixFresh: p => `${p} of the overdue value is less than 30 days late`,
-      matrixCell: (mo, f, v) => `${mo}, ${f}: ${v}`
+      matrixCell: (mo, f, v) => `${mo}, ${f}: ${v}`,
+      chgTitle: d => `Changes since ${d}`, chgTitleNone: "Changes since the previous upload", chgNone: "Available from the second upload",
+      chgOpen: "Show changes",
+      chgCats: { newLate: "Newly late", intake: "New orders", moved: "Delivery date moved later", newImm: "New immediate demand", delivered: "Delivered" },
+      chgSummary: (n, v, q) => `${pl(n, "line", "lines")} · ${v}${q ? " · " + q : ""}`, chgEmpty: "none",
+      chgDueMove: (a, b) => `${a} → ${b}`, thChange: "Delivery date",
+      csvChgHead: ["Category", "Order", "Customer", "Article", "Description", "Quantity", "Value EUR", "Previous delivery date", "Current delivery date"],
+      csvChgPrefix: "changes"
     }
   };
 
@@ -800,9 +814,13 @@
   function deliveredBetween(P, S) {
     let A = 0, B = 0, estimated = false;
     const byCust = {}, byFamily = {};
+    // Line detail for the changes sheet (only when S carries lines): today's delivery notes, then lines
+    // that left the book or shrank since P. qty is null when P predates stored quantities.
+    const detail = [];
 
     if (S.lines) {
       S.lines.filter(l => l.shipped).forEach(l => {
+        detail.push({ key: l.key, line: l, val: l.val, qty: l.rest });
         A += l.val;
         const cid = String(l.custId);
         byCust[cid] = (byCust[cid] || 0) + l.val;
@@ -822,12 +840,14 @@
         if (S.lines) {
           const currKeyMap = new Map();
           S.lines.forEach(l => currKeyMap.set(l.key, Math.round(l.val)));
+          const currLine = new Map(S.lines.map(l => [l.key, l]));
           for (const [k, valArr] of Object.entries(P.keys || {})) {
             if (pShippedSet.has(k)) continue;
             const prevVal = valArr[1];
             const cid = valArr[2] != null ? String(valArr[2]) : null;
             const fam = valArr[3] != null ? String(valArr[3]) : null;
             if (!currKeyMap.has(k)) {
+              detail.push({ key: k, line: null, custId: cid, val: prevVal, qty: valArr[4] ?? null });
               B += prevVal;
               if (cid) byCust[cid] = (byCust[cid] || 0) + prevVal;
               if (fam) byFamily[fam] = (byFamily[fam] || 0) + prevVal;
@@ -835,6 +855,8 @@
               const currVal = currKeyMap.get(k);
               if (currVal < prevVal) {
                 const diff = prevVal - currVal;
+                const cl = currLine.get(k);
+                detail.push({ key: k, line: cl, custId: cid, val: diff, qty: valArr[4] != null && cl ? valArr[4] - cl.rest : null });
                 B += diff;
                 if (cid) byCust[cid] = (byCust[cid] || 0) + diff;
                 if (fam) byFamily[fam] = (byFamily[fam] || 0) + diff;
@@ -884,6 +906,7 @@
       estimated,
       byCust,
       byFamily,
+      lines: detail,
       valueOf() { return this.shipped; }
     };
   }
@@ -906,12 +929,14 @@
     const lines = S.lines || [];
     const ordersMap = {};
     const byCust = {}, byFamily = {};
+    const inLines = [];
 
     lines.forEach(l => {
       const od = l.date instanceof Date ? l.date : parseDate(l.date);
       if (!od) return;
       const inWindow = p ? (+od > +p && +od <= +d) : (+od === +d);
       if (!inWindow) return;
+      inLines.push(l);
 
       const cid = String(l.custId);
       byCust[cid] = (byCust[cid] || 0) + l.orig;
@@ -940,8 +965,33 @@
       byCust,
       byFamily,
       orders,
+      lines: inLines,
       valueOf() { return this.intake; }
     };
+  }
+
+  // Changes since the previous stored snapshot P (date p). Reuses deliveredBetween and intakeBetween.
+  function computeChanges(history, data) {
+    const rd = data.reportDate, prev = previous(history || { snaps: {} }, rd);
+    if (!prev) return null;
+    const P = { ...prev.snap, date: prev.date, reportDate: prev.date }, pk = P.keys || {}, p = prev.date;
+    const open = data.lines.filter(l => !l.shipped);
+    const item = (l, extra = {}) => ({ order: l.order, cust: l.short, art: l.art, desc: l.desc, val: l.val, qty: l.rest, line: l, ...extra });
+    // zero-value lines (samples, free goods) carry no value at risk and are left out of "newly late"
+    const newLate = open.filter(l => l.due && l.due < rd && l.val > 0 && (!pk[l.key] || (pk[l.key][0] && pk[l.key][0] >= p))).map(l => item(l, { from: pk[l.key]?.[0] || null, to: iso(l.due) }));
+    const moved = open.filter(l => pk[l.key]?.[0] && l.due && iso(l.due) > pk[l.key][0]).map(l => item(l, { from: pk[l.key][0], to: iso(l.due) }));
+    const newImm = open.filter(l => !l.due && (!pk[l.key] || pk[l.key][0])).map(l => item(l, { from: pk[l.key]?.[0] || null, to: null }));
+    const intake = intakeBetween(P, data).lines.map(l => item(l, { val: l.orig, qty: l.qty }));
+    const custName = {};
+    data.lines.forEach(l => { custName[String(l.custId)] = l.short; });
+    const del = deliveredBetween(P, data);
+    const delivered = del.lines.map(d => {
+      const [order, art] = d.key.split("|");
+      const l = d.line || data.lines.find(x => String(x.order) === order && x.art === art);
+      return { order: d.line ? d.line.order : +order || order, cust: d.line ? d.line.short : custName[d.custId] || d.custId || "", art: d.line ? d.line.art : art, desc: l ? l.desc : "", val: d.val, qty: d.qty, line: d.line };
+    });
+    const cat = (key, items, value) => ({ key, items: items.sort((a, b) => b.val - a.val), n: items.length, val: value ?? sum(items, i => i.val), qty: items.some(i => i.qty == null) ? null : sum(items, i => i.qty) });
+    return { since: parseDate(p), cats: [cat("newLate", newLate), cat("intake", intake), cat("moved", moved), cat("newImm", newImm), cat("delivered", delivered, del.shipped)] };
   }
 
   // Pure: computes book-to-bill ratios, weekly series, top orders, and lumpiness notes.
@@ -1722,7 +1772,7 @@
     const hash = params.toString().replace(/\+/g, "%20");
     const url = location.pathname + location.search + (hash ? "#" + hash : "");
     if (navigation !== "pop") {
-      const isPush = navigation === "push" || (navigation === "auto" && (filterChanged || (scChanged && VIEW.sc && !old.sc) || (btbChanged && VIEW.btb && !old.btb)));
+      const isPush = navigation === "push" || (navigation === "auto" && (filterChanged || (scChanged && VIEW.sc && !old.sc) || (btbChanged && VIEW.btb && !old.btb) || (VIEW.chg && !old.chg)));
       window.history[isPush ? "pushState" : "replaceState"](null, "", url);
     }
     if (DATA) {
@@ -1731,8 +1781,11 @@
       const onlyDrawer = Object.keys(changes).length === 1 && "order" in changes;
       const onlyScorecard = Object.keys(changes).length === 1 && "sc" in changes;
       const onlyBtb = Object.keys(changes).length === 1 && "btb" in changes;
+      const onlyChg = Object.keys(changes).length === 1 && "chg" in changes;
       if (onlyDrawer) {
         renderOrderDrawer();
+      } else if (onlyChg) {
+        renderChangesSheet();
       } else if (onlyScorecard) {
         renderScorecardSheet();
       } else if (onlyBtb) {
@@ -1899,6 +1952,7 @@
     renderScorecardSheet();
     renderOrderDrawer();
     renderBtbSheet();
+    renderChangesSheet();
     $("#foot-file").textContent = `${DATA.fileName || "DOPK export"} · ${tf("linesRead", lines.length)}`;
     renderFamiliesFoot();
     $("#app").hidden = false; $("#empty").hidden = true;
@@ -2304,11 +2358,12 @@
   }
 
   function renderWatch(m, cmp, prev) {
-    const history = cmp ? { lvl: cmp.pushed ? "med" : "clear", t: tf("wSince", fmtDate(new Date(prev.date + "T00:00:00"))), b: tf("wSinceBody", cmp.completed, eur(cmp.completedVal), cmp.pushed, eur(cmp.pushedVal)) } : { lvl: "low", t: T("wTrack"), b: T("wTrackBody") };
+    const history = cmp ? { lvl: cmp.pushed ? "med" : "clear", t: tf("wSince", fmtDate(new Date(prev.date + "T00:00:00"))), b: tf("wSinceBody", cmp.completed, eur(cmp.completedVal), cmp.pushed, eur(cmp.pushedVal)), changes: true } : { lvl: "low", t: T("wTrack"), b: T("wTrackBody") };
     const items = [history, ...exceptionGroups(m)];
     $("#watch").innerHTML = items.map(i => {
       const expanded = WATCH_OPEN === i.id;
       const head = `<span class="w-title">${esc(i.t)}</span>${chipHTML(i.lvl)}`;
+      if (i.changes) return `<li><button type="button" class="w-head text-action" data-action="changes" aria-haspopup="dialog" aria-label="${esc(i.t + ": " + T("chgOpen"))}">${head}</button><div class="w-body">${esc(i.b)}</div></li>`;
       return `<li>${i.id ? `<button type="button" class="w-head text-action" data-action="watch" data-value="${i.id}" aria-expanded="${expanded}" aria-controls="watch-${i.id}">${head}</button>` : `<div class="w-head">${head}</div>`}<div class="w-body">${esc(i.b)}</div>` +
         (i.id ? `<div id="watch-${i.id}"${expanded ? "" : " hidden"}>${expanded ? `<ul class="watch-lines">${i.lines.slice(0, WATCH_ALL ? i.lines.length : 8).map(l => {
           const price = i.id === "price" ? m.priceFlags.find(w => w.l === l) : null;
@@ -2895,6 +2950,52 @@
     }
   }
 
+  // "Neu seit letztem Stand": one collapsible section per category, order numbers open the drawer.
+  function renderChanges(ch) {
+    const title = ch ? tf("chgTitle", fmtDate(ch.since)) : T("chgTitleNone");
+    $("#changes-title").textContent = title;
+    $("#changes-export").hidden = !ch;
+    if (!ch) { $("#changes-body").innerHTML = `<p class="panel-note">${esc(T("chgNone"))}</p>`; return; }
+    const cats = T("chgCats"), inFile = new Set(DATA.lines.map(l => String(l.order)));
+    $("#changes-body").innerHTML = ch.cats.map(c => {
+      const summary = c.n ? tf("chgSummary", c.n, eurFull(c.val), c.qty == null ? "" : fmtQty(c.qty)) : T("chgEmpty");
+      const rows = c.items.map(i => `<tr><td>${inFile.has(String(i.order)) ? `<button type="button" class="text-action order-link" data-action="order" data-value="${esc(i.order)}" aria-haspopup="dialog">${esc(i.order)}</button>` : esc(i.order)}</td>` +
+        `<td class="clip" title="${esc(i.cust)}">${esc(i.cust)}</td><td><code>${esc(i.art)}</code></td><td class="clip" title="${esc(i.desc)}">${esc(i.desc)}</td>` +
+        `<td class="num">${i.qty == null ? "–" : esc(fmtQty(i.qty))}</td><td class="num">${eurFull(i.val)}</td>` +
+        `<td class="num">${c.key === "moved" || c.key === "newLate" ? esc(tf("chgDueMove", i.from ? fmtDate(parseDate(i.from)) : "–", i.to ? fmtDate(parseDate(i.to)) : T("sofortShort"))) : c.key === "newImm" ? esc(T("sofortShort")) : ""}</td></tr>`).join("");
+      return `<details class="chg-section" data-cat="${c.key}"${c.n ? " open" : ""}><summary><span class="chg-name">${esc(cats[c.key])}</span><span class="chg-sum">${esc(summary)}</span></summary>` +
+        (c.n ? `<div class="table-scroll"><table class="data"><thead><tr><th>${esc(T("thOrder"))}</th><th>${esc(T("thCust"))}</th><th>${esc(T("thArt"))}</th><th>${esc(T("thDesc"))}</th><th class="num">${esc(T("thQty"))}</th><th class="num">${esc(T("thVal"))}</th><th class="num">${esc(T("thChange"))}</th></tr></thead><tbody>${rows}</tbody></table></div>` : "") + `</details>`;
+    }).join("");
+  }
+  function buildChangesCsv() {
+    const ch = computeChanges(store.get(LS_HISTORY, { snaps: {} }), DATA);
+    if (!ch) return null;
+    const de = LANG === "de", cats = T("chgCats");
+    const rows = [];
+    ch.cats.forEach(c => c.items.forEach(i => rows.push([cats[c.key], i.order, i.cust, i.art, i.desc, i.qty == null ? "" : de ? deNum(i.qty) : String(i.qty), de ? deNum(i.val, 2) : i.val.toFixed(2),
+      i.from ? fmtDate(parseDate(i.from)) : "", c.key === "newImm" ? T("sofortShort") : i.to ? fmtDate(parseDate(i.to)) : ""])));
+    return { csv: csvText([T("csvChgHead"), ...rows]), name: `${T("csvChgPrefix")}_${iso(DATA.reportDate)}.csv`, changes: ch };
+  }
+  let CHG_RETURN = null, CHG_OVERFLOW = "";
+  function renderChangesSheet() {
+    const dlg = $("#changes-sheet");
+    if (!dlg) return;
+    if (!VIEW.chg || !DATA) {
+      if (dlg.open) {
+        dlg.close(); document.body.style.overflow = CHG_OVERFLOW;
+        const origin = CHG_RETURN;
+        (origin?.isConnected ? origin : document.querySelector('[data-action="changes"]') || $("#filter")).focus(); CHG_RETURN = null;
+      }
+      return;
+    }
+    renderChanges(computeChanges(store.get(LS_HISTORY, { snaps: {} }), DATA));
+    if (!dlg.open) {
+      CHG_OVERFLOW = document.body.style.overflow;
+      dlg.showModal(); document.body.style.overflow = "hidden";
+      $("#changes-close").focus();
+    }
+  }
+
   function renderBtb(btb) {
     if (!btb || !$("#btb-sheet")) return;
     const rd = DATA?.reportDate || new Date();
@@ -3120,6 +3221,9 @@
       applyView({ btb: true });
     }
     else if (action === "close-btb") applyView({ btb: false });
+    else if (action === "changes") { if (!VIEW.chg) CHG_RETURN = target; applyView({ chg: true }); }
+    else if (action === "close-changes") applyView({ chg: false });
+    else if (action === "export-changes") { const c = buildChangesCsv(); if (c) downloadCsv(c.csv, c.name); }
     else if (action === "export-btb") exportBtbCsv();
     else if (action === "sc-show-late") applyView({ customer: value, period: "late", sc: null });
     else if (action === "watch") { WATCH_OPEN = WATCH_OPEN === value ? null : value; WATCH_ALL = false; applyView({}); }
@@ -3152,7 +3256,7 @@
     else if (action === "families-remove") { setFamilies(null); showNotice("", ""); return; }
     else if (action === "families-export") { if (DATA) { const u = buildUnassignedCsv(); downloadCsv(u.csv, u.name); } return; }
     // Rendering replaces controls: keep keyboard focus on the equivalent target.
-    if (action !== "order" && action !== "close-order" && action !== "scorecard" && action !== "close-scorecard" && action !== "btb" && action !== "close-btb" && action !== "export-btb" && action !== "sc-show-late" && action !== "dismiss-notice" && !VIEW.order && !VIEW.sc && !VIEW.btb) {
+    if (!["order", "close-order", "scorecard", "close-scorecard", "btb", "close-btb", "export-btb", "sc-show-late", "dismiss-notice", "changes", "close-changes", "export-changes"].includes(action) && !VIEW.order && !VIEW.sc && !VIEW.btb && !VIEW.chg) {
       const replacement = [...document.querySelectorAll("[data-action]")].find(el => el.dataset.action === action && el.dataset.value === value);
       // Drilling replaces the table: continue in the first row of the next level.
       const next = !replacement && /^(family|model|size)$/.test(action) ? $("#late-body [tabindex='0'], #late-body button") : null;
@@ -3313,6 +3417,7 @@
     wireDialog($("#order-drawer"), { order: null });
     wireDialog($("#scorecard-sheet"), { sc: null });
     wireDialog($("#btb-sheet"), { btb: false });
+    wireDialog($("#changes-sheet"), { chg: false });
     document.querySelectorAll(".lang-switch button").forEach(b => b.addEventListener("click", () => setLang(b.dataset.lang)));
     const input = $("#file");
     document.querySelectorAll("[data-upload]").forEach(b => b.addEventListener("click", () => input.click()));
@@ -3394,6 +3499,7 @@
         deliveredBetween, intakeBetween, computeBookToBill, buildBtbCsv,
         clearHistory: () => TEST_STORAGE.delete(LS_HISTORY),
         loadFamiliesFile, buildUnassignedCsv, setFamilies, get families() { return FAMILIES; }, buildImmediateCsv, computeOutlook,
+        computeChanges: () => computeChanges(store.get(LS_HISTORY, { snaps: {} }), DATA), buildChangesCsv,
         importArchive: aois => commitArchive(aois.map((aoa, i) => ({ aoa, data: parseRows(aoa, "DOPK.xlsx"), name: "DOPK_" + i + ".xlsx", mod: i })), []),
         get history() { return store.get(LS_HISTORY, { snaps: {} }); },
         get view() { return { ...VIEW }; }, get data() { return DATA; }, get metrics() { return compute(DATA.lines, DATA.reportDate, VIEW); }
