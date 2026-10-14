@@ -32,7 +32,9 @@ document.addEventListener("DOMContentLoaded", async function () {
     catch (e) { console.error(`Test ${id} failed:`, e); results.push({ id, title, pass: false, detail: e.message }); }
     show();
   }
-  const reloadInto = phase => { sessionStorage.setItem(RESUME, JSON.stringify({ phase, results })); location.hash = ""; location.reload(); };
+  const reloadInto = (phase, hash = "") => { sessionStorage.setItem(RESUME, JSON.stringify({ phase, results })); location.hash = hash; location.reload(); };
+  const chooseView = async value => { const sel = $("#view-select"); sel.value = value; sel.dispatchEvent(new Event("change", { bubbles: true })); await paint(); };
+  const noPageOverflow = where => assert(document.documentElement.scrollWidth <= innerWidth + 1, `Page scrolls horizontally (${where}): ${document.documentElement.scrollWidth} > ${innerWidth}`);
   const reset = () => api.applyView({ customer: null, period: null, order: null, sc: null, btb: false, family: null, model: null, size: null, variant: null, lateMonth: null, chg: false });
   const loadMapping = async () => { await api.loadFamiliesFile(new File([window.DOPK_FAMILIES_CSV], "families-fixture.csv", { type: "text/csv" })); await paint(); };
   const loadDay = async (rows, name) => { api.load(rows, name); await paint(); };
@@ -332,6 +334,119 @@ document.addEventListener("DOMContentLoaded", async function () {
       api.setLang("en"); api.applyView({ chg: true }); await paint();
       assert(text("#changes-title") === "Changes since 12/09/2026" && text('#changes-sheet details[data-cat="newLate"] summary').startsWith("Newly late"), "English sheet");
       api.applyView({ chg: false }); await paint();
+    });
+
+    // ---------------------------------------------------------------- Saved views
+    await test(19, "Built-in views: Produktfamilien opens the families tab; Überfällig nach Monat opens late + by month", async () => {
+      api.setLang("de"); reset(); await paint();
+      const names = [...$("#view-select").options].map(o => o.textContent);
+      assert(["Gesamtüberblick", "Überfällig nach Monat", "Sofortbedarf", "Produktfamilien", "Key Account überfällig (Alpha)", "Neu seit letztem Stand", "Aktuelle Ansicht speichern …", "Als Standard festlegen"].every(n => names.includes(n)), `Options ${names}`);
+      await chooseView("b:families");
+      assert(!$("#share-fam").hidden && api.toggles.share === "fam" && $("#view-select").value === "b:families", "Families tab");
+      await chooseView("b:late-month");
+      assert(api.view.period === "late" && api.toggles.late === "month" && !$("#late-matrix").hidden, "Late by month");
+      await chooseView("b:ka-late");
+      assert(api.view.customer === "Alpha Medizintechnik GmbH" && api.view.period === "late", `Key account late ${api.view.customer}`);
+      await chooseView("b:immediate");
+      assert(api.view.period === "undated" && api.view.customer === null, "Sofortbedarf");
+      await chooseView("b:changes");
+      assert($("#changes-sheet").open && api.view.chg, "Neu seit letztem Stand opens the changes sheet");
+      api.applyView({ chg: false }); await chooseView("b:overview");
+      assert(api.view.period === null && api.toggles.share === "cust" && api.toggles.late === "list", "Overview");
+      api.applyView({ period: "late" }); await paint();
+      assert($("#view-select").value === "", "Select falls back to the placeholder once the view changes");
+    });
+
+    await test("20a", "Save \"Laryvox Größen\" at Laryvox › A1-XX through the inline dialog", async () => {
+      reset(); click(byValue('#share-tabs [data-action="share-tab"]', "fam")); await paint();
+      click(byValue("#fam-list li", "Laryvox")); await paint();
+      click(byValue('#late-body [data-action="model"]', "A1-XX")); await paint();
+      await chooseView("a:save");
+      assert($("#view-dialog").open && document.activeElement === $("#view-name"), "Inline dialog, no window.prompt");
+      $("#view-name").value = "Laryvox Größen"; $("#view-form").requestSubmit(); await paint();
+      assert(!$("#view-dialog").open && text("#notice span") === "Ansicht „Laryvox Größen“ gespeichert.", `Notice ${text("#notice span")}`);
+      const views = JSON.parse(sessionStorage.getItem("dopk.test.dopk.views.v1"));
+      assert(views.length === 1 && views[0].state.family === "Laryvox" && views[0].state.model === "A1-XX" && views[0].state.toggles.share === "fam", "Stored in dopk.views.v1");
+      reset(); click(byValue('#share-tabs [data-action="share-tab"]', "cust")); await paint();
+    });
+    reloadInto("views"); return;
+  }
+
+  if (phase === "views") {
+    await test("20b", "After a reload the saved view restores family and model; \"Als Standard festlegen\" applies after the next load", async () => {
+      api.setLang("de");
+      assert(api.view.family === null && api.toggles.share === "cust", "Starts on the plain view");
+      const opt = [...$("#view-select").options].find(o => o.textContent === "Laryvox Größen");
+      assert(opt, "Saved view listed after reload");
+      await chooseView(opt.value);
+      assert(api.view.family === "Laryvox" && api.view.model === "A1-XX" && api.toggles.share === "fam" && text("#late-title") === "Größen von A1-XX", "Family and model restored");
+      await chooseView("a:default");
+      assert(JSON.parse(sessionStorage.getItem("dopk.test.dopk.defaultview.v1")).id === opt.value && text("#notice span").startsWith("„Laryvox Größen“ ist jetzt die Standardansicht"), "Default stored");
+      assert([...$("#view-select").options].some(o => o.textContent === "Laryvox Größen (Standard)"), "Marked as default");
+      reset(); history.replaceState(null, "", location.pathname); await paint();
+      await loadDay(window.DOPK_FIXTURE, "DOPK_09_09.xlsx");
+      assert(api.view.family === "Laryvox" && api.view.model === "A1-XX", "Default applied after the next file load");
+      api.applyView({ family: null, model: null, period: "late" }); await paint();
+      await loadDay(window.DOPK_FIXTURE, "DOPK_09_09.xlsx");
+      assert(api.view.period === "late" && api.view.family === null, "Not applied when the URL hash names a view");
+    });
+    reloadInto("default"); return;
+  }
+
+  if (phase === "default") {
+    await test("20c", "Default view applies on page load without a view in the hash", async () => {
+      assert(api.view.family === "Laryvox" && api.view.model === "A1-XX", `View ${JSON.stringify(api.view)}`);
+    });
+    reloadInto("hashed", "p=late"); return;
+  }
+
+  if (phase === "hashed") {
+    await test("20d", "A view in the URL hash wins over the default view", async () => {
+      assert(api.view.period === "late" && api.view.family === null, `View ${JSON.stringify(api.view)}`);
+    });
+    api.setLang("de");
+
+    // ---------------------------------------------------------------- Regression
+    await test(23, "Every text exists in German and English; tab, matrix and sheets switch language", async () => {
+      const k = api.i18nKeys(), de = new Set(k.de), en = new Set(k.en);
+      const missing = [...k.de.filter(x => !en.has(x)).map(x => "en:" + x), ...k.en.filter(x => !de.has(x)).map(x => "de:" + x)];
+      assert(!missing.length, `Missing ${missing}`);
+      reset(); click(byValue('#share-tabs [data-action="share-tab"]', "fam")); click(byValue('#late-tools [data-action="late-tab"]', "month")); await paint();
+      assert(text("#share-title") === "Wo der Bestand liegt" && text("#late-matrix thead th") === "Fällig im", "German");
+      api.setLang("en"); await paint();
+      assert(text("#share-title") === "Where the backlog sits" && text("#late-matrix thead th") === "Due in" && byValue('#share-tabs [data-action="share-tab"]', "fam").textContent === "Product families", "English");
+      assert([...$("#view-select").options].some(o => o.textContent === "Overdue by month"), "View select in English");
+      api.applyView({ chg: true }); await paint();
+      assert(text("#changes-title").startsWith("Changes since"), "Changes sheet in English");
+      api.applyView({ chg: false }); api.setLang("de"); await paint();
+    });
+
+    await test(24, "No page-level horizontal scroll; keyboard reaches tabs, PDT toggle, rows, matrix cells, view select and sheets", async () => {
+      reset(); await paint(); noPageOverflow("overview");
+      click(byValue("#fam-list li", "Laryvox")); await paint(); noPageOverflow("models");
+      reset(); click(byValue('#late-tools [data-action="late-tab"]', "month")); await paint(); noPageOverflow("matrix");
+      const scroller = $("#late-matrix .matrix-scroll");
+      assert(scroller.tabIndex === 0 && getComputedStyle(scroller).overflowX === "auto", "Matrix scrolls in its own focusable container");
+      api.applyView({ period: "undated" }); await paint(); noPageOverflow("Sofortbedarf");
+      api.applyView({ chg: true }); await paint(); noPageOverflow("changes sheet");
+      $("#changes-sheet").dispatchEvent(new Event("cancel", { cancelable: true })); await paint();
+      assert(!$("#changes-sheet").open && !api.view.chg, "Escape closes the changes sheet");
+      reset(); await paint();
+      const reachable = ['#share-tabs [data-action="share-tab"]', '#share-fam [data-action="variant"]', "#fam-list li", '#late-tools [data-action="late-tab"]', "#view-select"];
+      reachable.forEach(s => { const el = $(s); assert(el && (el.tagName === "BUTTON" || el.tagName === "SELECT" || el.tabIndex === 0), `Not keyboard reachable: ${s}`); });
+      key(byValue('#share-fam [data-action="variant"]', "pdt"), "Enter");
+      byValue('#share-fam [data-action="variant"]', "pdt").click(); await paint();
+      assert(api.view.variant === "pdt", "PDT toggle by keyboard (native button)");
+      reset(); click(byValue('#late-tools [data-action="late-tab"]', "month")); await paint();
+      const cell = $('#late-matrix [data-action="matrix-cell"]');
+      assert(cell.tagName === "BUTTON", "Matrix cells are buttons");
+      cell.click(); await paint();
+      assert(api.view.period === "late" && api.view.lateMonth, "Matrix cell activates");
+      click(byValue('#late-tools [data-action="late-tab"]', "list")); reset(); await paint();
+    });
+
+    await test(25, "No console errors and no CSP violations (served with the _headers policy)", async () => {
+      assert(window.DOPK_TEST_ERRORS.length === 0, window.DOPK_TEST_ERRORS.join("; "));
     });
   }
 

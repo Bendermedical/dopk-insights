@@ -1,4 +1,50 @@
-# Drill-down acceptance tests
+# Acceptance tests
+
+All test pages run the real dashboard (`assets/app.js`) on synthetic fixtures. They use memory
+storage (plus `sessionStorage` keys starting with `dopk.test.` for reload checks), so your real
+history, mapping, views and language are never touched. The pages are not linked from the dashboard.
+
+| Page | Covers |
+| --- | --- |
+| `drilldown-test.html` | Drill-down, breadcrumb, URL hash, order drawer, CSV (13 tests) |
+| `scorecard-test.html` | Key account scorecard (21 tests) |
+| `btb-test.html` | Book-to-bill and order intake (21 tests) |
+| `families-sofort-test.html` | Product families mapping, families tab, model/size drill-down, PDT, Sofortbedarf, overdue matrix, changes sheet, saved views, DE/EN, layout, CSP (tests 1–25; reloads itself three times) |
+
+Fixtures: `fixture.js` (09.09.2026), `fixture-day2.js` (10.09.), `fixture-day3.js` (12.09.),
+`fixture-day4.js` (16.10.), `fixture-sofort.js` (day 1 plus two Sofortbedarf lines) and
+`families-fixture.csv` (the mapping; `families-fixture.js` holds the same text because the CSP
+blocks `fetch()` on test pages).
+
+## Run headlessly (Windows, Microsoft Edge, no npm packages)
+
+From the repository root:
+
+```
+node tests/run-test.js families-sofort-test.html
+node tests/run-test.js families-sofort-test.html 390
+```
+
+The second argument is the viewport width (default 1360). The runner serves the repository with
+the security headers from `_headers`, so CSP violations fail the tests, prints PASS/FAIL per test
+and exits with code 1 if anything fails. `TEST_TIMEOUT_MS` changes the 60-second timeout.
+
+## Test pages copy the dashboard markup
+
+Each test page contains a copy of the markup in `index.html`. After changing `index.html`, run
+
+```
+node tests/sync-markup.js
+```
+
+## Deliberate expectation changes (Sofortbedarf, October 2026)
+
+- `drilldown-test.js` test 4: the key figure shows the Sofortbedarf value with waiting days
+  instead of the undated %, and the period view groups by product family instead of listing lines.
+- `scorecard-test.js` test 3: the scorecard readout shows Sofortbedarf value, quantity and
+  waiting days (act now at 181 days) instead of 10.5 % with a "watch" alarm.
+
+# Drill-down acceptance tests (October 2026 notes)
 
 Serve the repository through any static web server and open `/tests/drilldown-test.html`.
 For example, from the repository root run `python -m http.server 8080` and open

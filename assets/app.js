@@ -306,7 +306,14 @@
       chgSummary: (n, v, q) => `${pl(n, "Position", "Positionen")} · ${v}${q ? " · " + q : ""}`, chgEmpty: "keine",
       chgDueMove: (a, b) => `${a} → ${b}`, thChange: "Liefertermin",
       csvChgHead: ["Kategorie", "Auftrag", "Kunde", "Artikel", "Bezeichnung", "Menge", "Wert EUR", "Liefertermin vorher", "Liefertermin jetzt"],
-      csvChgPrefix: "aenderungen"
+      csvChgPrefix: "aenderungen",
+      viewLabel: "Ansicht", viewPlaceholder: "Ansicht …",
+      vwOverview: "Gesamtüberblick", vwLateMonth: "Überfällig nach Monat", vwImmediate: "Sofortbedarf", vwFamilies: "Produktfamilien",
+      vwKaLate: "Key Account überfällig", vwChanges: "Neu seit letztem Stand",
+      vwSave: "Aktuelle Ansicht speichern …", vwDefault: "Als Standard festlegen", vwDelete: n => `„${n}“ löschen`, vwIsDefault: " (Standard)",
+      vwDialogTitle: "Aktuelle Ansicht speichern", vwName: "Name der Ansicht", vwSaveBtn: "Speichern", vwCancel: "Abbrechen",
+      vwSaved: n => `Ansicht „${n}“ gespeichert.`, vwDeleted: n => `Ansicht „${n}“ gelöscht.`,
+      vwDefaultSet: n => `„${n}“ ist jetzt die Standardansicht und gilt nach jedem Laden einer Datei.`, vwCurrent: "Aktuelle Ansicht"
     },
     en: {
       drillHint: "Tip: bars, customers and order numbers are clickable.",
@@ -547,7 +554,14 @@
       chgSummary: (n, v, q) => `${pl(n, "line", "lines")} · ${v}${q ? " · " + q : ""}`, chgEmpty: "none",
       chgDueMove: (a, b) => `${a} → ${b}`, thChange: "Delivery date",
       csvChgHead: ["Category", "Order", "Customer", "Article", "Description", "Quantity", "Value EUR", "Previous delivery date", "Current delivery date"],
-      csvChgPrefix: "changes"
+      csvChgPrefix: "changes",
+      viewLabel: "View", viewPlaceholder: "View …",
+      vwOverview: "Overview", vwLateMonth: "Overdue by month", vwImmediate: "Immediate demand", vwFamilies: "Product families",
+      vwKaLate: "Key account overdue", vwChanges: "New since last upload",
+      vwSave: "Save current view …", vwDefault: "Set as default", vwDelete: n => `Delete “${n}”`, vwIsDefault: " (default)",
+      vwDialogTitle: "Save current view", vwName: "View name", vwSaveBtn: "Save", vwCancel: "Cancel",
+      vwSaved: n => `View “${n}” saved.`, vwDeleted: n => `View “${n}” deleted.`,
+      vwDefaultSet: n => `“${n}” is now the default view and applies after every file load.`, vwCurrent: "Current view"
     }
   };
 
@@ -1796,9 +1810,113 @@
     }
   }
 
+  // ------------------------------------------------------------- saved views
+  // A view = VIEW filters plus the panel toggles. Built-ins can't be deleted; user views live in dopk.views.v1,
+  // the default (built-in id, user id or a plain state) in dopk.defaultview.v1.
+  const VIEW_KEYS = ["customer", "period", "family", "model", "size", "variant", "lateMonth"];
+  const HASH_KEYS = ["c", "p", "o", "sc", "btb", "f", "m", "s", "v", "lm", "chg"];
+  let CURRENT_VIEW = "";
+  const viewState = () => ({ ...Object.fromEntries(VIEW_KEYS.map(k => [k, VIEW[k] || null])), toggles: { share: SHARE_TAB, late: LATE_TAB, unit: MATRIX_UNIT, und: UND_GROUP } });
+  const blankView = (over = {}, toggles = {}) => ({ ...Object.fromEntries(VIEW_KEYS.map(k => [k, null])), ...over, toggles: { share: "cust", late: "list", unit: "eur", und: "fam", ...toggles } });
+  function builtinViews() {
+    const ka = DATA ? getKeyAccounts(DATA.lines)[0] : null;
+    const kaCust = ka ? DATA.lines.find(l => String(l.custId) === String(ka.id))?.cust : null;
+    return [
+      { id: "b:overview", name: T("vwOverview"), state: blankView() },
+      { id: "b:late-month", name: T("vwLateMonth"), state: blankView({ period: "late" }, { late: "month" }) },
+      { id: "b:immediate", name: T("vwImmediate"), state: blankView({ period: "undated" }) },
+      { id: "b:families", name: T("vwFamilies"), state: blankView({}, { share: "fam" }) },
+      { id: "b:ka-late", name: T("vwKaLate") + (ka ? ` (${ka.label})` : ""), state: blankView({ customer: kaCust || null, period: "late" }) },
+      { id: "b:changes", name: T("vwChanges"), changes: true }
+    ];
+  }
+  const userViews = () => (store.get(LS_VIEWS, []) || []).filter(v => v && v.id && v.state);
+  const findView = id => [...builtinViews(), ...userViews()].find(v => v.id === id);
+  function applySavedView(v, navigation = "push") {
+    if (!v) return;
+    if (v.changes) { applyView({ chg: true }, navigation); CURRENT_VIEW = ""; fillViewSelect(); return; }
+    const t = v.state.toggles || {};
+    SHARE_TAB = t.share === "fam" ? "fam" : "cust"; store.set(LS_SHARETAB, SHARE_TAB);
+    LATE_TAB = t.late === "month" ? "month" : "list"; store.set(LS_LATETAB, LATE_TAB);
+    MATRIX_UNIT = t.unit === "qty" ? "qty" : "eur";
+    UND_GROUP = t.und === "cust" ? "cust" : "fam";
+    applyView({ ...Object.fromEntries(VIEW_KEYS.map(k => [k, v.state[k] || null])), order: null, sc: null, btb: false, chg: false }, navigation);
+    CURRENT_VIEW = v.id || ""; fillViewSelect();
+  }
+  function defaultView() {
+    const d = store.get(LS_DEFAULTVIEW, null);
+    if (!d) return null;
+    return d.id ? findView(d.id) || null : d.state ? { id: "", state: d.state } : null;
+  }
+  function fillViewSelect() {
+    const sel = $("#view-select");
+    if (!sel) return;
+    const def = store.get(LS_DEFAULTVIEW, null), users = userViews();
+    const same = v => v && v.state && JSON.stringify(v.state) === JSON.stringify(viewState());
+    if (CURRENT_VIEW && !same(findView(CURRENT_VIEW))) CURRENT_VIEW = "";
+    const opt = v => `<option value="${esc(v.id)}">${esc(v.name + (def?.id === v.id ? T("vwIsDefault") : ""))}</option>`;
+    const sep = `<option disabled>──────────</option>`;
+    const cur = CURRENT_VIEW.startsWith("u:") ? users.find(v => v.id === CURRENT_VIEW) : null;
+    sel.innerHTML = `<option value="">${esc(T("viewPlaceholder"))}</option>` + builtinViews().map(opt).join("") + sep +
+      (users.length ? users.map(opt).join("") + sep : "") +
+      `<option value="a:save">${esc(T("vwSave"))}</option><option value="a:default">${esc(T("vwDefault"))}</option>` +
+      (cur ? `<option value="a:delete">${esc(tf("vwDelete", cur.name))}</option>` : "");
+    sel.value = CURRENT_VIEW;
+  }
+  function onViewSelect(value) {
+    const sel = $("#view-select");
+    if (value === "a:save") { sel.value = CURRENT_VIEW; openViewDialog(); return; }
+    if (value === "a:default") {
+      const v = CURRENT_VIEW ? findView(CURRENT_VIEW) : null;
+      store.set(LS_DEFAULTVIEW, v ? { id: v.id } : { state: viewState() });
+      showNotice(tf("vwDefaultSet", v ? v.name : T("vwCurrent")), "ok");
+      fillViewSelect(); return;
+    }
+    if (value === "a:delete") {
+      const v = userViews().find(x => x.id === CURRENT_VIEW);
+      if (v) {
+        store.set(LS_VIEWS, userViews().filter(x => x.id !== v.id));
+        if (store.get(LS_DEFAULTVIEW, null)?.id === v.id) store.remove(LS_DEFAULTVIEW);
+        showNotice(tf("vwDeleted", v.name), "ok");
+      }
+      CURRENT_VIEW = ""; fillViewSelect(); return;
+    }
+    if (value) applySavedView(findView(value));
+    else { CURRENT_VIEW = ""; fillViewSelect(); }
+  }
+  let VIEW_DIALOG_RETURN = null;
+  function openViewDialog() {
+    const dlg = $("#view-dialog");
+    if (!dlg) return;
+    VIEW_DIALOG_RETURN = $("#view-select");
+    $("#view-name").value = "";
+    dlg.showModal();
+    $("#view-name").focus();
+  }
+  function closeViewDialog() {
+    const dlg = $("#view-dialog");
+    if (dlg?.open) dlg.close();
+    (VIEW_DIALOG_RETURN || $("#view-select"))?.focus();
+  }
+  function saveCurrentView(name) {
+    name = String(name || "").trim();
+    if (!name) return null;
+    const v = { id: "u:" + Date.now().toString(36), name: name.slice(0, 60), state: viewState() };
+    store.set(LS_VIEWS, [...userViews().filter(x => x.name !== v.name), v]);
+    CURRENT_VIEW = v.id; fillViewSelect();
+    showNotice(tf("vwSaved", v.name), "ok");
+    return v;
+  }
+
   function restoreView() {
-    const next = HASH_LOADED ? VIEW : readHash();
+    // The default view applies after every file load unless the URL hash names a view.
+    const params = new URLSearchParams(location.hash.slice(1));
+    const hashHasView = HASH_KEYS.some(k => params.has(k));
+    const first = !HASH_LOADED;
     HASH_LOADED = true;
+    const def = !hashHasView ? defaultView() : null;
+    if (def) { applySavedView(def, "replace"); return; }
+    const next = first ? readHash() : VIEW;
     applyView({ ...next, order: next.order }, "replace");
   }
 
@@ -1953,6 +2071,7 @@
     renderOrderDrawer();
     renderBtbSheet();
     renderChangesSheet();
+    fillViewSelect();
     $("#foot-file").textContent = `${DATA.fileName || "DOPK export"} · ${tf("linesRead", lines.length)}`;
     renderFamiliesFoot();
     $("#app").hidden = false; $("#empty").hidden = true;
@@ -3436,6 +3555,13 @@
     LATE_TAB = store.get(LS_LATETAB, "list") === "month" ? "month" : "list";
     renderFamiliesFoot();
     $("#filter").addEventListener("change", e => applyView({ customer: e.target.value === "__all" ? null : e.target.value }));
+    $("#view-select")?.addEventListener("change", e => onViewSelect(e.target.value));
+    const viewDlg = $("#view-dialog");
+    if (viewDlg) {
+      $("#view-form").addEventListener("submit", e => { e.preventDefault(); if (saveCurrentView($("#view-name").value)) closeViewDialog(); });
+      $("#view-cancel").addEventListener("click", closeViewDialog);
+      viewDlg.addEventListener("cancel", e => { e.preventDefault(); closeViewDialog(); });
+    }
     $("#export-late").addEventListener("click", exportLate);
 
     // Detail modal listeners
@@ -3500,6 +3626,7 @@
         clearHistory: () => TEST_STORAGE.delete(LS_HISTORY),
         loadFamiliesFile, buildUnassignedCsv, setFamilies, get families() { return FAMILIES; }, buildImmediateCsv, computeOutlook,
         computeChanges: () => computeChanges(store.get(LS_HISTORY, { snaps: {} }), DATA), buildChangesCsv,
+        onViewSelect, saveCurrentView, get currentView() { return CURRENT_VIEW; }, i18nKeys: () => ({ de: Object.keys(I18N.de), en: Object.keys(I18N.en) }), get toggles() { return { share: SHARE_TAB, late: LATE_TAB, unit: MATRIX_UNIT, und: UND_GROUP }; },
         importArchive: aois => commitArchive(aois.map((aoa, i) => ({ aoa, data: parseRows(aoa, "DOPK.xlsx"), name: "DOPK_" + i + ".xlsx", mod: i })), []),
         get history() { return store.get(LS_HISTORY, { snaps: {} }); },
         get view() { return { ...VIEW }; }, get data() { return DATA; }, get metrics() { return compute(DATA.lines, DATA.reportDate, VIEW); }

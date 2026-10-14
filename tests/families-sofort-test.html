@@ -19,6 +19,8 @@
     </div>
     <span class="spacer"></span>
     <span class="snapshot-date" id="snapshot">Keine Datei geladen</span>
+    <label class="sr-only" for="view-select" data-i18n="viewLabel">Ansicht</label>
+    <select class="select no-print" id="view-select"><option value="">Ansicht …</option></select>
     <label class="sr-only" for="filter" data-i18n="customer">Kunde</label>
     <select class="select no-print" id="filter"><option value="__all">Alle Kunden</option></select>
     <div class="lang-switch segmented no-print" role="group" aria-label="Sprache / Language">
@@ -155,6 +157,18 @@
       </header>
       <div class="sheet-body" id="btb-body" role="region" tabindex="0" data-i18n-label="btbTitle"></div>
     </div>
+  </dialog>
+
+  <dialog id="view-dialog" class="view-dialog" aria-labelledby="view-dialog-title">
+    <form id="view-form" method="dialog">
+      <h2 id="view-dialog-title" data-i18n="vwDialogTitle">Aktuelle Ansicht speichern</h2>
+      <label for="view-name" data-i18n="vwName">Name der Ansicht</label>
+      <input type="text" id="view-name" class="search-input" maxlength="60" required autocomplete="off">
+      <div class="view-dialog-actions">
+        <button type="button" class="btn btn--quiet" id="view-cancel" data-i18n="vwCancel">Abbrechen</button>
+        <button type="submit" class="btn" data-i18n="vwSaveBtn">Speichern</button>
+      </div>
+    </form>
   </dialog>
 
   <dialog id="changes-sheet" class="scorecard-sheet changes-sheet" role="dialog" aria-modal="true" aria-labelledby="changes-title">

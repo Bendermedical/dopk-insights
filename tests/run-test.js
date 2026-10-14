@@ -70,7 +70,7 @@ async function main() {
 
   let wsUrl = null;
   const matchStr = testFile.replace(/\.html$/, "");
-  for (let i = 0; i < 40; i++) {
+  for (let i = 0; i < 120; i++) {
     try {
       await new Promise(r => setTimeout(r, 250));
       const targets = await getJSON(`http://127.0.0.1:${cdpPort}/json`);
@@ -176,10 +176,15 @@ async function main() {
 }
 
 // Edge starts many child processes; end the whole tree and remove the throwaway profile.
+// The launcher process hands over to children and exits, so match this run's unique profile folder instead.
 function stopEdge() {
   if (proc && proc.pid) {
-    if (process.platform === "win32") spawnSync("taskkill", ["/pid", String(proc.pid), "/T", "/F"], { stdio: "ignore" });
-    else proc.kill("SIGKILL");
+    if (process.platform === "win32") {
+      spawnSync("taskkill", ["/pid", String(proc.pid), "/T", "/F"], { stdio: "ignore" });
+      const tag = path.basename(tempProfile);
+      const ps = `Get-CimInstance Win32_Process -Filter "Name = 'msedge.exe'" | Where-Object { $_.CommandLine -like '*${tag}*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }`;
+      for (let i = 0; i < 3; i++) spawnSync("powershell", ["-NoProfile", "-NonInteractive", "-Command", ps], { stdio: "ignore" });
+    } else proc.kill("SIGKILL");
   }
   for (let i = 0; i < 5; i++) {
     try { fs.rmSync(tempProfile, { recursive: true, force: true }); break; } catch (e) { spawnSync(process.execPath, ["-e", "setTimeout(()=>{},300)"]); }
