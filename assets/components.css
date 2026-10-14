@@ -1,5 +1,7 @@
 /* DOPK Vitals design system: components. Depends on tokens.css */
 *, *::before, *::after { box-sizing: border-box; }
+/* The hidden attribute always wins over a component's own display (e.g. .banner is flex). */
+[hidden] { display: none !important; }
 html { -webkit-text-size-adjust: 100%; }
 body {
   margin: 0; background: var(--bg); color: var(--ink);
