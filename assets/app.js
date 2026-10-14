@@ -1975,7 +1975,8 @@
     const path = pts.map((v, i) => `${(i / (pts.length - 1) * w).toFixed(1)},${(ht - (mx === mn ? ht / 2 : (v - mn) / (mx - mn) * ht)).toFixed(1)}`).join(" ");
     return `<svg width="${w}" height="${ht + 2}" viewBox="0 -1 ${w} ${ht + 2}" aria-hidden="true" style="display:block;margin-top:6px"><polyline points="${path}" fill="none" stroke="var(--ink-muted)" stroke-width="1.5"/></svg>`;
   }
-  const chipHTML = l => `<span class="chip chip--${l}">${T("chips")[l]}</span>`;
+  // "none" (e.g. book-to-bill before enough history) has no alarm and so no chip.
+  const chipHTML = l => T("chips")[l] ? `<span class="chip chip--${l}">${T("chips")[l]}</span>` : "";
 
   function applyStatic() {
     if (STATIC_LANG === LANG) return;

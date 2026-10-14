@@ -192,6 +192,9 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     const sec = btn.querySelector(".vital-subline")?.textContent || "";
     assert(sec.includes("Book-to-Bill"), `Expected Book-to-Bill ratio label in sub-line, got ${sec}`);
+
+    // Fewer than minHistoryDays snapshots: level "none" shows no alarm chip (it used to read "undefined").
+    assert(btn.dataset.level === "none" && !btn.querySelector(".chip") && !btn.textContent.includes("undefined"), `No chip without enough history, got ${btn.textContent}`);
   });
 
   // TEST 10: Clicking key figure opens #btb-sheet and sets URL hash
