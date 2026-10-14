@@ -1,4 +1,4 @@
-const { spawn } = require("child_process");
+const { spawn, spawnSync } = require("child_process");
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
@@ -8,6 +8,20 @@ const edgePath = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.
 const testArg = process.argv[2] || "scorecard-test.html";
 const testFile = testArg.replace(/^tests[/\\]/, "");
 const tempProfile = path.join(os.tmpdir(), "edge-cdp-" + Date.now());
+// Optional viewport width, e.g. `node tests/run-test.js drilldown-test.html 390`
+const width = parseInt(process.argv[3], 10) || 1360;
+const timeoutMs = parseInt(process.env.TEST_TIMEOUT_MS, 10) || 60000;
+// Serve the production security headers so CSP violations show up in tests.
+const siteHeaders = {};
+try {
+  let inBlock = false;
+  fs.readFileSync(path.join(__dirname, "..", "_headers"), "utf8").split(/\r?\n/).forEach(line => {
+    if (/^\S/.test(line)) { inBlock = line.trim() === "/*"; return; }
+    const m = inBlock && line.match(/^\s+([\w-]+):\s*(.+)$/);
+    if (m) siteHeaders[m[1]] = m[2].trim();
+  });
+} catch (e) {}
+let failed = 0;
 
 const server = http.createServer((req, res) => {
   const safePath = path.normalize(decodeURIComponent(req.url.split("?")[0])).replace(/^(\.\.[\/\\])+/, "");
@@ -15,8 +29,8 @@ const server = http.createServer((req, res) => {
   fs.readFile(filePath, (err, data) => {
     if (err) { res.writeHead(404); res.end(); return; }
     const ext = path.extname(filePath);
-    const mime = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json" }[ext] || "text/plain";
-    res.writeHead(200, { "Content-Type": mime });
+    const mime = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".csv": "text/csv; charset=utf-8" }[ext] || "text/plain";
+    res.writeHead(200, { ...siteHeaders, "Content-Type": mime });
     res.end(data);
   });
 });
@@ -42,6 +56,13 @@ async function main() {
   proc = spawn(edgePath, [
     "--headless=new",
     "--disable-gpu",
+    `--window-size=${width},900`,
+    // keep requestAnimationFrame and timers running even if Edge considers the tab hidden
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-background-timer-throttling",
+    "--disable-backgrounding-occluded-windows",
+    "--disable-renderer-backgrounding",
     `--user-data-dir=${tempProfile}`,
     `--remote-debugging-port=${cdpPort}`,
     testUrl
@@ -49,7 +70,7 @@ async function main() {
 
   let wsUrl = null;
   const matchStr = testFile.replace(/\.html$/, "");
-  for (let i = 0; i < 40; i++) {
+  for (let i = 0; i < 120; i++) {
     try {
       await new Promise(r => setTimeout(r, 250));
       const targets = await getJSON(`http://127.0.0.1:${cdpPort}/json`);
@@ -100,12 +121,13 @@ async function main() {
 
   console.log("WebSocket open! Enabling Runtime...");
   await send("Runtime.enable");
+  try { await send("Page.bringToFront"); } catch (e) {}
   console.log("Runtime enabled! Starting test poll...");
 
-  // Poll for completion or timeout after 25s
+  // Poll for completion or timeout
   const start = Date.now();
   let done = false;
-  while (Date.now() - start < 25000) {
+  while (Date.now() - start < timeoutMs) {
     const res = await send("Runtime.evaluate", {
       expression: "JSON.stringify({ done: !!window.DOPK_TEST_DONE, results: (window.DOPK_TEST_RESULTS || []).length, title: document.title, errors: window.DOPK_TEST_ERRORS || [] })",
       returnByValue: true
@@ -126,6 +148,9 @@ async function main() {
         console.log("\n================ TEST SUMMARY ================");
         console.log("Document Title:", fullState.title);
         console.log(`Total tests executed: ${fullState.results.length}`);
+        const fails = fullState.results.filter(r => !r.pass).length;
+        failed = fails + (fullState.errors.length ? 1 : 0);
+        console.log(`Viewport width: ${width}px · ${fullState.results.length - fails}/${fullState.results.length} PASS`);
         fullState.results.forEach(r => {
           console.log(`Test ${r.id}: ${r.pass ? "PASS" : "FAIL"} - ${r.title}${r.detail ? " (" + r.detail + ")" : ""}`);
         });
@@ -139,14 +164,36 @@ async function main() {
   }
 
   if (!done) {
-    console.error("Test execution timed out after 25 seconds!");
+    try {
+      const diag = await send("Runtime.evaluate", { expression: "JSON.stringify({ ready: document.readyState, hidden: document.hidden, results: (window.DOPK_TEST_RESULTS || []).length, errors: window.DOPK_TEST_ERRORS || [] })", returnByValue: true });
+      console.error("Page state at timeout:", diag?.result?.value);
+    } catch (e) {}
+    console.error(`Test execution timed out after ${timeoutMs / 1000} seconds!`);
+    failed = failed || 1;
   }
 
   ws.close();
 }
 
-main().catch(console.error).finally(() => {
-  if (proc) proc.kill();
-  server.close(() => process.exit(0));
-  setTimeout(() => process.exit(0), 1000);
+// Edge starts many child processes; end the whole tree and remove the throwaway profile.
+// The launcher process hands over to children and exits, so match this run's unique profile folder instead.
+function stopEdge() {
+  if (proc && proc.pid) {
+    if (process.platform === "win32") {
+      spawnSync("taskkill", ["/pid", String(proc.pid), "/T", "/F"], { stdio: "ignore" });
+      const tag = path.basename(tempProfile);
+      const ps = `Get-CimInstance Win32_Process -Filter "Name = 'msedge.exe'" | Where-Object { $_.CommandLine -like '*${tag}*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }`;
+      for (let i = 0; i < 3; i++) spawnSync("powershell", ["-NoProfile", "-NonInteractive", "-Command", ps], { stdio: "ignore" });
+    } else proc.kill("SIGKILL");
+  }
+  for (let i = 0; i < 5; i++) {
+    try { fs.rmSync(tempProfile, { recursive: true, force: true }); break; } catch (e) { spawnSync(process.execPath, ["-e", "setTimeout(()=>{},300)"]); }
+  }
+}
+
+main().catch(e => { console.error(e); failed = failed || 1; }).finally(() => {
+  stopEdge();
+  const code = failed ? 1 : 0;
+  server.close(() => process.exit(code));
+  setTimeout(() => process.exit(code), 1000);
 });

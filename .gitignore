@@ -1,3 +1,6 @@
 *.xlsx
 *.xls
 *.csv
+
+# test fixtures are synthetic and may be committed
+!tests/*.csv

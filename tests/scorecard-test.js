@@ -85,7 +85,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     assert(sub.includes("75,4 %") || sub.includes("75.4%"), "Subtitle contains 75.4% share");
   });
 
-  await runTest(3, "Open €9,500 · overdue €3,500 (36.8%, 2 lines, act now) · no delivery date €1,000 (10.5%, watch)", async () => {
+  await runTest(3, "Open €9,500 · overdue €3,500 (36.8%, 2 lines, act now) · Sofortbedarf €1,000 (Ø 181 days waiting, act now)", async () => {
     const vitals = $$("#scorecard-body .sc-vitals .vital");
     assert(vitals.length === 6, `Expected 6 vitals, found ${vitals.length}`);
 
@@ -100,11 +100,12 @@ document.addEventListener("DOMContentLoaded", async function () {
     assert(lateCard.textContent.includes("2 Positionen") || lateCard.textContent.includes("2 lines"), "Late lines count 2");
     assert(lateCard.dataset.level === "high", "Late level act now (high)");
 
-    // V3: Undated
+    // V3: Sofortbedarf. Changed with section 2: value and waiting days replace the undated % and its % alarm.
     const undCard = vitals[2];
-    assert(undCard.textContent.includes("10,5 %") || undCard.textContent.includes("10.5%"), "Undated pct 10.5%");
-    assert(undCard.textContent.includes("1.000") || undCard.textContent.includes("1,000") || undCard.textContent.includes("1,0 T€") || undCard.textContent.includes("1.0k"), "Undated val €1,000");
-    assert(undCard.dataset.level === "med", "Undated level watch (med)");
+    assert(undCard.textContent.includes("Sofortbedarf") || undCard.textContent.includes("Immediate demand"), "Sofortbedarf label");
+    assert(undCard.textContent.includes("1.000") || undCard.textContent.includes("1,000") || undCard.textContent.includes("1,0 T€") || undCard.textContent.includes("1.0k"), "Sofortbedarf val €1,000");
+    assert(undCard.textContent.includes("500 Stk") && undCard.textContent.includes("Ø 181 Tage"), `Quantity and waiting days: ${undCard.textContent}`);
+    assert(undCard.dataset.level === "high", "Sofortbedarf level act now (high): 181 days waiting");
   });
 
   await runTest(4, 'Schedule cover: "bis Okt 2026 (1,7 Monate)", act now', async () => {
