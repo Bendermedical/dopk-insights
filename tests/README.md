@@ -9,6 +9,7 @@ history, mapping, views and language are never touched. The pages are not linked
 | `drilldown-test.html` | Drill-down, breadcrumb, URL hash, order drawer, CSV (13 tests) |
 | `scorecard-test.html` | Key account scorecard (21 tests) |
 | `btb-test.html` | Book-to-bill and order intake (21 tests) |
+| `layout-test.html` | Sidebar layout: pages, status figures, „Heute zu tun“, filter bar, Back, old links, phone bottom bar (14 tests; reloads itself once) |
 | `ask-test.html` | Search field: question types, follow-ups, examples, DE/EN, keyboard (17 tests) |
 | `families-sofort-test.html` | Product families mapping, families tab, model/size drill-down, PDT, Sofortbedarf, overdue matrix, changes sheet, saved views, DE/EN, layout, CSP (tests 1–25; reloads itself three times) |
 
@@ -32,7 +33,8 @@ and exits with code 1 if anything fails. `TEST_TIMEOUT_MS` changes the 60-second
 
 ## Test pages copy the dashboard markup
 
-Each test page contains a copy of the markup in `index.html`. After changing `index.html`, run
+Each test page contains a copy of the dashboard markup in `index.html` (between
+`<!-- dashboard:start -->` and `<!-- dashboard:end -->`). After changing `index.html`, run
 
 ```
 node tests/sync-markup.js
@@ -44,6 +46,13 @@ node tests/sync-markup.js
   instead of the undated %, and the period view groups by product family instead of listing lines.
 - `scorecard-test.js` test 3: the scorecard readout shows Sofortbedarf value, quantity and
   waiting days (act now at 181 days) instead of 10.5 % with a "watch" alarm.
+
+## Deliberate expectation changes (sidebar layout, October 2026)
+
+- `drilldown-test.js` test 5 opens the Überfällig page before focusing a late line (the late list
+  no longer sits on the overview); test 6 resets the view before reading the watchlist.
+- `families-sofort-test.js` tests 5 and 24 find the PDT toggle in the filter bar (`#topbar-pdt`)
+  instead of the families tab.
 
 # Drill-down acceptance tests (October 2026 notes)
 

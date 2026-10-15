@@ -68,7 +68,8 @@ document.addEventListener("DOMContentLoaded", async function () {
       assert(JSON.stringify(cells) === JSON.stringify(["Other", "€1,000", "500 pcs", "1", "1", "12/03/2026", "181 days"]) && m().openVal === 1000, `Row ${JSON.stringify(cells)}`);
     });
     await test(5, "Order drawer details, Escape and restored focus", () => {
-      reset(); const origin = $("#late-body [data-value='1001']"); origin.focus(); click(origin);
+      // Sidebar layout: the late lines live on the Überfällig page, so open it before focusing a line there.
+      reset(); api.applyView({ period: "late" }); const origin = $("#late-body [data-value='1001']"); origin.focus(); click(origin);
       assert($("#order-drawer").open && $("#order-lines tbody").rows.length === 2, "Drawer lines");
       assert(text("#order-summary").includes("76%") && text("#order-summary").includes("5,500") && text("#order-summary").includes("1 late line"), "Drawer header totals");
       assert(location.hash.includes("o=1001") && document.body.style.overflow === "hidden", "Drawer URL/scroll lock");
@@ -77,7 +78,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       assert(!$("#order-drawer").open && document.activeElement === origin && document.body.style.overflow !== "hidden", "Close/focus restoration");
     });
     await test(6, "Price exception inline lines and order link", () => {
-      click($("#watch [data-value='price']"));
+      reset(); click($("#watch [data-value='price']"));
       const detail = $("#watch-price");
       assert(!detail.hidden && detail.textContent.includes("B100") && detail.textContent.includes("Delta Klinik") && detail.textContent.includes("1.88") && detail.textContent.includes("4.00"), "Price comparison");
       assert(detail.querySelector('[data-action="order"][data-value="1006"]'), "Clickable exception order");

@@ -50,9 +50,29 @@ From the second day on you will see ▲▼ changes, a backlog trend line, comple
 and lines whose delivery date moved later. Click the "Seit …" item in the watchlist to open
 **Neu seit letztem Stand** (see below).
 
+## Navigation: sidebar and pages
+
+The sidebar on the left is the dashboard's navigation and, at the same time, its status monitor:
+every entry shows its alarm dot (red act now, yellow watch, cyan information, green resolved) and
+its headline figure, so you see where the problems are from any page.
+
+| Sidebar entry | Opens |
+| --- | --- |
+| **Überblick** (start page) | verdict, key figures, **Heute zu tun** (the five largest open problems across overdue, Sofortbedarf and phase-out articles, each linked to its order), horizon, customers/families, watchlist |
+| **Handeln:** Überfällig · Sofortbedarf | the overdue lines (list or by month) · Sofortbedarf by family or customer |
+| **Handeln:** Neu seit letztem Stand | the changes sheet |
+| **Bestand:** Produktfamilien · Kunden · Auftragshorizont | families with drill-down · customer concentration · delivery months with their lines |
+| **Entwicklung:** Umsatzausblick · Auftragseingang | revenue outlook · the book-to-bill sheet |
+| **Key Account** | the scorecard of each configured key account |
+
+The filters at the top (customer, product family, PDT) apply on every page; the sidebar figures follow
+them. Browser Back steps back through pages and filters, and links from before the redesign (for
+example `#p=undated`) still open the right page. On a phone the sidebar becomes a bar at the bottom
+with Überblick, Überfällig, Sofort, Familien and **Mehr** (all other entries, upload, views, language).
+
 ## Ask the dashboard (search field)
 
-Type a question into the field under the top bar and press Enter. The dashboard opens the matching
+Type a question into the field at the top of the sidebar and press Enter. The dashboard opens the matching
 view and answers in one sentence with its own figures, for example:
 
 | Question | Opens | Answer (shortened) |

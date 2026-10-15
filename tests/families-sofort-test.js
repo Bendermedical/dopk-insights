@@ -121,15 +121,15 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     await test(5, "PDT toggle: PDT €1,000 · 1 line · 10 pcs; ohne PDT €11,597.50", async () => {
       reset(); await paint();
-      const pdt = byValue('#share-fam [data-action="variant"]', "pdt");
-      assert(pdt && byValue('#share-fam [data-action="variant"]', "nopdt"), "PDT toggle visible");
+      const pdt = byValue('#topbar-pdt [data-action="variant"]', "pdt");
+      assert(pdt && byValue('#topbar-pdt [data-action="variant"]', "nopdt"), "PDT toggle visible");
       click(pdt); await paint();
       const m = api.metrics;
       assert(api.view.variant === "pdt" && location.hash.includes("v=pdt") && near(m.openVal, 1000) && m.openLines === 1 && m.open[0].art === "A201" && m.open[0].rest === 10, "PDT scope");
       assert(crumbs().includes("PDT"), "PDT in the breadcrumb");
-      click(byValue('#share-fam [data-action="variant"]', "nopdt")); await paint();
+      click(byValue('#topbar-pdt [data-action="variant"]', "nopdt")); await paint();
       assert(api.view.variant === "nopdt" && near(api.metrics.openVal, 11597.5), `ohne PDT ${api.metrics.openVal}`);
-      click(byValue('#share-fam [data-action="variant"]', "")); await paint();
+      click(byValue('#topbar-pdt [data-action="variant"]', "")); await paint();
       assert(api.view.variant === null, "All");
     });
 
@@ -432,10 +432,10 @@ document.addEventListener("DOMContentLoaded", async function () {
       $("#changes-sheet").dispatchEvent(new Event("cancel", { cancelable: true })); await paint();
       assert(!$("#changes-sheet").open && !api.view.chg, "Escape closes the changes sheet");
       reset(); await paint();
-      const reachable = ['#share-tabs [data-action="share-tab"]', '#share-fam [data-action="variant"]', "#fam-list li", '#late-tools [data-action="late-tab"]', "#view-select"];
+      const reachable = ['#share-tabs [data-action="share-tab"]', '#topbar-pdt [data-action="variant"]', "#fam-list li", '#late-tools [data-action="late-tab"]', "#view-select"];
       reachable.forEach(s => { const el = $(s); assert(el && (el.tagName === "BUTTON" || el.tagName === "SELECT" || el.tabIndex === 0), `Not keyboard reachable: ${s}`); });
-      key(byValue('#share-fam [data-action="variant"]', "pdt"), "Enter");
-      byValue('#share-fam [data-action="variant"]', "pdt").click(); await paint();
+      key(byValue('#topbar-pdt [data-action="variant"]', "pdt"), "Enter");
+      byValue('#topbar-pdt [data-action="variant"]', "pdt").click(); await paint();
       assert(api.view.variant === "pdt", "PDT toggle by keyboard (native button)");
       reset(); click(byValue('#late-tools [data-action="late-tab"]', "month")); await paint();
       const cell = $('#late-matrix [data-action="matrix-cell"]');

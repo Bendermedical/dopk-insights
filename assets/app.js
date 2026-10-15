@@ -314,7 +314,7 @@
       vwDialogTitle: "Aktuelle Ansicht speichern", vwName: "Name der Ansicht", vwSaveBtn: "Speichern", vwCancel: "Abbrechen",
       vwSaved: n => `Ansicht „${n}“ gespeichert.`, vwDeleted: n => `Ansicht „${n}“ gelöscht.`,
       vwDefaultSet: n => `„${n}“ ist jetzt die Standardansicht und gilt nach jedem Laden einer Datei.`, vwCurrent: "Aktuelle Ansicht",
-      askLabel: "Frage an das Dashboard", askPlaceholder: "Frage stellen, z. B. „überfällig nach Monat“", askClose: "Antwort schließen",
+      askLabel: "Frage an das Dashboard", askPlaceholder: "Frage stellen …", askClose: "Antwort schließen",
       askNoData: "Bitte zuerst eine Tagesdatei hochladen.",
       askUnknown: "Diese Frage kann ich nicht beantworten. Versuchen Sie zum Beispiel:",
       askHelp: "Fragen Sie nach Überfälligem, Sofortbedarf, Kunden, Produktfamilien, Fälligkeiten, Aufträgen oder Änderungen, zum Beispiel:",
@@ -340,7 +340,17 @@
       aOrder: (o, c, v, n, l, q) => `Auftrag ${o} (${c}): ${v} offen in ${pl(n, "Position", "Positionen")}, davon ${l} überfällig, ${q} geliefert.`,
       aOrderNone: o => `Auftrag ${o} ist in der aktuellen Datei nicht enthalten.`,
       aSc: (c, v, l) => `Scorecard ${c}: ${v} offen, davon ${l} überfällig.`,
-      aReset: "Alle Filter zurückgesetzt."
+      aReset: "Alle Filter zurückgesetzt.",
+      navLabel: "Bereiche", navOverview: "Überblick", navChanges: "Neu seit letztem Stand", navFam: "Produktfamilien", navCust: "Kunden", navMore: "Mehr",
+      navGroups: { act: "Handeln", stock: "Bestand", trend: "Entwicklung", ka: "Key Account" },
+      navShort: { overview: "Überblick", late: "Überfällig", imm: "Sofort", fam: "Familien" },
+      navSince: d => `seit ${d}`,
+      filterBarLabel: "Filter für alle Seiten", famFilterLabel: "Produktfamilie", famFilterAll: "Alle Produktfamilien",
+      phLate: v => `${v} überfällig`, phImm: v => `${v} Sofortbedarf`, phFamSub: n => `${pl(n, "Produktfamilie", "Produktfamilien")} mit offenem Bestand. Klick auf eine Familie: Modelle, Größen, Positionen.`,
+      phCustSub: (n, h) => `${pl(n, "Kunde", "Kunden")} mit offenen Aufträgen · HHI ${h}`,
+      todoTitle: "Heute zu tun", todoNote: "größte Posten zuerst",
+      todoLate: d => `${d} Tage überfällig`, todoImm: d => `Sofort · wartet ${d} Tage`,
+      todoEmpty: "Nichts überfällig, kein Sofortbedarf, keine Auslauf-Artikel."
     },
     en: {
       drillHint: "Tip: bars, customers and order numbers are clickable.",
@@ -589,7 +599,7 @@
       vwDialogTitle: "Save current view", vwName: "View name", vwSaveBtn: "Save", vwCancel: "Cancel",
       vwSaved: n => `View “${n}” saved.`, vwDeleted: n => `View “${n}” deleted.`,
       vwDefaultSet: n => `“${n}” is now the default view and applies after every file load.`, vwCurrent: "Current view",
-      askLabel: "Ask the dashboard", askPlaceholder: "Ask, e.g. “overdue by month”", askClose: "Close answer",
+      askLabel: "Ask the dashboard", askPlaceholder: "Ask a question …", askClose: "Close answer",
       askNoData: "Upload today's file first.",
       askUnknown: "I can't answer that question. Try for example:",
       askHelp: "Ask about overdue lines, immediate demand, customers, product families, due dates, orders or changes, for example:",
@@ -615,7 +625,17 @@
       aOrder: (o, c, v, n, l, q) => `Order ${o} (${c}): ${v} open in ${pl(n, "line", "lines")}, ${l} of them overdue, ${q} delivered.`,
       aOrderNone: o => `Order ${o} is not in the current file.`,
       aSc: (c, v, l) => `Scorecard ${c}: ${v} open, of which ${l} overdue.`,
-      aReset: "All filters cleared."
+      aReset: "All filters cleared.",
+      navLabel: "Sections", navOverview: "Overview", navChanges: "New since last upload", navFam: "Product families", navCust: "Customers", navMore: "More",
+      navGroups: { act: "Act", stock: "Backlog", trend: "Trend", ka: "Key account" },
+      navShort: { overview: "Overview", late: "Overdue", imm: "ASAP", fam: "Families" },
+      navSince: d => `since ${d}`,
+      filterBarLabel: "Filters for all pages", famFilterLabel: "Product family", famFilterAll: "All product families",
+      phLate: v => `${v} overdue`, phImm: v => `${v} immediate demand`, phFamSub: n => `${pl(n, "product family", "product families")} with open backlog. Click a family for models, sizes and lines.`,
+      phCustSub: (n, h) => `${pl(n, "customer", "customers")} with open orders · HHI ${h}`,
+      todoTitle: "To do today", todoNote: "largest first",
+      todoLate: d => `${d} days overdue`, todoImm: d => `ASAP · waiting ${d} days`,
+      todoEmpty: "Nothing overdue, no immediate demand, no phase-out articles."
     }
   };
 
@@ -1731,7 +1751,12 @@
 
   // ------------------------------------------------------------- render
   let DATA = null;
-  let VIEW = { customer: null, period: null, order: null, sc: null, btb: false, family: null, model: null, size: null, variant: null, lateMonth: null, chg: false };
+  let VIEW = { customer: null, period: null, order: null, sc: null, btb: false, family: null, model: null, size: null, variant: null, lateMonth: null, chg: false, page: null };
+  // Pages of the sidebar layout. The order drawer, scorecard, book-to-bill and changes stay overlays.
+  const PAGES = ["overview", "late", "imm", "fam", "cust", "horizon", "outlook"];
+  // A page follows from the period when the URL names none: late → Überfällig, undated → Sofortbedarf, a month → Auftragshorizont.
+  const derivePage = period => period === "late" ? "late" : period === "undated" ? "imm" : period ? "horizon" : "overview";
+  let NAV_OPEN = false, LAST_OUTLOOK = null;
   // Panel toggles: customer/family tab, late list/matrix, matrix unit, Sofortbedarf grouping.
   let SHARE_TAB = "cust", LATE_TAB = "list", MATRIX_UNIT = "eur", UND_GROUP = "fam", FAM_ALL = false;
   let TABLE_ALL = false, WATCH_OPEN = null, WATCH_ALL = false;
@@ -1802,7 +1827,15 @@
     const variant = (v.variant === "pdt" || v.variant === "nopdt") && hasPdtVariants(lines) ? v.variant : null;
     const lateMonth = period === "late" && /^\d{4}-(0[1-9]|1[0-2])$/.test(v.lateMonth || "") ? v.lateMonth : null;
     const chg = !!v.chg;
-    return { customer, period, order, sc, btb, family, model, size, variant, lateMonth, chg };
+    // Page and period agree: the late and Sofortbedarf pages are their periods, a month period lives on the horizon page.
+    // The period decides: late → Überfällig (or the horizon page), undated → Sofortbedarf, a month → horizon;
+    // without a period the late and Sofortbedarf pages fall back to the overview.
+    let page = PAGES.includes(v.page) ? v.page : null;
+    if (period === "late") { if (page !== "horizon") page = "late"; }
+    else if (period === "undated") page = "imm";
+    else if (period) page = "horizon";
+    else if (page === "late" || page === "imm") page = null;
+    return { customer, period, order, sc, btb, family, model, size, variant, lateMonth, chg, page: page || "overview" };
   }
 
   function readHash() {
@@ -1814,14 +1847,14 @@
       sc: params.get("sc"),
       btb: params.get("btb") === "1" || params.get("btb") === "true",
       family: params.get("f"), model: params.get("m"), size: params.get("s"), variant: params.get("v"),
-      lateMonth: params.get("lm"), chg: params.get("chg") === "1"
+      lateMonth: params.get("lm"), chg: params.get("chg") === "1", page: params.get("pg")
     };
   }
 
   function applyView(changes, navigation = "auto") {
     const old = VIEW;
     VIEW = validateView({ ...VIEW, ...changes });
-    const filterChanged = ["customer", "period", "family", "model", "size", "variant", "lateMonth"].some(k => old[k] !== VIEW[k]);
+    const filterChanged = ["customer", "period", "family", "model", "size", "variant", "lateMonth", "page"].some(k => old[k] !== VIEW[k]);
     const scChanged = old.sc !== VIEW.sc;
     const btbChanged = old.btb !== VIEW.btb;
     if (filterChanged) { TABLE_ALL = false; WATCH_OPEN = null; WATCH_ALL = false; }
@@ -1837,6 +1870,7 @@
     if (VIEW.variant) params.set("v", VIEW.variant);
     if (VIEW.lateMonth) params.set("lm", VIEW.lateMonth);
     if (VIEW.chg) params.set("chg", "1");
+    if (VIEW.page && VIEW.page !== derivePage(VIEW.period)) params.set("pg", VIEW.page);
     const hash = params.toString().replace(/\+/g, "%20");
     const url = location.pathname + location.search + (hash ? "#" + hash : "");
     if (navigation !== "pop") {
@@ -1867,8 +1901,8 @@
   // ------------------------------------------------------------- saved views
   // A view = VIEW filters plus the panel toggles. Built-ins can't be deleted; user views live in dopk.views.v1,
   // the default (built-in id, user id or a plain state) in dopk.defaultview.v1.
-  const VIEW_KEYS = ["customer", "period", "family", "model", "size", "variant", "lateMonth"];
-  const HASH_KEYS = ["c", "p", "o", "sc", "btb", "f", "m", "s", "v", "lm", "chg"];
+  const VIEW_KEYS = ["customer", "period", "family", "model", "size", "variant", "lateMonth", "page"];
+  const HASH_KEYS = ["c", "p", "o", "sc", "btb", "f", "m", "s", "v", "lm", "chg", "pg"];
   let CURRENT_VIEW = "";
   const viewState = () => ({ ...Object.fromEntries(VIEW_KEYS.map(k => [k, VIEW[k] || null])), toggles: { share: SHARE_TAB, late: LATE_TAB, unit: MATRIX_UNIT, und: UND_GROUP } });
   const blankView = (over = {}, toggles = {}) => ({ ...Object.fromEntries(VIEW_KEYS.map(k => [k, null])), ...over, toggles: { share: "cust", late: "list", unit: "eur", und: "fam", ...toggles } });
@@ -1876,11 +1910,11 @@
     const ka = DATA ? getKeyAccounts(DATA.lines)[0] : null;
     const kaCust = ka ? DATA.lines.find(l => String(l.custId) === String(ka.id))?.cust : null;
     return [
-      { id: "b:overview", name: T("vwOverview"), state: blankView() },
-      { id: "b:late-month", name: T("vwLateMonth"), state: blankView({ period: "late" }, { late: "month" }) },
-      { id: "b:immediate", name: T("vwImmediate"), state: blankView({ period: "undated" }) },
-      { id: "b:families", name: T("vwFamilies"), state: blankView({}, { share: "fam" }) },
-      { id: "b:ka-late", name: T("vwKaLate") + (ka ? ` (${ka.label})` : ""), state: blankView({ customer: kaCust || null, period: "late" }) },
+      { id: "b:overview", name: T("vwOverview"), state: blankView({ page: "overview" }) },
+      { id: "b:late-month", name: T("vwLateMonth"), state: blankView({ period: "late", page: "late" }, { late: "month" }) },
+      { id: "b:immediate", name: T("vwImmediate"), state: blankView({ period: "undated", page: "imm" }) },
+      { id: "b:families", name: T("vwFamilies"), state: blankView({ page: "fam" }, { share: "fam" }) },
+      { id: "b:ka-late", name: T("vwKaLate") + (ka ? ` (${ka.label})` : ""), state: blankView({ customer: kaCust || null, period: "late", page: "late" }) },
       { id: "b:changes", name: T("vwChanges"), changes: true }
     ];
   }
@@ -2122,6 +2156,7 @@
     renderSharePanel(VIEW.customer ? compute(lines, rd, VIEW, { ignore: "customer" }) : m, VIEW.family ? compute(lines, rd, VIEW, { ignore: "family" }) : m);
     renderLate(m, rd);
     renderWatch(m, cmp, prev);
+    renderPageChrome(m, rd, { btbMain, lateLvl, otLvl, prev });
     renderScorecardSheet();
     renderOrderDrawer();
     renderBtbSheet();
@@ -2135,6 +2170,7 @@
 
   function renderOutlook(outlook, rd) {
     const el = $("#outlook");
+    LAST_OUTLOOK = outlook;
     if (!el) return;
 
     const val30 = outlook.calibrated ? outlook.d30.expected : outlook.d30.plan;
@@ -2299,8 +2335,7 @@
   // Families tab: ignores the family filter itself (cross-filter), honours customer, period and variant.
   function renderFamilies(m) {
     const rd = DATA.reportDate;
-    const variantCtl = hasPdtVariants(DATA.lines)
-      ? `<div class="fam-tools">${segmented(T("variantLabel"), "variant", [["", T("variantAll")], ["pdt", T("variantPdt")], ["nopdt", T("variantNoPdt")]], VIEW.variant || "", "segmented--small")}</div>` : "";
+    const variantCtl = "";   // the PDT filter lives in the filter bar for all pages
     if (!FAMILIES) { $("#share-fam").innerHTML = variantCtl + famEmptyHTML() + otherWarnHTML(m.open); return; }
     const all = aggregate(m.open, famKey, rd).filter(e => e.val > 0 || e.qty > 0).sort(byValueOtherLast);
     const max = RULES.families?.maxRows ?? 8;
@@ -2455,6 +2490,101 @@
   const naturalSort = (a, b) => ((a.key === NONE) - (b.key === NONE)) || String(a.key).localeCompare(String(b.key), LOC(), { numeric: true });
   const lateHead = cells => { $("#late-head").innerHTML = `<tr>${cells.map(([t, num, id]) => `<th${id ? ` id="${id}"` : ""}${num ? ' class="num"' : ""}>${esc(t)}</th>`).join("")}</tr>`; };
   const moreLink = (list, rows) => list.length > rows.length ? TABLE_ALL ? `<span class="panel-note">${T("fullExport")}</span>` : `<button type="button" class="text-action" data-action="table-all">${tf("showAll", list.length)}</button>` : "";
+
+  // ------------------------------------------------------------- page chrome: sidebar, page head, filter bar, to-do list
+  const worst = levels => ["high", "med", "low", "clear"].find(x => levels.includes(x)) || "none";
+  const navBtn = (value, label, lvl, badge, active, extra = "") =>
+    `<button type="button" class="nav-item${active ? " is-active" : ""}" data-action="nav" data-value="${esc(value)}"${active ? ' aria-current="page"' : ""}${extra}>` +
+    `<span class="nav-dot nav-dot--${lvl}" aria-hidden="true"></span><span class="nav-label">${esc(label)}</span>${badge ? `<span class="nav-badge">${esc(badge)}</span>` : ""}</button>`;
+
+  function renderPageChrome(m, rd, ctx) {
+    const page = VIEW.page || "overview", lines = DATA.lines, hist = store.get(LS_HISTORY, { snaps: {} });
+    // Sidebar figures follow the filters (customer, family, PDT) but not the period.
+    const mn = VIEW.period ? compute(lines, rd, VIEW, { ignore: ["period", "lateMonth"] }) : m;
+    const lateLvl = level(mn.latePct, RULES.overduePct), imm = mn.immediate;
+    const hhiLvl = mn.hhi > 2500 ? "high" : mn.hhi > 1500 ? "med" : "clear";
+    const famCount = FAMILIES ? aggregate(mn.open, famKey, rd).filter(e => e.key !== OTHER && (e.val > 0 || e.qty > 0)).length : 0;
+    const otherVal = sum(mn.open.filter(l => famKey(l) === OTHER), l => l.val);
+    const famLvl = !FAMILIES ? "none" : mn.openVal && otherVal / mn.openVal * 100 > (RULES.families?.otherWarnPct ?? 15) ? "med" : "clear";
+    const prev = previous(hist, rd);
+    const keyAccs = getKeyAccounts(lines);
+    const groups = [
+      ["act", [navBtn("late", T("vLate"), lateLvl, mn.lateVal > 0 ? eur(mn.lateVal) : "", page === "late"),
+        navBtn("imm", T("vUnd"), imm.level, imm.val > 0 ? eur(imm.val) : "", page === "imm"),
+        navBtn("changes", T("navChanges"), prev ? "low" : "none", prev ? tf("navSince", fmtDate(parseDate(prev.date)).slice(0, 6)) : "", false, ' aria-haspopup="dialog"')]],
+      ["stock", [navBtn("fam", T("navFam"), famLvl, FAMILIES ? String(famCount) : "", page === "fam"),
+        navBtn("cust", T("navCust"), hhiLvl, mn.custs[0] && mn.openVal ? pct(mn.custs[0].val / mn.openVal * 100, 0) : "", page === "cust"),
+        navBtn("horizon", T("horizonTitle"), mn.dropIdx >= 0 ? "med" : "low", "", page === "horizon")]],
+      ["trend", [navBtn("outlook", T("outlookTitle"), LAST_OUTLOOK?.monthLanding?.target ? LAST_OUTLOOK.monthLanding.targetLevel : "low", LAST_OUTLOOK ? eur(LAST_OUTLOOK.monthLanding.landing) : "", page === "outlook"),
+        navBtn("btb", T("vIn"), ctx.btbMain.level, eur(ctx.btbMain.currentIntake), false, ' aria-haspopup="dialog"')]],
+      ["ka", keyAccs.map(a => { const acc = computeAccount(lines, rd, a.id, hist); return navBtn("sc:" + a.id, acc.account.label, acc.overallLevel, eur(acc.openVal), false, ' aria-haspopup="dialog"'); })]
+    ];
+    $("#sb-nav").innerHTML = `<div class="nav-group">${navBtn("overview", T("navOverview"), worst([lateLvl, imm.level, ctx.otLvl]), "", page === "overview")}</div>` +
+      groups.filter(([, items]) => items.length).map(([g, items]) => `<div class="nav-group" role="group" aria-label="${esc(T("navGroups")[g])}"><span class="nav-group-label" aria-hidden="true">${esc(T("navGroups")[g])}</span>${items.join("")}</div>`).join("");
+    $("#sidebar").classList.toggle("nav-open", NAV_OPEN);
+    // phone: bottom bar with the four main pages and "Mehr"
+    const mob = (value, label, lvl, active) => `<button type="button" class="mob-item${active ? " is-active" : ""}" data-action="nav" data-value="${value}"${active ? ' aria-current="page"' : ""}><span class="nav-dot nav-dot--${lvl}" aria-hidden="true"></span>${esc(label)}</button>`;
+    const sh = T("navShort");
+    $("#mobile-nav").innerHTML = mob("overview", sh.overview, worst([lateLvl, imm.level, ctx.otLvl]), page === "overview") + mob("late", sh.late, lateLvl, page === "late") +
+      mob("imm", sh.imm, imm.level, page === "imm") + mob("fam", sh.fam, famLvl, page === "fam") +
+      `<button type="button" class="mob-item${NAV_OPEN ? " is-active" : ""}" data-action="nav" data-value="more" aria-expanded="${NAV_OPEN}" aria-controls="sb-nav"><span class="nav-dot nav-dot--none" aria-hidden="true"></span>${esc(T("navMore"))}</button>`;
+
+    // which sections this page shows
+    $("#app").dataset.page = page;
+    document.querySelectorAll("#app [data-pages]").forEach(el => {
+      let on = el.dataset.pages.split(" ").includes(page);
+      if (el.id === "late-panel" && page === "fam" && !VIEW.family) on = false;
+      el.classList.toggle("off-page", !on);
+    });
+
+    // page head for every page but the overview
+    const head = $("#page-head");
+    const ph = (title, sub, lvl) => `${lvl && T("chips")[lvl] ? chipHTML(lvl) : ""}<h1>${esc(title)}</h1>${sub ? `<p>${esc(sub)}</p>` : ""}`;
+    head.innerHTML = page === "late" ? ph(tf("phLate", eur(mn.lateVal)), tf("sLate", pct(mn.latePct), mn.late.length), lateLvl)
+      : page === "imm" ? ph(tf("phImm", eur(imm.val)), (imm.n ? tf("sImm", imm.n, fmtQty(imm.qty), Math.round(imm.waitAvg), imm.waitMax) + " · " : "") + T("immSubtitle"), imm.level)
+      : page === "fam" ? ph(T("navFam"), FAMILIES ? tf("phFamSub", famCount) : T("famEmpty"), null)
+      : page === "cust" ? ph(T("navCust"), tf("phCustSub", mn.custs.length, nf(Math.round(mn.hhi))), hhiLvl)
+      : page === "horizon" ? ph(T("horizonTitle"), $("#horizon-note")?.textContent || "", null)
+      : page === "outlook" ? ph(T("outlookTitle"), $("#outlook-subtitle")?.textContent || "", null) : "";
+
+    renderFilterBar();
+    renderTodo(mn, rd);
+  }
+
+  // Filter bar: customer (existing select), product family and PDT apply on every page.
+  function renderFilterBar() {
+    const sel = $("#family-filter");
+    if (sel) {
+      const fams = FAMILIES ? aggregate(DATA.lines.filter(l => !l.shipped), famKey, DATA.reportDate).filter(e => e.key !== OTHER).sort((a, b) => b.val - a.val) : [];
+      const hasOther = DATA.lines.some(l => !l.shipped && famKey(l) === OTHER);
+      sel.hidden = !FAMILIES;
+      sel.innerHTML = `<option value="">${esc(T("famFilterAll"))}</option>` + fams.map(e => `<option value="${esc(e.key)}">${esc(e.key)}</option>`).join("") +
+        (FAMILIES && hasOther ? `<option value="${OTHER}">${esc(T("famOther"))}</option>` : "");
+      sel.value = VIEW.family || "";
+    }
+    $("#topbar-pdt").innerHTML = hasPdtVariants(DATA.lines)
+      ? segmented(T("variantLabel"), "variant", [["", T("variantAll")], ["pdt", T("variantPdt")], ["nopdt", T("variantNoPdt")]], VIEW.variant || "", "segmented--small") : "";
+  }
+
+  // "Heute zu tun": the largest open problems across overdue, Sofortbedarf and phase-out articles.
+  function renderTodo(mn, rd) {
+    const seen = new Set(), items = [];
+    mn.open.forEach(l => {
+      if (seen.has(l)) return;
+      let reason = null, kind = null;
+      if (l.due && l.due < rd) { reason = tf("todoLate", daysBetween(rd, l.due)); kind = "late"; }
+      else if (!l.due) { reason = tf("todoImm", l.date ? Math.max(0, daysBetween(rd, l.date)) : 0); kind = "imm"; }
+      else if (DISCONTINUED.test(l.artStatus)) { reason = T("outChip"); kind = "late"; }
+      else if (PHASE_OUT.test(l.artStatus)) { reason = tf("phaseOutChip", l.successor); kind = "imm"; }
+      if (reason && l.val > 0) { seen.add(l); items.push({ l, reason, kind }); }
+    });
+    items.sort((a, b) => b.l.val - a.l.val);
+    $("#todo-list").innerHTML = items.length ? items.slice(0, 5).map(({ l, reason, kind }) =>
+      `<li>${orderButton(l)}<span class="todo-what" title="${esc(l.art + " · " + l.desc)}">${esc(l.desc)} · ${esc(l.short)}</span><span class="todo-why todo-why--${kind}">${esc(reason)}</span><span class="todo-val">${eurFull(l.val)}</span></li>`).join("")
+      : `<li class="todo-empty">${esc(T("todoEmpty"))}</li>`;
+    $("#todo-title").textContent = T("todoTitle");
+    $("#todo-note").textContent = T("todoNote");
+  }
 
   // Family drill-down: models of the family, sizes of a model, then the order lines of a size.
   function renderDrill(mode, m, rd) {
@@ -3491,12 +3621,15 @@
     } else if (intent === "fam" || intent === "other") { SHARE_TAB = "fam"; store.set(LS_SHARETAB, SHARE_TAB); }
     else if (intent === "cust") { SHARE_TAB = "cust"; store.set(LS_SHARETAB, SHARE_TAB); }
     else if (intent === "help" || intent === "unknown") changes = null;
+    // the page that shows the answer (overlays — order, changes, intake, scorecard — keep the current page)
+    const pageFor = { late: "late", imm: "imm", due: "horizon", fam: "fam", other: "fam", cust: "cust", outlook: "outlook", open: "overview", ship: "overview", reset: "overview", phase: "overview" };
+    if (changes && pageFor[intent]) changes.page = pageFor[intent];
     if (changes) applyView(changes, "push");
     if (intent === "phase") { WATCH_OPEN = "phaseout"; WATCH_ALL = false; applyView({}); }
     if (ASK_FOLLOW.includes(intent)) ASK_LAST = intent;
     ASK = { intent, ...extra, key: askKey() };
     renderAsk();
-    if (intent === "outlook") $("#outlook")?.scrollIntoView({ block: "start" });
+    if (pageFor[intent]) window.scrollTo({ top: 0 });
     return ASK;
   }
 
@@ -3608,8 +3741,8 @@
     if (action === "customer") applyView({ customer: VIEW.customer === value ? null : value });
     else if (action === "period") applyView({ period: VIEW.period === value ? null : value });
     else if (action === "remove-customer") applyView({ customer: null });
-    else if (action === "remove-period") applyView({ period: null });
-    else if (action === "reset") applyView({ customer: null, period: null, order: null, sc: null, btb: false, family: null, model: null, size: null, variant: null, lateMonth: null, chg: false });
+    else if (action === "remove-period") applyView({ period: null, lateMonth: null, page: "overview" });
+    else if (action === "reset") applyView({ customer: null, period: null, order: null, sc: null, btb: false, family: null, model: null, size: null, variant: null, lateMonth: null, chg: false, page: "overview" });
     else if (action === "order") { DRAWER_RETURN = target; applyView({ order: value }); }
     else if (action === "close-order") applyView({ order: null });
     else if (action === "scorecard") {
@@ -3645,10 +3778,29 @@
     else if (action === "matrix-month") applyView(VIEW.period === "late" && VIEW.lateMonth === value && !VIEW.family ? { lateMonth: null } : { period: "late", lateMonth: value, family: null, model: null, size: null });
     else if (action === "matrix-family") applyView(VIEW.period === "late" && VIEW.family === value && !VIEW.lateMonth ? { family: null, model: null, size: null } : { period: "late", family: value, model: null, size: null, lateMonth: null });
     else if (action === "und-group") { UND_GROUP = value === "cust" ? "cust" : "fam"; applyView({}); }
+    else if (action === "nav") {
+      if (value === "more") { NAV_OPEN = !NAV_OPEN; applyView({}); if (NAV_OPEN) $("#sidebar").scrollIntoView({ block: "start" }); return; }
+      NAV_OPEN = false;
+      if (value === "changes") { CHG_RETURN = target; applyView({ chg: true }); return; }
+      if (value === "btb") { BTB_RETURN = target; applyView({ btb: true }); return; }
+      if (value.startsWith("sc:")) { SCORECARD_RETURN = target; applyView({ sc: value.slice(3) }); return; }
+      const tab = value === "fam" ? { share: "fam" } : value === "cust" ? { share: "cust" } : null;
+      if (tab) { SHARE_TAB = tab.share; store.set(LS_SHARETAB, SHARE_TAB); }
+      const period = value === "late" ? "late" : value === "imm" ? "undated" : value === "horizon" && VIEW.period && VIEW.period !== "late" && VIEW.period !== "undated" ? VIEW.period : null;
+      applyView({ page: value, period, lateMonth: value === "late" ? VIEW.lateMonth : null });
+      window.scrollTo({ top: 0 });
+    }
     else if (action === "model") applyView({ model: VIEW.model === value ? null : value, size: null });
     else if (action === "size") applyView({ size: VIEW.size === value ? null : value });
-    else if (action === "share-tab") { SHARE_TAB = value === "fam" ? "fam" : "cust"; store.set(LS_SHARETAB, SHARE_TAB); applyView({}); }
-    else if (action === "family") { applyView({ family: VIEW.family === value ? null : value, model: null, size: null }); }
+    else if (action === "share-tab") {
+      SHARE_TAB = value === "fam" ? "fam" : "cust"; store.set(LS_SHARETAB, SHARE_TAB);
+      applyView(VIEW.page === "fam" || VIEW.page === "cust" ? { page: SHARE_TAB } : {});
+    }
+    else if (action === "family") {
+      const off = VIEW.family === value;
+      // a family picked in the families list opens the families page; inside the Sofortbedarf view it drills down there
+      applyView({ family: off ? null : value, model: null, size: null, ...(off || VIEW.page === "imm" ? {} : { page: "fam" }) });
+    }
     else if (action === "fam-all") { FAM_ALL = true; applyView({}); }
     else if (action === "variant") applyView({ variant: value || null });
     else if (action === "remove-family") applyView({ family: null, model: null, size: null });
@@ -3841,6 +3993,7 @@
     renderFamiliesFoot();
     $("#filter").addEventListener("change", e => applyView({ customer: e.target.value === "__all" ? null : e.target.value }));
     $("#view-select")?.addEventListener("change", e => onViewSelect(e.target.value));
+    $("#family-filter")?.addEventListener("change", e => applyView({ family: e.target.value || null, model: null, size: null }));
     $("#ask-form")?.addEventListener("submit", e => { e.preventDefault(); askQuestion($("#ask-input").value); });
     $("#ask-input")?.addEventListener("keydown", e => { if (e.key === "Escape" && (e.target.value || ASK)) { e.preventDefault(); e.target.value = ""; ASK = null; renderAsk(); } });
     const viewDlg = $("#view-dialog");
