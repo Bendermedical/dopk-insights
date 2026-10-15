@@ -238,6 +238,23 @@ table.matrix tbody tr:hover { background: transparent; }
 .ask { margin: 0; }
 .ask input { box-sizing: border-box; width: 100%; font: inherit; font-size: var(--fs-sm); padding: 9px 12px; border: 1px solid var(--rule); border-radius: var(--r-control); background: var(--surface); color: var(--ink); }
 .ask input::placeholder { color: var(--ink-faint); }
+/* ---- AI assistant: conversation panel at the top of the page ---------- */
+.assistant { margin-top: var(--s4); padding: var(--s4) var(--s5); background: var(--surface); border-top: 2px solid var(--alarm-low); border-bottom: var(--rule-section); }
+.asst-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--s3); flex-wrap: wrap; }
+.asst-head h2 { margin: 0; font-size: var(--fs-lg); }
+.asst-note { margin: var(--s1) 0 0; font-size: var(--fs-xs); color: var(--ink-muted); }
+.asst-actions { display: flex; gap: var(--s2); }
+.asst-log { list-style: none; margin: var(--s3) 0 0; padding: 0; max-height: 50vh; overflow-y: auto; }
+.asst-turn { padding: var(--s3) 0; border-top: 1px solid var(--rule-soft); }
+.asst-q { margin: 0; font-weight: var(--fw-bold); }
+.asst-a { margin-top: var(--s2); font-size: var(--fs-md); line-height: var(--lh-body); }
+.asst-a p { margin: 0 0 var(--s2); }
+.asst-a ul { margin: 0 0 var(--s2); padding-left: 1.2em; }
+.asst-a--error, .asst-a--refusal { color: var(--ink-muted); }
+.asst-busy { color: var(--ink-muted); }
+.asst-view { font-size: var(--fs-xs); color: var(--ink-muted); }
+.asst-form { display: flex; gap: var(--s2); margin-top: var(--s3); }
+.asst-form input { flex: 1 1 auto; min-width: 0; font: inherit; font-size: var(--fs-md); padding: 9px 12px; border: 1px solid var(--rule); border-radius: var(--r-control); background: var(--surface); color: var(--ink); }
 .ask-answer .ask-body { min-width: 0; }
 .ask-answer .ask-text { margin: 0; font-size: var(--fs-md); color: var(--ink); }
 .ask-answer .ask-examples { margin: var(--s1) 0 0; font-size: var(--fs-sm); color: var(--ink-muted); }

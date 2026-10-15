@@ -350,7 +350,16 @@
       phCustSub: (n, h) => `${pl(n, "Kunde", "Kunden")} mit offenen Aufträgen · HHI ${h}`,
       todoTitle: "Heute zu tun", todoNote: "größte Posten zuerst",
       todoLate: d => `${d} Tage überfällig`, todoImm: d => `Sofort · wartet ${d} Tage`,
-      todoEmpty: "Nichts überfällig, kein Sofortbedarf, keine Auslauf-Artikel."
+      todoEmpty: "Nichts überfällig, kein Sofortbedarf, keine Auslauf-Artikel.",
+      asstTitle: "Assistent", asstNote: "KI-Antworten aus den Zahlen dieses Dashboards · Kunden werden anonymisiert übertragen",
+      asstNew: "Neues Gespräch", asstClose: "Schließen", asstFollow: "Nachfrage stellen …", asstFollowLabel: "Nachfrage an den Assistenten", asstSend: "Senden",
+      asstBusy: "Einen Moment, ich sehe in den Zahlen nach …", askPlaceholderAI: "Frage an den Assistenten …",
+      asstError: "Der KI-Assistent ist gerade nicht erreichbar. Antwort aus den festen Fragetypen:",
+      asstRateLimited: "Gerade kommen zu viele Anfragen an. Bitte gleich noch einmal versuchen.",
+      asstRefusal: "Darauf kann ich keine Antwort geben. Bitte die Frage anders stellen.",
+      asstTruncated: "Die Antwort war zu lang und wurde abgebrochen. Bitte die Frage enger stellen.",
+      asstTooLong: "Das Gespräch ist sehr lang geworden. Bitte ein neues Gespräch beginnen.",
+      asstViewOpened: v => `Ansicht geöffnet: ${v}`, asstYou: "Frage", asstAnswer: "Antwort"
     },
     en: {
       drillHint: "Tip: bars, customers and order numbers are clickable.",
@@ -635,7 +644,16 @@
       phCustSub: (n, h) => `${pl(n, "customer", "customers")} with open orders · HHI ${h}`,
       todoTitle: "To do today", todoNote: "largest first",
       todoLate: d => `${d} days overdue`, todoImm: d => `ASAP · waiting ${d} days`,
-      todoEmpty: "Nothing overdue, no immediate demand, no phase-out articles."
+      todoEmpty: "Nothing overdue, no immediate demand, no phase-out articles.",
+      asstTitle: "Assistant", asstNote: "AI answers from this dashboard's figures · customers are sent pseudonymised",
+      asstNew: "New conversation", asstClose: "Close", asstFollow: "Ask a follow-up …", asstFollowLabel: "Follow-up question to the assistant", asstSend: "Send",
+      asstBusy: "One moment, checking the figures …", askPlaceholderAI: "Ask the assistant …",
+      asstError: "The AI assistant is not reachable right now. Answer from the fixed question types:",
+      asstRateLimited: "Too many requests right now. Please try again in a moment.",
+      asstRefusal: "I can't answer that. Please rephrase the question.",
+      asstTruncated: "The answer got too long and was cut off. Please ask a narrower question.",
+      asstTooLong: "This conversation has become very long. Please start a new one.",
+      asstViewOpened: v => `View opened: ${v}`, asstYou: "Question", asstAnswer: "Answer"
     }
   };
 
@@ -2163,6 +2181,7 @@
     renderChangesSheet();
     fillViewSelect();
     renderAsk();
+    renderAssistant();
     $("#foot-file").textContent = `${DATA.fileName || "DOPK export"} · ${tf("linesRead", lines.length)}`;
     renderFamiliesFoot();
     $("#app").hidden = false; $("#empty").hidden = true;
@@ -3729,6 +3748,269 @@
       `</div><button type="button" class="btn btn--quiet" data-action="ask-close">${esc(T("askClose"))}</button>`;
   }
 
+  // ------------------------------------------------------------- AI assistant (phase 2)
+  // The conversation runs through the server function /api/assistant (Claude API). Claude sees only the
+  // question and the small results of the tools below, which run here on the uploaded file. Customers are
+  // pseudonymised ("Kunde A" = largest by open value); unit prices and line values are never sent.
+  // Without the server function (local server, GitHub Pages) the search field keeps the phase-1 answers.
+  const ASSIST = { available: false, conv: [], turns: [], busy: false, open: false, names: null };
+  const ASSIST_MAX_MESSAGES = 50, ASSIST_MAX_ROUNDS = 6;
+  const transport = () => window.DOPK_ASSISTANT_TRANSPORT || (async messages => {
+    const r = await fetch("/api/assistant", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ messages }) });
+    if (!r.ok) { const e = new Error("assistant"); e.code = (await r.json().catch(() => ({}))).error || "unavailable"; throw e; }
+    return r.json();
+  });
+  async function probeAssistant() {
+    if (window.DOPK_ASSISTANT_TRANSPORT) { setAssistantAvailable(true); return; }
+    if (window.DOPK_FIXTURE || location.protocol === "file:") return;
+    try { const r = await fetch("/api/assistant", { method: "GET" }); if (r.ok && (await r.json()).enabled) setAssistantAvailable(true); } catch (e) {}
+  }
+  function setAssistantAvailable(on) {
+    ASSIST.available = on;
+    const input = $("#ask-input");
+    if (input) { input.dataset.i18nPlaceholder = on ? "askPlaceholderAI" : "askPlaceholder"; input.placeholder = T(input.dataset.i18nPlaceholder); }
+  }
+
+  // Customer pseudonyms: "Kunde A", "Kunde B", … by open value; rebuilt for each file.
+  function assistantNames() {
+    if (ASSIST.names && ASSIST.names.data === DATA) return ASSIST.names;
+    const val = new Map();
+    DATA.lines.forEach(l => val.set(l.cust, (val.get(l.cust) || 0) + (l.shipped ? 0 : l.val)));
+    const custs = [...val.entries()].sort((a, b) => b[1] - a[1]).map(([c]) => c);
+    const letters = i => (i >= 26 ? String.fromCharCode(64 + Math.floor(i / 26)) : "") + String.fromCharCode(65 + i % 26);
+    const byName = new Map(), byLabel = new Map();
+    custs.forEach((c, i) => { const label = `Kunde ${letters(i)}`; byName.set(c, label); byLabel.set(label, c); });
+    return (ASSIST.names = { data: DATA, byName, byLabel });
+  }
+  const pseudoOf = cust => assistantNames().byName.get(cust) || "Kunde ?";
+  const reEsc = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  // Outgoing question: replace customer names, distinctive name words and customer numbers by the pseudonym.
+  function pseudonymiseText(text) {
+    const { byName } = assistantNames();
+    const words = new Map(), seen = new Map();
+    byName.forEach((label, cust) => {
+      [shortName(cust), cust].forEach(n => words.set(n, label));
+      normQ(shortName(cust)).split(" ").forEach(w => { if (w.length >= 3 && !ASK_GENERIC.has(w)) seen.set(w, seen.has(w) && seen.get(w) !== label ? null : label); });
+      const id = DATA.lines.find(l => l.cust === cust)?.custId;
+      if (id != null && String(id).length >= 3) words.set(String(id), label);
+    });
+    let out = String(text);
+    [...words.keys()].sort((a, b) => b.length - a.length).forEach(n => { out = out.replace(new RegExp(`(?<![\\p{L}\\p{N}])${reEsc(n)}(?![\\p{L}\\p{N}])`, "giu"), words.get(n)); });
+    // single distinctive words, matched on the normalised spelling (umlauts optional)
+    return out.split(/(\s+)/).map(tok => { const key = normQ(tok); const label = seen.get(key); return label ? tok.replace(/[\p{L}\p{N}-]+/u, label) : tok; }).join("");
+  }
+  // Incoming answer: pseudonyms back to the short customer names the reader knows.
+  function depseudonymise(text) {
+    const { byLabel } = assistantNames();
+    return String(text).replace(/\b(?:Kunde|Customer)\s([A-Z]{1,2})\b/g, (m, k) => { const c = byLabel.get(`Kunde ${k}`); return c ? shortName(c) : m; });
+  }
+
+  // ---- the tools Claude can call; they run here and return aggregates only
+  const rnd = v => Math.round(v);
+  function toolView(f = {}) {
+    const { byLabel } = assistantNames();
+    const v = { customer: null, family: null, model: null, size: null, variant: null, period: null, lateMonth: null };
+    if (f.customer) { v.customer = byLabel.get(String(f.customer).replace(/^Customer /, "Kunde ")); if (!v.customer) throw new Error(`unknown customer label ${f.customer}`); }
+    if (f.family) { v.family = DATA.lines.some(l => famKey(l) === f.family) ? f.family : f.family === "Sonstige" || f.family === "Other" ? OTHER : null; if (!v.family) throw new Error(`unknown product family ${f.family}`); }
+    if (f.model && v.family) v.model = f.model;
+    if (f.variant === "pdt" || f.variant === "nopdt") v.variant = f.variant;
+    return v;
+  }
+  const famLabel = k => k === OTHER ? (FAMILIES ? "Sonstige (keiner Familie zugeordnet)" : "keine Zuordnung geladen") : k;
+  const groupOut = (lines, by, rd, n = 10) => {
+    const key = by === "customer" ? l => l.cust : by === "family" ? famKey : by === "month" ? l => monthKey(l.due) : null;
+    if (!key) return undefined;
+    return aggregate(lines, key, rd).sort((a, b) => b.val - a.val).slice(0, n).map(e => ({
+      [by]: by === "customer" ? pseudoOf(e.key) : by === "family" ? famLabel(e.key) : e.key, value_eur: rnd(e.val), lines: e.lines, quantity: e.qty
+    }));
+  };
+  const lineOut = (l, rd) => ({ order: String(l.order), article: l.art, family: famLabel(famKey(l)), model: l.model || null, size: l.size || null, customer: pseudoOf(l.cust), remaining_qty: l.rest });
+  function runAssistantTool(name, input = {}) {
+    const lines = DATA.lines, rd = DATA.reportDate, hist = store.get(LS_HISTORY, { snaps: {} });
+    const base = { report_date: iso(rd), currency: "EUR" };
+    switch (name) {
+      case "get_overview": {
+        const v = toolView(input.filters), m = compute(lines, rd, v), i = m.immediate;
+        return { ...base, open_eur: rnd(m.openVal), open_lines: m.openLines, open_orders: m.openOrders,
+          overdue_eur: rnd(m.lateVal), overdue_pct_of_open: +m.latePct.toFixed(1), overdue_lines: m.late.length,
+          immediate_demand: { value_eur: rnd(i.val), quantity: i.qty, lines: i.n, avg_wait_days_value_weighted: Math.round(i.waitAvg), oldest_wait_days: i.waitMax },
+          shipped_today: { value_eur: rnd(m.shippedVal), delivery_notes: m.notes, on_time_pct: m.onTimePct == null ? null : Math.round(m.onTimePct) },
+          order_intake_today: { value_eur: rnd(m.intakeVal), orders: m.intakeOrders },
+          due_next_7_days_eur: rnd(m.in7Val),
+          largest_customers: m.custs.slice(0, 5).map(c => ({ customer: pseudoOf(c.name), open_eur: rnd(c.val), share_pct: m.openVal ? +(c.val / m.openVal * 100).toFixed(1) : 0, overdue_eur: rnd(c.late) })),
+          product_families: FAMILIES ? groupOut(m.open, "family", rd, 8) : "no product-family mapping loaded",
+          delivery_months: m.months.slice(0, 8).map(x => ({ month: `${x.y}-${String(x.m + 1).padStart(2, "0")}`, value_eur: rnd(x.val), lines: x.n })) };
+      }
+      case "get_overdue": {
+        const v = toolView(input.filters);
+        const lm = /^\d{4}-\d{2}$/.test(input.month || "") ? input.month : null;
+        const late = compute(lines, rd, v).late.filter(l => !lm || monthKey(l.due) === lm);
+        return { ...base, month: lm, overdue_eur: rnd(sum(late, l => l.val)), lines: late.length, orders: uniq(late, l => l.order),
+          oldest_days_late: late.length ? Math.max(...late.map(l => daysBetween(rd, l.due))) : 0,
+          less_than_30_days_late_pct: late.length ? Math.round(sum(late.filter(l => daysBetween(rd, l.due) < 30), l => l.val) / Math.max(1, sum(late, l => l.val)) * 100) : null,
+          groups: input.group_by && input.group_by !== "none" ? groupOut(late, input.group_by, rd) : undefined,
+          largest_lines: [...late].sort((a, b) => b.val - a.val).slice(0, 10).map(l => ({ ...lineOut(l, rd), due: iso(l.due), days_late: daysBetween(rd, l.due) })) };
+      }
+      case "get_immediate_demand": {
+        const v = toolView(input.filters), und = compute(lines, rd, v).open.filter(l => !l.due), st = immediateStats(und, rd);
+        return { ...base, value_eur: rnd(st.val), quantity: st.qty, lines: st.n, orders: st.orders, avg_wait_days_value_weighted: Math.round(st.waitAvg), oldest_wait_days: st.waitMax,
+          alarm: st.level, groups: input.group_by && input.group_by !== "none" ? groupOut(und, input.group_by, rd) : undefined,
+          oldest_lines_first: [...und].sort(fifoSort).slice(0, 10).map(l => ({ ...lineOut(l, rd), order_date: l.date ? iso(l.date) : null, waiting_days: l.date ? Math.max(0, daysBetween(rd, l.date)) : null })) };
+      }
+      case "get_families": {
+        const v = toolView(input.filters), m = compute(lines, rd, v);
+        if (!FAMILIES) return { ...base, mapping_loaded: false, note: "No product-family mapping file is loaded; all lines count as unassigned." };
+        const all = aggregate(m.open, famKey, rd).sort(byValueOtherLast), other = all.find(e => e.key === OTHER);
+        return { ...base, mapping_loaded: true, open_eur: rnd(m.openVal), unassigned_pct_of_open: m.openVal ? Math.round((other?.val || 0) / m.openVal * 100) : 0,
+          families: all.filter(e => e.val > 0 || e.qty > 0).map(e => ({ family: famLabel(e.key), open_eur: rnd(e.val), quantity: e.qty, overdue_eur: rnd(e.late), immediate_demand_eur: rnd(e.imm), lines: e.lines,
+            phase_out_lines: e.list.filter(l => PHASE_OUT.test(l.artStatus) || DISCONTINUED.test(l.artStatus)).length })) };
+      }
+      case "get_customers": {
+        const v = toolView({ ...input.filters, customer: undefined }), m = compute(lines, rd, v);
+        return { ...base, open_eur: rnd(m.openVal), customers_with_open_orders: m.custs.length, hhi: Math.round(m.hhi),
+          concentration: m.hhi > 2500 ? "highly concentrated" : m.hhi > 1500 ? "moderately concentrated" : "diversified",
+          customers: m.custs.slice(0, 15).map(c => ({ customer: pseudoOf(c.name), open_eur: rnd(c.val), share_pct: m.openVal ? +(c.val / m.openVal * 100).toFixed(1) : 0, overdue_eur: rnd(c.late), lines: c.lines })) };
+      }
+      case "get_due_month": {
+        if (!/^\d{4}-\d{2}$/.test(input.month || "")) throw new Error("month must be YYYY-MM");
+        const v = toolView(input.filters), due = compute(lines, rd, v).open.filter(l => l.due && l.due >= rd && monthKey(l.due) === input.month);
+        return { ...base, month: input.month, value_eur: rnd(sum(due, l => l.val)), lines: due.length, orders: uniq(due, l => l.order),
+          by_family: FAMILIES ? groupOut(due, "family", rd, 8) : undefined, by_customer: groupOut(due, "customer", rd, 8) };
+      }
+      case "get_order": {
+        const ls = lines.filter(l => String(l.order) === String(input.order).trim());
+        if (!ls.length) return { ...base, order: String(input.order), found: false };
+        const open = ls.filter(l => !l.shipped);
+        return { ...base, order: String(input.order), found: true, customer: pseudoOf(ls[0].cust), order_date: ls[0].date ? iso(ls[0].date) : null,
+          open_eur: rnd(sum(open, l => l.val)), delivered_pct: ls.find(l => l.quote != null)?.quote ?? null,
+          lines: ls.map(l => ({ article: l.art, family: famLabel(famKey(l)), model: l.model || null, size: l.size || null, ordered_qty: l.qty, remaining_qty: l.rest,
+            due: l.due ? iso(l.due) : "immediate demand (no date)", days_late: l.due && l.due < rd ? daysBetween(rd, l.due) : 0, shipped_today: l.shipped,
+            status: DISCONTINUED.test(l.artStatus) ? "discontinued" : PHASE_OUT.test(l.artStatus) ? `phase-out, successor ${l.successor || "none"}` : null })) };
+      }
+      case "get_changes": {
+        const c = computeChanges(hist, DATA);
+        if (!c) return { ...base, available: false, note: "Only one uploaded file so far; changes are available from the second upload." };
+        return { ...base, available: true, since: iso(c.since), categories: c.cats.map(k => ({ category: k.key, lines: k.n, value_eur: rnd(k.val), quantity: k.qty,
+          examples: k.items.slice(0, 5).map(i => ({ order: String(i.order), article: i.art, customer: i.line ? pseudoOf(i.line.cust) : null })) })) };
+      }
+      case "get_outlook": {
+        const v = toolView(input.filters), product = { family: v.family, model: v.model, size: null, variant: v.variant }, productOn = !!(v.family || v.variant);
+        const o = computeOutlook(productOn ? lines.filter(l => matchesProduct(l, product)) : lines, rd, v.customer || "__all", hist, productOn ? product : null);
+        const win = d => ({ scheduled_eur: rnd(d.sched), overdue_catch_up_eur: rnd(d.catchUp), plan_eur: rnd(d.plan), expected_eur: d.expected == null ? null : rnd(d.expected) });
+        return { ...base, next_7_days: win(o.d7), next_30_days: win(o.d30), next_90_days: win(o.d90), calibrated_with_history: o.calibrated,
+          month_landing: { month: monthKey(rd), shipped_to_date_eur: rnd(o.monthLanding.shippedMonthToDate), still_expected_eur: rnd(o.monthLanding.stillExpected), landing_eur: rnd(o.monthLanding.landing), target_eur: o.monthLanding.target },
+          immediate_demand_on_top_if_capacity_eur: rnd(o.undatedVal) };
+      }
+      case "get_key_account": {
+        return { ...base, key_accounts: getKeyAccounts(lines).map(a => { const s = computeAccount(lines, rd, a.id, hist); const cust = lines.find(l => String(l.custId) === String(a.id))?.cust;
+          return { customer: cust ? pseudoOf(cust) : null, overall_alarm: s.overallLevel, open_eur: rnd(s.openVal), share_of_total_pct: +s.openSharePct.toFixed(1), overdue_eur: rnd(s.lateVal), overdue_pct: +s.latePct.toFixed(1),
+            immediate_demand: { value_eur: rnd(s.immediate.val), avg_wait_days: Math.round(s.immediate.waitAvg) }, schedule_cover_months: s.coverMonths,
+            on_time_pct: s.onTime.available ? Math.round(s.onTime.pct) : null, date_reliability_pct: s.reliability.available ? Math.round(s.reliability.pct) : null,
+            book_to_bill_4_weeks: s.btbRatio == null ? null : +s.btbRatio.toFixed(2) }; }) };
+      }
+      case "open_view": {
+        const v = toolView({ customer: input.customer, family: input.family, variant: input.variant });
+        const page = PAGES.includes(input.page) ? input.page : "overview";
+        const mo = /^\d{4}-\d{2}$/.test(input.month || "") ? input.month : null;
+        const period = page === "late" ? "late" : page === "imm" ? "undated" : page === "horizon" ? mo : null;
+        if (page === "fam") { SHARE_TAB = "fam"; store.set(LS_SHARETAB, SHARE_TAB); } else if (page === "cust") { SHARE_TAB = "cust"; store.set(LS_SHARETAB, SHARE_TAB); }
+        applyView({ page, customer: v.customer, family: v.family, model: null, size: null, variant: v.variant, period, lateMonth: page === "late" ? mo : null, order: null, sc: null, btb: false, chg: false }, "push");
+        return { opened: VIEW.page, filters_applied: { customer: VIEW.customer ? pseudoOf(VIEW.customer) : null, family: VIEW.family, month: VIEW.lateMonth || (/^\d{4}/.test(VIEW.period || "") ? VIEW.period : null) } };
+      }
+      default: throw new Error(`unknown tool ${name}`);
+    }
+  }
+  const pageLabel = p => ({ overview: T("navOverview"), late: T("vLate"), imm: T("vUnd"), fam: T("navFam"), cust: T("navCust"), horizon: T("horizonTitle"), outlook: T("outlookTitle") }[p] || p);
+
+  // One question: append it, then call the server function until Claude stops asking for tools.
+  async function assistantAsk(question) {
+    const q = String(question || "").trim();
+    if (!q) return null;
+    if (!DATA) { ASK = { intent: "nodata" }; renderAsk(); return null; }
+    if (!ASSIST.available) return askQuestion(q);
+    if (ASSIST.busy) return null;
+    ASK = null; renderAsk();
+    const turn = { q, a: "", views: [], status: "busy" };
+    ASSIST.turns.push(turn); ASSIST.open = true; ASSIST.busy = true; renderAssistant();
+    if (ASSIST.conv.length + 2 > ASSIST_MAX_MESSAGES) { turn.status = "error"; turn.a = T("asstTooLong"); ASSIST.busy = false; renderAssistant(); return turn; }
+    const before = ASSIST.conv.length;   // on any failure the conversation returns to exactly this point
+    const lead = ASSIST.conv.length ? `[Sprache ${LANG}]` : `[Stand ${iso(DATA.reportDate)} · Sprache ${LANG}]`;
+    ASSIST.conv.push({ role: "user", content: [{ type: "text", text: `${lead}\n${pseudonymiseText(q)}` }] });
+    try {
+      for (let round = 0; round < ASSIST_MAX_ROUNDS; round++) {
+        const r = await transport()(ASSIST.conv);
+        ASSIST.conv.push({ role: "assistant", content: r.content });     // echoed back unchanged (thinking blocks included)
+        if (r.stop_reason === "refusal") { turn.status = "refusal"; turn.a = T("asstRefusal"); ASSIST.conv.length = before; break; }
+        const calls = (r.content || []).filter(b => b.type === "tool_use");
+        if (r.stop_reason === "max_tokens") { turn.status = "error"; turn.a = T("asstTruncated"); ASSIST.conv.length = before; break; }
+        if (r.stop_reason === "tool_use" && calls.length) {
+          // run every call of this turn; all results go back together in one user message
+          const results = calls.map(c => {
+            try {
+              const out = runAssistantTool(c.name, c.input || {});
+              if (c.name === "open_view") turn.views.push([pageLabel(out.opened), out.filters_applied.family, out.filters_applied.customer ? depseudonymise(out.filters_applied.customer) : null].filter(Boolean).join(" · "));
+              return { type: "tool_result", tool_use_id: c.id, content: JSON.stringify(out) };
+            } catch (e) { return { type: "tool_result", tool_use_id: c.id, content: String(e.message || e), is_error: true }; }
+          });
+          ASSIST.conv.push({ role: "user", content: results });
+          renderAssistant();
+          continue;
+        }
+        turn.status = "done";
+        turn.a = depseudonymise((r.content || []).filter(b => b.type === "text").map(b => b.text).join("\n").trim());
+        break;
+      }
+      if (turn.status === "busy") { turn.status = "error"; turn.a = T("asstTruncated"); ASSIST.conv.length = before; }
+    } catch (e) {
+      // keep the conversation valid: drop this unanswered question and fall back to the fixed answers
+      ASSIST.conv.length = before;
+      turn.status = "error";
+      if (e.code === "rate_limited") turn.a = T("asstRateLimited");
+      else { const fixed = askQuestion(q); turn.a = T("asstError") + " " + (fixed ? askAnswer(fixed).text : ""); ASK = null; renderAsk(); }
+    }
+    ASSIST.busy = false;
+    renderAssistant();
+    return turn;
+  }
+
+  // Minimal formatting for answers: paragraphs, "- " bullets and **bold**.
+  function answerHTML(text) {
+    const inline = s => esc(s).replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+    const out = []; let list = null;
+    String(text).split(/\n/).forEach(line => {
+      const m = line.match(/^\s*[-•*]\s+(.*)$/);
+      if (m) { (list || (list = [])).push(`<li>${inline(m[1])}</li>`); return; }
+      if (list) { out.push(`<ul>${list.join("")}</ul>`); list = null; }
+      if (line.trim()) out.push(`<p>${inline(line)}</p>`);
+    });
+    if (list) out.push(`<ul>${list.join("")}</ul>`);
+    return out.join("");
+  }
+  function renderAssistant() {
+    const el = $("#assistant");
+    if (!el) return;
+    el.hidden = !(ASSIST.available && ASSIST.open);
+    if (el.hidden) return;
+    $("#asst-title").textContent = T("asstTitle");
+    $("#asst-note").textContent = T("asstNote");
+    $("#asst-new").textContent = T("asstNew");
+    $("#asst-close").textContent = T("asstClose");
+    $("#asst-send").textContent = T("asstSend");
+    $("#asst-input").placeholder = T("asstFollow");
+    $("#asst-input-label").textContent = T("asstFollowLabel");
+    $("#asst-input").disabled = $("#asst-send").disabled = ASSIST.busy;
+    $("#asst-log").innerHTML = ASSIST.turns.map(t =>
+      `<li class="asst-turn"><p class="asst-q"><span class="sr-only">${esc(T("asstYou"))}: </span>${esc(t.q)}</p>` +
+      `<div class="asst-a asst-a--${t.status}"><span class="sr-only">${esc(T("asstAnswer"))}: </span>${t.status === "busy" ? `<p class="asst-busy">${esc(T("asstBusy"))}</p>` : answerHTML(t.a)}` +
+      `${t.views.length ? `<p class="asst-view">${esc(tf("asstViewOpened", t.views.join(", ")))}</p>` : ""}</div></li>`).join("");
+  }
+  function resetAssistant(close) {
+    if (ASSIST.busy) return;
+    ASSIST.conv = []; ASSIST.turns = [];
+    if (close) ASSIST.open = false;
+    renderAssistant();
+  }
+
   function handleAction(e) {
     const target = e.target.closest?.("[data-action]");
     if (!target) return;
@@ -3766,7 +4048,9 @@
     else if (action === "table-all") { TABLE_ALL = true; applyView({}); }
     else if (action === "dismiss-hint") { store.set("dopk.hint.v1", true); applyView({}); }
     else if (action === "dismiss-notice") { showNotice("", ""); return; }
-    else if (action === "ask") { const input = $("#ask-input"); if (input) input.value = value; askQuestion(value); return; }
+    else if (action === "ask") { const input = $("#ask-input"); if (input) input.value = value; ASSIST.available ? assistantAsk(value) : askQuestion(value); return; }
+    else if (action === "asst-new") { resetAssistant(false); $("#asst-input")?.focus(); return; }
+    else if (action === "asst-close") { resetAssistant(true); $("#ask-input")?.focus(); return; }
     else if (action === "ask-close") { ASK = null; renderAsk(); $("#ask-input")?.focus(); return; }
     else if (action === "late-tab") { LATE_TAB = value === "month" ? "month" : "list"; store.set(LS_LATETAB, LATE_TAB); applyView({}); }
     else if (action === "matrix-unit") { MATRIX_UNIT = value === "qty" ? "qty" : "eur"; applyView({}); }
@@ -3994,7 +4278,9 @@
     $("#filter").addEventListener("change", e => applyView({ customer: e.target.value === "__all" ? null : e.target.value }));
     $("#view-select")?.addEventListener("change", e => onViewSelect(e.target.value));
     $("#family-filter")?.addEventListener("change", e => applyView({ family: e.target.value || null, model: null, size: null }));
-    $("#ask-form")?.addEventListener("submit", e => { e.preventDefault(); askQuestion($("#ask-input").value); });
+    $("#ask-form")?.addEventListener("submit", e => { e.preventDefault(); const q = $("#ask-input").value; ASSIST.available ? (assistantAsk(q), $("#ask-input").value = "") : askQuestion(q); });
+    $("#asst-form")?.addEventListener("submit", e => { e.preventDefault(); const q = $("#asst-input").value; $("#asst-input").value = ""; assistantAsk(q); });
+    probeAssistant();
     $("#ask-input")?.addEventListener("keydown", e => { if (e.key === "Escape" && (e.target.value || ASK)) { e.preventDefault(); e.target.value = ""; ASK = null; renderAsk(); } });
     const viewDlg = $("#view-dialog");
     if (viewDlg) {
@@ -4067,7 +4353,8 @@
         loadFamiliesFile, buildUnassignedCsv, setFamilies, get families() { return FAMILIES; }, buildImmediateCsv, computeOutlook,
         computeChanges: () => computeChanges(store.get(LS_HISTORY, { snaps: {} }), DATA), buildChangesCsv,
         onViewSelect, saveCurrentView, get currentView() { return CURRENT_VIEW; },
-        ask: askQuestion, parseQuestion, get askState() { return ASK; }, askText: () => ASK ? askAnswer(ASK).text : null, i18nKeys: () => ({ de: Object.keys(I18N.de), en: Object.keys(I18N.en) }), get toggles() { return { share: SHARE_TAB, late: LATE_TAB, unit: MATRIX_UNIT, und: UND_GROUP }; },
+        ask: askQuestion, parseQuestion, assistantAsk, runAssistantTool, pseudonymiseText, depseudonymise, resetAssistant,
+        get assistant() { return ASSIST; }, get askState() { return ASK; }, askText: () => ASK ? askAnswer(ASK).text : null, i18nKeys: () => ({ de: Object.keys(I18N.de), en: Object.keys(I18N.en) }), get toggles() { return { share: SHARE_TAB, late: LATE_TAB, unit: MATRIX_UNIT, und: UND_GROUP }; },
         importArchive: aois => commitArchive(aois.map((aoa, i) => ({ aoa, data: parseRows(aoa, "DOPK.xlsx"), name: "DOPK_" + i + ".xlsx", mod: i })), []),
         get history() { return store.get(LS_HISTORY, { snaps: {} }); },
         get view() { return { ...VIEW }; }, get data() { return DATA; }, get metrics() { return compute(DATA.lines, DATA.reportDate, VIEW); }
