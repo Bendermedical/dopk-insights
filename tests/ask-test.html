@@ -12,29 +12,40 @@
 <body>
 <div class="wrap">
   <section><h1>Search field (phase 1): acceptance tests</h1><ol id="test-results" aria-live="polite"></ol></section>
-  <header class="topbar">
-    <div class="mark">
-      <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" fill="#1F2629"/><rect x="7" y="18" width="4" height="7" fill="#CF2E3E"/><rect x="14" y="10" width="4" height="15" fill="#11879A"/><rect x="21" y="14" width="4" height="11" fill="#E9A800"/></svg>
-      <span>DOPK Insight <small data-i18n="tagline">Täglicher Auftragsbestand</small></span>
+<!-- dashboard:start -->
+<div class="shell">
+  <nav class="sidebar no-print" id="sidebar" data-i18n-label="navLabel" aria-label="Bereiche">
+    <div class="sb-brand">
+      <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" fill="#2E383C"/><rect x="7" y="18" width="4" height="7" fill="#CF2E3E"/><rect x="14" y="10" width="4" height="15" fill="#11879A"/><rect x="21" y="14" width="4" height="11" fill="#E9A800"/></svg>
+      <div class="sb-brand-text"><span class="sb-name">DOPK Insight</span><span class="snapshot-date" id="snapshot">Keine Datei geladen</span></div>
     </div>
-    <span class="spacer"></span>
-    <span class="snapshot-date" id="snapshot">Keine Datei geladen</span>
-    <label class="sr-only" for="view-select" data-i18n="viewLabel">Ansicht</label>
-    <select class="select no-print" id="view-select"><option value="">Ansicht …</option></select>
-    <label class="sr-only" for="filter" data-i18n="customer">Kunde</label>
-    <select class="select no-print" id="filter"><option value="__all">Alle Kunden</option></select>
-    <div class="lang-switch segmented no-print" role="group" aria-label="Sprache / Language">
-      <button type="button" data-lang="de" aria-pressed="true" lang="de" title="Deutsch">DE</button>
-      <button type="button" data-lang="en" aria-pressed="false" lang="en" title="English">EN</button>
+    <form class="ask" id="ask-form" role="search">
+      <label class="sr-only" for="ask-input" data-i18n="askLabel">Frage an das Dashboard</label>
+      <input type="search" id="ask-input" autocomplete="off" enterkeyhint="search" data-i18n-placeholder="askPlaceholder" placeholder="Frage stellen …">
+    </form>
+    <div class="sb-nav" id="sb-nav"></div>
+    <div class="sb-foot">
+      <button class="btn" type="button" data-upload data-i18n="upload">Tagesdatei hochladen</button>
+      <label class="sr-only" for="view-select" data-i18n="viewLabel">Ansicht</label>
+      <select class="select" id="view-select"><option value="">Ansicht …</option></select>
+      <div class="lang-switch segmented" role="group" aria-label="Sprache / Language">
+        <button type="button" data-lang="de" aria-pressed="true" lang="de" title="Deutsch">DE</button>
+        <button type="button" data-lang="en" aria-pressed="false" lang="en" title="English">EN</button>
+      </div>
     </div>
-    <button class="btn no-print" type="button" data-upload data-i18n="upload">Tagesdatei hochladen</button>
     <input type="file" id="file" accept=".xlsx,.xls,.csv" hidden>
     <input type="file" id="archive" accept=".xlsx,.xls,.csv" multiple hidden>
     <input type="file" id="families-file" accept=".csv,.txt,.xlsx,.xls" hidden>
-    <form class="ask no-print" id="ask-form" role="search">
-      <label class="sr-only" for="ask-input" data-i18n="askLabel">Frage an das Dashboard</label>
-      <input type="search" id="ask-input" autocomplete="off" enterkeyhint="search" data-i18n-placeholder="askPlaceholder" placeholder="Frage stellen, z. B. „überfällig nach Monat“">
-    </form>
+  </nav>
+
+  <div class="main-col">
+  <header class="topbar">
+    <span class="filter-label" data-i18n="filterBarLabel">Filter für alle Seiten</span>
+    <label class="sr-only" for="filter" data-i18n="customer">Kunde</label>
+    <select class="select no-print" id="filter"><option value="__all">Alle Kunden</option></select>
+    <label class="sr-only" for="family-filter" data-i18n="famFilterLabel">Produktfamilie</label>
+    <select class="select no-print" id="family-filter" hidden><option value="">Alle Produktfamilien</option></select>
+    <div id="topbar-pdt" class="no-print"></div>
   </header>
 
   <div class="breadcrumb-slot"><nav id="breadcrumb" class="breadcrumb" data-i18n-label="filterScope" aria-label="Filterauswahl" hidden></nav></div>
@@ -51,15 +62,21 @@
 
   <div class="banner no-print" id="notice" role="status" hidden><span></span><button type="button" class="btn btn--quiet" data-action="dismiss-notice" data-i18n="dismiss">Schließen</button></div>
 
-  <main id="app" hidden>
-    <section class="verdict" id="verdict" aria-live="polite"></section>
+  <main id="app" data-page="overview" hidden>
+    <section class="page-head" id="page-head" data-pages="late imm fam cust horizon outlook"></section>
 
-    <section class="vitals" id="vitals" data-i18n-label="keyFigures" aria-label="Kennzahlen"></section>
+    <section class="verdict" id="verdict" data-pages="overview" aria-live="polite"></section>
 
-    <section class="panel outlook" id="outlook" aria-labelledby="outlook-title"></section>
+    <section class="vitals" id="vitals" data-pages="overview" data-i18n-label="keyFigures" aria-label="Kennzahlen"></section>
 
-    <div class="grid">
-      <section class="panel">
+    <section class="panel outlook" id="outlook" data-pages="outlook" aria-labelledby="outlook-title"></section>
+
+    <div class="grid grid--even" data-pages="overview horizon">
+      <section class="panel todo" id="todo" data-pages="overview" aria-labelledby="todo-title">
+        <div class="panel-head"><div><h2 id="todo-title">Heute zu tun</h2><p class="panel-note" id="todo-note"></p></div></div>
+        <ol class="todo-list" id="todo-list"></ol>
+      </section>
+      <section class="panel" id="horizon-panel" data-pages="overview horizon">
         <div class="panel-head">
           <div>
             <h2 data-i18n="horizonTitle">Auftragshorizont</h2>
@@ -73,7 +90,10 @@
           <span><i style="background:var(--alarm-low)"></i><span data-i18n="legFlow">Geplant</span></span>
         </div>
       </section>
-      <section class="panel" aria-labelledby="share-title">
+    </div>
+
+    <div class="grid" data-pages="overview fam cust">
+      <section class="panel" id="share-panel" data-pages="overview fam cust" aria-labelledby="share-title">
         <div class="panel-head"><div><h2 id="share-title">Von wem der Bestand abhängt</h2><p class="panel-note" id="share-note">Anteil am offenen Wert je Kunde.</p></div><div id="share-tabs" class="no-print"></div></div>
         <div id="share-cust">
           <div class="share-bar" id="share-bar"></div>
@@ -82,28 +102,26 @@
         </div>
         <div id="share-fam" hidden></div>
       </section>
-    </div>
-
-    <div class="grid">
-      <section class="panel">
-        <div class="panel-head">
-          <div><h2 id="late-title" data-i18n="lateTitle">Überfällige Positionen nachfassen</h2><p class="panel-note" id="late-count"></p></div>
-          <div class="late-actions no-print"><div id="late-tools" class="late-tools"></div><button class="btn btn--quiet" type="button" id="export-late" data-i18n="exportLate">Überfälligkeitsliste exportieren</button></div>
-        </div>
-        <div id="late-matrix" class="matrix-wrap" hidden></div>
-        <div class="table-scroll" id="late-table">
-          <table class="data">
-            <thead id="late-head"><tr><th>Auftrag</th><th>Kunde</th><th>Artikel</th><th class="num">Fällig</th><th id="late-days" class="num">Verzug</th><th class="num">Offener Wert</th></tr></thead>
-            <tbody id="late-body"></tbody>
-          </table>
-        </div>
-        <div id="late-more" class="no-print"></div>
-      </section>
-      <section class="panel">
+      <section class="panel" id="watch-panel" data-pages="overview">
         <div class="panel-head"><div><h2 data-i18n="watchTitle">Beobachtungsliste</h2><p class="panel-note" data-i18n="watchNote">Veränderungen, Abschlusschancen und zu korrigierende Daten.</p></div></div>
         <ul class="watch" id="watch"></ul>
       </section>
     </div>
+
+    <section class="panel late-panel" id="late-panel" data-pages="late imm horizon fam">
+      <div class="panel-head">
+        <div><h2 id="late-title" data-i18n="lateTitle">Überfällige Positionen nachfassen</h2><p class="panel-note" id="late-count"></p></div>
+        <div class="late-actions no-print"><div id="late-tools" class="late-tools"></div><button class="btn btn--quiet" type="button" id="export-late" data-i18n="exportLate">Überfälligkeitsliste exportieren</button></div>
+      </div>
+      <div id="late-matrix" class="matrix-wrap" hidden></div>
+      <div class="table-scroll" id="late-table">
+        <table class="data">
+          <thead id="late-head"><tr><th>Auftrag</th><th>Kunde</th><th>Artikel</th><th class="num">Fällig</th><th id="late-days" class="num">Verzug</th><th class="num">Offener Wert</th></tr></thead>
+          <tbody id="late-body"></tbody>
+        </table>
+      </div>
+      <div id="late-more" class="no-print"></div>
+    </section>
   </main>
 
   <dialog id="order-drawer" class="order-drawer" role="dialog" aria-modal="true" aria-labelledby="order-title">
@@ -241,6 +259,10 @@
     <span class="foot-families" id="foot-families" hidden></span>
     <span class="no-print"><button class="btn btn--quiet" type="button" data-families data-i18n="famAssign">Produktfamilien zuordnen</button> <button class="btn btn--quiet" type="button" data-archive data-i18n="importArchive">Archiv importieren</button> <button class="btn btn--quiet" type="button" id="print" data-i18n="print">Drucken oder als PDF speichern</button> <button class="btn btn--quiet" type="button" id="clear" data-i18n="clear">Gespeicherten Verlauf löschen</button></span>
   </footer>
+  </div>
+</div>
+<nav class="mobile-nav no-print" id="mobile-nav" data-i18n-label="navLabel" aria-label="Bereiche"></nav>
+<!-- dashboard:end -->
 </div>
 <script src="test-observer.js"></script>
 <script src="../assets/vendor/xlsx.full.min.js"></script>

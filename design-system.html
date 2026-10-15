@@ -54,6 +54,7 @@
       <li>One typeface, chosen for legibility. Atkinson Hyperlegible Next was designed by the Braille Institute; its figures don't get confused, which matters for a page of numbers.</li>
       <li>Every figure has an action nearby: a list to chase, a file to export, a date to set.</li>
       <li>No new permanent panels. More detail comes from toggles inside existing panels, drill-down and sheets that open on demand.</li>
+      <li>One page per question: the sidebar leads from the overview to Überfällig, Sofortbedarf, families, customers, horizon and outlook; filters stay at the top and follow you from page to page.</li>
       <li>A line without a delivery date is not missing data. It is <b>Sofortbedarf</b>: produce and ship as soon as material and staff allow. It sits right after "overdue" and alarms on how long it has been waiting, never on its share of the backlog.</li>
     </ol>
   </section>
@@ -143,6 +144,16 @@
 
     <h3>Phase-out chips</h3>
     <div class="demo row"><span class="chip chip--med">Auslauf → 303028-XX</span><span class="chip chip--high">Raus</span></div>
+
+    <h3>Sidebar navigation</h3>
+    <p class="lead">Navigation and status monitor in one: each entry carries its alarm dot and headline figure. Graphite ground, the active page on the surface colour. On a phone it becomes a bottom bar.</p>
+    <div class="demo" style="background:var(--graphite);max-width:260px"><div class="sb-nav" style="display:flex">
+      <div class="nav-group"><button type="button" class="nav-item is-active" aria-current="page"><span class="nav-dot nav-dot--high"></span><span class="nav-label">Overview</span></button></div>
+      <div class="nav-group"><span class="nav-group-label">Act</span><button type="button" class="nav-item"><span class="nav-dot nav-dot--high"></span><span class="nav-label">Overdue</span><span class="nav-badge">€3.5k</span></button><button type="button" class="nav-item"><span class="nav-dot nav-dot--med"></span><span class="nav-label">Immediate demand</span><span class="nav-badge">€2.7k</span></button></div>
+    </div></div>
+
+    <h3>To-do list</h3>
+    <div class="demo"><ol class="todo-list"><li><button type="button" class="text-action order-link">1002</button><span class="todo-what">Duracuff Pro · Alpha Medizintechnik</span><span class="todo-why todo-why--late">8 days overdue</span><span class="todo-val">€2,000</span></li><li><button type="button" class="text-action order-link">1013</button><span class="todo-what">LARYVOX Tape oval · Alpha Medizintechnik</span><span class="todo-why todo-why--imm">ASAP · waiting 20 days</span><span class="todo-val">€1,500</span></li></ol></div>
 
     <h3>Search field and answer</h3>
     <p class="lead">One field on its own row in the top bar. The answer reuses the information banner: one sentence, figures from the dashboard, example questions as links when a question is not understood.</p>
