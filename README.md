@@ -7,7 +7,8 @@ It is a static site: HTML, CSS and JavaScript only, no server and no build step.
 
 The site contains **no order data**. Each day you upload the Excel file in the browser;
 it is read locally with SheetJS and never sent anywhere (the security policy blocks
-all outgoing requests). The last file and up to 90 days of summary history are kept in
+requests to any other site). The only exception is the optional AI assistant, which sends
+questions and small pseudonymised aggregates to its own server function (see below). The last file and up to 90 days of summary history are kept in
 that browser's local storage so the dashboard can show day-over-day changes.
 Use "Clear stored history" in the footer to remove them.
 
@@ -90,6 +91,43 @@ It recognises customer names, product families, models, sizes ("A1-XX Gr. 01"), 
 order or customer numbers, in German or English, with or without umlauts. Questions it doesn't
 understand get example questions taken from the loaded file. The answer closes when you change the
 view yourself. It is a fixed set of question types (no AI) and nothing leaves the browser.
+
+## AI assistant (phase 2)
+
+When the site runs on Netlify with an Anthropic API key, the search field becomes an AI assistant:
+questions are answered in a conversation panel at the top of the page, follow-ups keep the context,
+and the assistant opens the matching page for you. Without the key (or on GitHub Pages, or when the
+service is unavailable) the search field answers with the fixed question types above.
+
+**What leaves the browser.** Only the question and small aggregated results of the dashboard's own
+calculations: totals and counts, product family / model / size names, up to ten order and article
+numbers per answer, the report date. Customers are sent as **"Kunde A", "Kunde B" …** (largest open
+value first); the page swaps the real names back in on screen. The uploaded file, order lines,
+unit prices, line values, stock, customer numbers and addresses, history, saved views and the mapping
+file never leave the browser. The calculations run in the browser; Claude only chooses which
+calculation to run and words the answer.
+
+**How it is built.** `netlify/functions/assistant.mjs` is a small server function at
+`/api/assistant`. It holds the API key, the instructions for the model and the list of tools; the
+page can only send the conversation. It calls Claude (`claude-opus-5-5`, effort `low`, with
+Anthropic's server-side fallback if a request is wrongly declined) and returns the reply. The page's
+security policy allows connections to its own site only (`connect-src 'self'`).
+
+**Set it up (IT).**
+1. Deploy from the Git repository (Netlify → Add new site → Import from Git). Netlify installs the
+   function's dependency (`package.json`) and deploys `netlify/functions`. A drag-and-drop deploy
+   does not include the function, so the assistant stays off there.
+2. Site settings → Environment variables:
+   - `ANTHROPIC_API_KEY` (required) – a key from a workspace in the Anthropic Console.
+   - `ASSISTANT_ALLOWED_ORIGIN` (recommended) – the site's address, e.g. `https://dopk.example.netlify.app`.
+   - `ASSISTANT_MODEL`, `ASSISTANT_EFFORT` (optional) – default `claude-opus-5-5` and `low`.
+3. Protect the site (Netlify password protection or company login), so only your team can use the
+   assistant.
+4. In the Anthropic Console set a monthly spend limit for the workspace.
+5. Open the site: the search field now says "Frage an den Assistenten …".
+
+Each answer takes a few seconds and usually one to three calls; the function allows 25 seconds per
+call. A conversation is limited to 50 messages ("Neues Gespräch" starts over).
 
 ## Sofortbedarf (lines without a delivery date)
 
@@ -207,6 +245,8 @@ and open http://localhost:8000.
 | `assets/components.css` | Component styles |
 | `assets/app.js` | Parsing, KPIs, charts, history. Thresholds are in the `RULES` block at the top |
 | `assets/vendor/xlsx.full.min.js` | SheetJS 0.18.5 (Apache-2.0), bundled so no CDN is needed |
+| `netlify/functions/assistant.mjs` | Server function for the AI assistant (only on Netlify, with `ANTHROPIC_API_KEY`) |
+| `package.json` | The server function's one dependency (`@anthropic-ai/sdk`); the dashboard itself needs no npm |
 | `tests/` | Synthetic fixtures and acceptance test pages (not linked from the dashboard), see `tests/README.md` |
 
 ## What the dashboard reads from the file

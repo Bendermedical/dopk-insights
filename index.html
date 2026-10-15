@@ -54,6 +54,19 @@
 
   <div class="banner ask-answer no-print" id="ask-answer" data-kind="info" role="status" aria-live="polite" hidden></div>
 
+  <section class="assistant no-print" id="assistant" aria-labelledby="asst-title" hidden>
+    <header class="asst-head">
+      <div><h2 id="asst-title">Assistent</h2><p class="asst-note" id="asst-note"></p></div>
+      <div class="asst-actions"><button type="button" class="btn btn--quiet" id="asst-new" data-action="asst-new">Neues Gespräch</button><button type="button" class="btn btn--quiet" id="asst-close" data-action="asst-close">Schließen</button></div>
+    </header>
+    <ol class="asst-log" id="asst-log" aria-live="polite"></ol>
+    <form class="asst-form" id="asst-form">
+      <label class="sr-only" for="asst-input" id="asst-input-label">Nachfrage an den Assistenten</label>
+      <input type="text" id="asst-input" autocomplete="off" enterkeyhint="send" placeholder="Nachfrage stellen …">
+      <button type="submit" class="btn" id="asst-send">Senden</button>
+    </form>
+  </section>
+
   <section class="dropzone" id="empty">
     <h1 data-i18n="dropTitle">Ziehen Sie den heutigen DOPK-Export hierher, um den Auftragsbestand zu lesen.</h1>
     <p data-i18n="dropBody">Verwenden Sie die .xlsx-Datei der offenen Aufträge aus dem ERP.</p>

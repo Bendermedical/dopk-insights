@@ -4,3 +4,6 @@
 
 # test fixtures are synthetic and may be committed
 !tests/*.csv
+
+# server-function dependencies (installed by Netlify on deploy)
+node_modules/

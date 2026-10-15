@@ -1,0 +1,8 @@
+{
+  "name": "dopk-insights",
+  "private": true,
+  "description": "Dependencies of the Netlify server function for the AI assistant only. The dashboard itself has no build step and no npm dependencies.",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.134.0"
+  }
+}
