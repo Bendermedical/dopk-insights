@@ -59,8 +59,8 @@ its headline figure, so you see where the problems are from any page.
 
 | Sidebar entry | Opens |
 | --- | --- |
-| **Überblick** (start page) | verdict, key figures, **Heute zu tun** (the five largest open problems across overdue, Sofortbedarf and phase-out articles, each linked to its order), horizon, customers/families, watchlist |
-| **Handeln:** Überfällig · Sofortbedarf | the overdue lines (list or by month) · Sofortbedarf by family or customer |
+| **Überblick** (start page) | verdict, key figures (the overdue figure names the family with the largest overdue share), **Heute zu tun** (the five largest open problems across overdue, Sofortbedarf and phase-out articles, each linked to its order), horizon, customers/families, watchlist |
+| **Handeln:** Überfällig · Sofortbedarf | **Überfällig nach Produktfamilie** (top 6 families by overdue value with bar, value, lines and oldest delay; click one to show only its lines, click again or „Alle anzeigen“ to clear), then the overdue lines (list or by month) · Sofortbedarf by family or customer |
 | **Handeln:** Neu seit letztem Stand | the changes sheet |
 | **Bestand:** Produktfamilien · Kunden · Auftragshorizont | families with drill-down · customer concentration · delivery months with their lines |
 | **Entwicklung:** Umsatzausblick · Auftragseingang | revenue outlook · the book-to-bill sheet |

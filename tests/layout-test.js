@@ -179,6 +179,75 @@ document.addEventListener("DOMContentLoaded", async function () {
       assert($$("#sb-nav .nav-item, #mobile-nav .mob-item").every(b => b.tagName === "BUTTON"), "Every navigation target is a button");
     });
 
+    // ---------------------------------------------------------------- Überfällig nach Produktfamilie
+    const famRows = () => $$("#late-fam .late-fam-row").map(b => [b.dataset.value, b.querySelector(".lf-val").textContent, b.querySelector(".lf-lines").textContent, b.querySelector(".lf-days").textContent]);
+    const lateOrders = () => [...$("#late-body").rows].map(r => r.cells[0].textContent.trim());
+
+    await test(15, "Überfällig page: families compared at a glance, largest overdue first; not on other pages", async () => {
+      reset(); await paint();
+      assert(!shown("#late-fam"), "Strip hidden on the overview");
+      await go("late");
+      assert(shown("#late-fam") && text("#late-fam h2") === "Überfällig nach Produktfamilie", "Strip with title");
+      assert(JSON.stringify(famRows()) === JSON.stringify([["Duracuff Pro", "2.000 €", "1 Position", "8 Tage"], ["Laryvox", "1.500 €", "1 Position", "25 Tage"]]), `Rows ${JSON.stringify(famRows())}`);
+      const bars = $$("#late-fam .lf-bar i").map(i => i.style.width);
+      assert(bars.join() === "100%,75%", `Bars ${bars}`);
+      assert(!$("#late-fam [data-action='late-family'][data-value='']"), "No „Alle anzeigen“ without a selection");
+    });
+
+    await test(16, "One family at a time: select Laryvox, switch to Duracuff Pro, clear; everything stays in sync", async () => {
+      click($("#late-fam [data-value='Laryvox']")); await paint();
+      assert(api.view.family === "Laryvox" && api.view.page === "late" && location.hash.includes("f=Laryvox"), `View ${JSON.stringify(api.view)}`);
+      assert(lateOrders().join() === "1001" && text("#page-head h1") === "1,5 T€ überfällig", `List ${lateOrders()} · ${text("#page-head h1")}`);
+      assert($("#late-fam [data-value='Laryvox']").getAttribute("aria-pressed") === "true" && $("#late-fam [data-value='Duracuff Pro']").classList.contains("is-dim"), "Selected and dimmed rows");
+      assert(famRows().length === 2, "Strip keeps every family visible while one is selected");
+      assert($("#family-filter").value === "Laryvox" && nav("late").querySelector(".nav-badge").textContent === "1,5 T€" && text("#breadcrumb").includes("Laryvox"), "Filter bar, sidebar and breadcrumb follow");
+      click($("#late-fam [data-value='Duracuff Pro']")); await paint();
+      assert(api.view.family === "Duracuff Pro" && lateOrders().join() === "1002", "Switched to Duracuff Pro");
+      click($("#late-fam [data-value='Duracuff Pro']")); await paint();
+      assert(api.view.family === null && lateOrders().join() === "1002,1001", "Clicking the selected family again clears it");
+      click($("#late-fam [data-value='Laryvox']")); await paint();
+      click($("#late-fam [data-action='late-family'][data-value='']")); await paint();
+      assert(api.view.family === null && api.view.page === "late", "„Alle anzeigen“ clears the family");
+      await historyBack();
+      assert(api.view.family === "Laryvox", "Back returns to the selected family");
+      reset(); await paint();
+    });
+
+    await test(17, "Top rows plus „N weitere“; a selected family outside the top stays visible", async () => {
+      api.RULES.families.lateStripRows = 1;
+      await go("late");
+      assert(famRows().length === 1 && text("#late-fam [data-action='late-fam-more']") === "1 weitere", `Top 1: ${JSON.stringify(famRows())}`);
+      api.applyView({ family: "Laryvox" }); await paint();
+      assert(famRows().map(r => r[0]).join() === "Duracuff Pro,Laryvox", "Selected family shown beyond the top");
+      api.applyView({ family: null }); await paint();
+      click($("#late-fam [data-action='late-fam-more']")); await paint();
+      assert(famRows().length === 2 && !$("#late-fam [data-action='late-fam-more']"), "Expanded");
+      api.RULES.families.lateStripRows = 6; reset(); await paint();
+    });
+
+    await test(18, "Overview hint on the overdue key figure: family name only, hidden when filtered by family", async () => {
+      reset(); await paint();
+      const tile = () => $("#vitals [data-kind='late']");
+      assert(text("#vitals [data-kind='late'] .vital-hint") === "größter Anteil: Duracuff Pro", `Hint ${text("#vitals [data-kind='late'] .vital-hint")}`);
+      assert(!/€/.test(tile().querySelector(".vital-hint").textContent), "No amount in the hint");
+      api.applyView({ family: "Laryvox" }); await paint();
+      assert(!tile().querySelector(".vital-hint"), "No hint while a family is filtered");
+      reset(); await paint();
+    });
+
+    await test(19, "English labels; keyboard; without a mapping the strip explains how to get it", async () => {
+      api.setLang("en"); await go("late");
+      assert(text("#late-fam h2") === "Overdue by product family" && famRows()[0][2] === "1 line" && famRows()[0][3] === "8 days", JSON.stringify(famRows()));
+      assert($$("#late-fam .late-fam-row").every(b => b.tagName === "BUTTON"), "Rows are buttons");
+      api.setLang("de"); reset(); await paint();
+      assert(text("#vitals [data-kind='late'] .vital-hint") === "größter Anteil: Duracuff Pro", "German hint back");
+      api.setFamilies(null); await go("late");
+      assert(text("#late-fam .late-fam-nomap").startsWith("Produktfamilien zuordnen, um Überfälliges nach Familie zu sehen.") && $("#late-fam [data-action='families-load']"), "No-mapping line");
+      reset(); await paint();
+      assert(!$("#vitals [data-kind='late'] .vital-hint"), "No overview hint without a mapping");
+      assert(document.documentElement.scrollWidth <= innerWidth + 1, "No page-level horizontal scroll");
+    });
+
     sessionStorage.setItem(RESUME, JSON.stringify({ results }));
     location.hash = "p=undated"; location.reload(); return;
   }

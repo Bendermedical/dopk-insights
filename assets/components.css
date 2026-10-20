@@ -484,6 +484,30 @@ table.matrix tbody tr:hover { background: transparent; }
 #app:not([data-page="overview"]) .grid > .panel + .panel { border-left: 0; padding-left: 0; }
 .late-panel { padding-right: 0; }
 
+/* "Überfällig nach Produktfamilie" on the Überfällig page */
+.late-fam { padding: var(--s5) 0 var(--s4); border-bottom: var(--rule-section); }
+.late-fam:empty { display: none; }
+.late-fam-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s3); margin-bottom: var(--s2); }
+.late-fam-head h2 { margin: 0; font-size: var(--fs-lg); font-weight: var(--fw-bold); }
+.late-fam-list { list-style: none; margin: 0; padding: 0; }
+.late-fam-row { all: unset; box-sizing: border-box; display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(60px, 2fr) auto auto auto; gap: var(--s3); align-items: center; width: 100%; padding: var(--s2) var(--s2); border-bottom: 1px solid var(--rule-soft); font-size: var(--fs-sm); cursor: pointer; }
+.late-fam-row:hover { background: var(--steel-200); }
+.late-fam-row:focus-visible { outline: 3px solid var(--focus); outline-offset: -3px; }
+.late-fam-row.is-selected { background: var(--steel-200); font-weight: var(--fw-bold); }
+.late-fam-row.is-dim { opacity: .5; }
+.lf-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lf-bar { display: block; height: 12px; background: var(--steel-200); }
+.lf-bar i { display: block; height: 100%; background: var(--alarm-high); }
+.lf-val { text-align: right; min-width: 8ch; white-space: nowrap; }
+.lf-lines, .lf-days { text-align: right; color: var(--ink-muted); white-space: nowrap; }
+.late-fam-nomap { margin: 0; font-size: var(--fs-sm); }
+.vital-hint { color: var(--ink-muted); font-size: var(--fs-xs); }
+@media (max-width: 560px) {
+  .late-fam-row { grid-template-columns: minmax(0, 1fr) auto; row-gap: var(--s1); }
+  .late-fam-row .lf-bar { grid-column: 1 / -1; grid-row: 2; }
+  .late-fam-row .lf-lines, .late-fam-row .lf-days { grid-row: 3; text-align: left; }
+}
+
 /* "Heute zu tun" */
 .todo-list { list-style: none; margin: 0; padding: 0; }
 .todo-list li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: var(--s3); align-items: center; padding: var(--s1) 0; border-bottom: 1px solid var(--rule-soft); font-size: var(--fs-sm); }

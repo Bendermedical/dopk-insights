@@ -11,7 +11,7 @@ history, mapping, views and language are never touched. The pages are not linked
 | `btb-test.html` | Book-to-bill and order intake (21 tests) |
 | `assistant-test.html` | AI assistant in the browser: pseudonymised questions, local tools, parallel tool results, answers with real names, rollback on refusal/errors, fallback to the fixed answers (9 tests; a scripted stand-in replaces the AI service, no network) |
 | `assistant-function-test.mjs` | The server function, run with `node tests/assistant-function-test.mjs` after `npm install`: request shape (model, effort, fallback, cached prompt, strict tools), what the page may send, origin check, error mapping (23 checks; fake fetch, no network) |
-| `layout-test.html` | Sidebar layout: pages, status figures, „Heute zu tun“, filter bar, Back, old links, phone bottom bar (14 tests; reloads itself once) |
+| `layout-test.html` | Sidebar layout: pages, status figures, „Heute zu tun“, filter bar, Back, old links, phone bottom bar, overdue by product family (19 tests; reloads itself once) |
 | `ask-test.html` | Search field: question types, follow-ups, examples, DE/EN, keyboard (17 tests) |
 | `families-sofort-test.html` | Product families mapping, families tab, model/size drill-down, PDT, Sofortbedarf, overdue matrix, changes sheet, saved views, DE/EN, layout, CSP (tests 1–25; reloads itself three times) |
 
