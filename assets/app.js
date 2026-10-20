@@ -54,7 +54,8 @@
     families: {
       otherWarnPct: 15,       // "Sonstige" above this % of open value shows the unassigned note
       maxRows: 8,             // families tab rows before "N weitere"
-      matrixCols: 6           // overdue-by-month matrix family columns before "Weitere"
+      matrixCols: 6,          // overdue-by-month matrix family columns before "Weitere"
+      lateStripRows: 6        // "Überfällig nach Produktfamilie" rows before "N weitere"
     }
   };
   const COLORS = { late: "var(--alarm-high)", flow: "var(--alarm-low)", undated: "var(--alarm-med)" };
@@ -359,7 +360,12 @@
       asstRefusal: "Darauf kann ich keine Antwort geben. Bitte die Frage anders stellen.",
       asstTruncated: "Die Antwort war zu lang und wurde abgebrochen. Bitte die Frage enger stellen.",
       asstTooLong: "Das Gespräch ist sehr lang geworden. Bitte ein neues Gespräch beginnen.",
-      asstViewOpened: v => `Ansicht geöffnet: ${v}`, asstYou: "Frage", asstAnswer: "Antwort"
+      asstViewOpened: v => `Ansicht geöffnet: ${v}`, asstYou: "Frage", asstAnswer: "Antwort",
+      lateFamTitle: "Überfällig nach Produktfamilie", lateFamAll: "Alle anzeigen", lateFamMore: n => `${n} weitere`,
+      lateFamLines: n => pl(n, "Position", "Positionen"), lateFamDays: d => `${d} Tage`,
+      lateFamAria: (f, v, n, d) => `${f}: ${v} überfällig, ${pl(n, "Position", "Positionen")}, ältester Verzug ${d} Tage`,
+      lateFamNoMap: "Produktfamilien zuordnen, um Überfälliges nach Familie zu sehen.",
+      vLateTop: f => `größter Anteil: ${f}`
     },
     en: {
       drillHint: "Tip: bars, customers and order numbers are clickable.",
@@ -653,7 +659,12 @@
       asstRefusal: "I can't answer that. Please rephrase the question.",
       asstTruncated: "The answer got too long and was cut off. Please ask a narrower question.",
       asstTooLong: "This conversation has become very long. Please start a new one.",
-      asstViewOpened: v => `View opened: ${v}`, asstYou: "Question", asstAnswer: "Answer"
+      asstViewOpened: v => `View opened: ${v}`, asstYou: "Question", asstAnswer: "Answer",
+      lateFamTitle: "Overdue by product family", lateFamAll: "Show all", lateFamMore: n => `${n} more`,
+      lateFamLines: n => pl(n, "line", "lines"), lateFamDays: d => `${d} days`,
+      lateFamAria: (f, v, n, d) => `${f}: ${v} overdue, ${pl(n, "line", "lines")}, oldest ${d} days late`,
+      lateFamNoMap: "Assign product families to see overdue lines by family.",
+      vLateTop: f => `largest share: ${f}`
     }
   };
 
@@ -2157,7 +2168,7 @@
 
     $("#vitals").innerHTML = [
       vit(T("vOpen"), "low", eur(m.openVal), `${tf("sOpen", m.openLines, m.openOrders)} ${deltaHTML(m.openVal, P?.openVal, false)}`, unfiltered ? spark(hist, "openVal") : "", "open"),
-      vit(T("vLate"), lateLvl, eur(m.lateVal), `${tf("sLate", pct(m.latePct), m.late.length)} ${deltaHTML(m.lateVal, P?.lateVal, true)}`, "", "late"),
+      vit(T("vLate"), lateLvl, eur(m.lateVal), `${tf("sLate", pct(m.latePct), m.late.length)} ${deltaHTML(m.lateVal, P?.lateVal, true)}`, lateTopHint(m, rd), "late"),
       vit(T("vShip"), otLvl, eur(m.shippedVal), tf("sShip", m.notes, m.onTimePct == null ? null : pct(m.onTimePct, 0)), "", "shipped"),
       intakeVital,
       vit(T("vUnd"), imm.level, eur(imm.val), imm.n ? tf("sImm", imm.n, fmtQty(imm.qty), Math.round(imm.waitAvg), imm.waitMax) : T("sImmNone"), `<div class="vital-subline">${esc(T("immSubtitle"))}</div>`, "undated")
@@ -2512,6 +2523,46 @@
 
   // ------------------------------------------------------------- page chrome: sidebar, page head, filter bar, to-do list
   const worst = levels => ["high", "med", "low", "clear"].find(x => levels.includes(x)) || "none";
+  // Overview hint on the overdue key figure: the family with the largest overdue value, name only.
+  function lateTopHint(m, rd) {
+    if (!FAMILIES || VIEW.family || !(m.lateVal > 0)) return "";
+    const top = aggregate(m.late, famKey, rd).filter(e => e.key !== OTHER && e.val > 0).sort((a, b) => b.val - a.val)[0];
+    return top ? `<div class="vital-subline vital-hint">${esc(tf("vLateTop", top.key))}</div>` : "";
+  }
+
+  // "Überfällig nach Produktfamilie": compares families at a glance and picks one (the family filter).
+  // It ignores its own family filter so all rows stay visible; customer, PDT and due month still apply.
+  let LATEFAM_ALL = false;
+  function renderLateFamilies(rd) {
+    const el = $("#late-fam");
+    if (!el) return;
+    if (VIEW.page !== "late") { el.innerHTML = ""; return; }
+    if (!FAMILIES) {
+      el.innerHTML = `<p class="panel-note late-fam-nomap">${esc(T("lateFamNoMap"))} <button type="button" class="text-action link-action" data-action="families-load">${esc(T("famEmptyLoad"))}</button></p>`;
+      return;
+    }
+    const late = compute(DATA.lines, rd, VIEW, { ignore: "family" }).late;
+    const all = aggregate(late, famKey, rd).filter(e => e.val > 0).sort(byValueOtherLast);
+    if (!all.length) { el.innerHTML = ""; return; }
+    const max = RULES.families?.lateStripRows ?? 6;
+    let shown = LATEFAM_ALL ? all : all.slice(0, max);
+    const sel = all.find(e => e.key === VIEW.family);
+    if (sel && !shown.includes(sel)) shown = [...shown, sel];
+    const top = Math.max(...all.map(e => e.val));
+    const row = e => {
+      const oldest = Math.max(...e.list.map(l => daysBetween(rd, l.due)));
+      const on = VIEW.family === e.key;
+      return `<li><button type="button" class="late-fam-row${on ? " is-selected" : ""}${VIEW.family && !on ? " is-dim" : ""}" data-action="late-family" data-value="${esc(e.key)}" aria-pressed="${on}" ` +
+        `aria-label="${esc(tf("lateFamAria", famName(e.key), eurFull(e.val), e.lines, oldest))}">` +
+        `<span class="lf-name">${esc(famName(e.key))}</span><span class="lf-bar" aria-hidden="true"><i style="width:${(e.val / top * 100).toFixed(1)}%"></i></span>` +
+        `<span class="lf-val">${eurFull(e.val)}</span><span class="lf-lines">${esc(tf("lateFamLines", e.lines))}</span><span class="lf-days">${esc(tf("lateFamDays", oldest))}</span></button></li>`;
+    };
+    el.innerHTML = `<div class="late-fam-head"><h2 id="late-fam-title">${esc(T("lateFamTitle"))}</h2>` +
+      (VIEW.family ? `<button type="button" class="text-action link-action" data-action="late-family" data-value="">${esc(T("lateFamAll"))}</button>` : "") + `</div>` +
+      `<ul class="late-fam-list" aria-labelledby="late-fam-title">${shown.map(row).join("")}</ul>` +
+      (all.length > shown.length ? `<button type="button" class="text-action" data-action="late-fam-more">${esc(tf("lateFamMore", all.length - shown.length))}</button>` : "");
+  }
+
   const navBtn = (value, label, lvl, badge, active, extra = "") =>
     `<button type="button" class="nav-item${active ? " is-active" : ""}" data-action="nav" data-value="${esc(value)}"${active ? ' aria-current="page"' : ""}${extra}>` +
     `<span class="nav-dot nav-dot--${lvl}" aria-hidden="true"></span><span class="nav-label">${esc(label)}</span>${badge ? `<span class="nav-badge">${esc(badge)}</span>` : ""}</button>`;
@@ -2568,6 +2619,7 @@
 
     renderFilterBar();
     renderTodo(mn, rd);
+    renderLateFamilies(rd);
   }
 
   // Filter bar: customer (existing select), product family and PDT apply on every page.
@@ -4062,6 +4114,8 @@
     else if (action === "matrix-month") applyView(VIEW.period === "late" && VIEW.lateMonth === value && !VIEW.family ? { lateMonth: null } : { period: "late", lateMonth: value, family: null, model: null, size: null });
     else if (action === "matrix-family") applyView(VIEW.period === "late" && VIEW.family === value && !VIEW.lateMonth ? { family: null, model: null, size: null } : { period: "late", family: value, model: null, size: null, lateMonth: null });
     else if (action === "und-group") { UND_GROUP = value === "cust" ? "cust" : "fam"; applyView({}); }
+    else if (action === "late-family") applyView({ family: !value || VIEW.family === value ? null : value, model: null, size: null });
+    else if (action === "late-fam-more") { LATEFAM_ALL = true; applyView({}); }
     else if (action === "nav") {
       if (value === "more") { NAV_OPEN = !NAV_OPEN; applyView({}); if (NAV_OPEN) $("#sidebar").scrollIntoView({ block: "start" }); return; }
       NAV_OPEN = false;
